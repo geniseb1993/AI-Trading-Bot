@@ -1,3 +1,4 @@
+print("Starting the connection test...")
 from alpaca_trade_api.rest import REST, TimeFrame
 
 API_KEY = PKFYIQKN2WHT06H9XGVU
@@ -10,3 +11,4 @@ api = REST(API_KEY, API_SECRET, BASE_URL)
 # Fetch recent QQQ prices
 barset = api.get_bars("QQQ", TimeFrame.Day, limit=5)
 print(barset)
+
