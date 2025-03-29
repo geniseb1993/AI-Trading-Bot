@@ -2,11 +2,7 @@
 
 # Import the necessary library
 import alpaca_trade_api as tradeapi
-
-# Your API Key, Secret, and Endpoint
-API_KEY = "AK24VRQSSSMJJ11KWUPL"
-API_SECRET = "4KemAIFEvfudDCcWHuDsKnpmwJzxKaWiEqvkBtWN"
-BASE_URL = "https://api.alpaca.markets"  # This is the live trading endpoint
+from config import API_KEY, API_SECRET, BASE_URL
 
 # Print to confirm the script has started
 print("Starting Alpaca API connection test...")
