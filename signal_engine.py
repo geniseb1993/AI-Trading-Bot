@@ -63,15 +63,15 @@ def calculate_signals(df):
 
     df['buy_signal'] = df['signal_score'] >= 3
 
-   if not BUY_ONLY:
-    df['short_signal'] = (
+    if not BUY_ONLY:
+        df['short_signal'] = (
         (df['ema_9'] < df['ema_21']) &
         (df['ema_9'].shift(1) >= df['ema_21'].shift(1)) &
         (df['volume'] > 2 * df['avg_volume']) &
         (df['pct_change'] <= -0.3)
     )
-else:
-    df['short_signal'] = False
+    else:
+        df['short_signal'] = False
 
     return df
 
@@ -131,10 +131,14 @@ def enhance_signals(df):
 # --- Signal Extraction Utilities ---
 
 def extract_signals(df):
-    if 'buy_signal' not in df.columns:
+    if 'buy_signal' not in df.columns and 'signal_score' in df.columns:
+        print("Buy signal column not found. Creating it based on signal_score.")
+        df['buy_signal'] = df['signal_score'] >= 3
+    elif 'buy_signal' not in df.columns:
         print("Signal column not found. Run calculate_signals() first.")
         return pd.DataFrame()
-    return df[df['buy_signal']][['symbol', 'time', 'close', 'volume', 'ema_9', 'ema_21', 'pct_change', 'rsi', 'macd_hist', 'signal_score']]
+        
+    return df[df['buy_signal']][['symbol', 'time', 'close', 'volume', 'ema_9', 'ema_21', 'pct_change', 'rsi', 'macd_hist', 'signal_score', 'buy_signal']]
 
 def extract_short_signals(df):
     if 'short_signal' not in df.columns:
