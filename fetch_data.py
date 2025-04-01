@@ -1,100 +1,92 @@
-from config import API_KEY, API_SECRET, BASE_URL
-import alpaca_trade_api as tradeapi
-from datetime import datetime, timedelta
-import pytz
+from datetime import datetime
 import pandas as pd
-from signal_engine import calculate_signals, extract_signals
+import pytz
+from alpaca_trade_api.rest import REST
+from config import API_KEY, API_SECRET, BASE_URL, SYMBOLS
+from signal_engine import calculate_signals, extract_signals, extract_short_signals, trigger_alerts
+from backtest import run_backtest
+import pdb  # Added Python Debugger for debugging
 
-# Initialize API
-api = tradeapi.REST(API_KEY, API_SECRET, BASE_URL, api_version='v2')
-eastern = pytz.timezone('US/Eastern')
-
-# Default: Today's date
-def get_today_range():
-    now = datetime.now(eastern)
-    today = now.date()
-    return today
-
-# Fetch bars for a session
-def fetch_bars(symbol, start_dt, end_dt, timeframe='1Min'):
+def fetch_data_for_symbol(api, symbol, start, end):
+    """Fetch minute-level bars for a given symbol and date range."""
     try:
-        bars = api.get_bars(symbol, timeframe, start=start_dt.isoformat(), end=end_dt.isoformat())
-        return pd.DataFrame([{
-            'symbol': symbol,
-            'time': bar.t,
-            'open': bar.o,
-            'high': bar.h,
-            'low': bar.l,
-            'close': bar.c,
-            'volume': bar.v
-        } for bar in bars])
+        bars = api.get_bars(symbol, timeframe="1Min", start=start, end=end).df
+        print(f"Fetched bars for {symbol}: {bars.head()}")  # Debugging: Check fetched data
+        if 'symbol' not in bars.columns:
+            bars['symbol'] = symbol  # Manually assign symbol if it's missing
+        bars = bars.reset_index()
+        return bars[['symbol', 'timestamp', 'open', 'high', 'low', 'close', 'volume']].rename(columns={'timestamp': 'time'})
     except Exception as e:
-        print(f"Error fetching bars for {symbol}: {e}")
+        print(f"Error fetching data for {symbol}: {e}")
         return pd.DataFrame()
 
-# Main function to fetch data
-def fetch_data(symbols, start_date=None, end_date=None):
-    all_data = []
 
-    # Use today's date if none provided
-    if not start_date:
-        start_date = get_today_range()
-    if not end_date:
-        end_date = start_date
+def fetch_all_data(start, end):
+    """Fetch data for all configured symbols."""
+    api = REST(API_KEY, API_SECRET, BASE_URL)
+    data = {}
+    for symbol in SYMBOLS:
+        df = fetch_data_for_symbol(api, symbol, start, end)
+        if not df.empty:
+            df['time'] = pd.to_datetime(df['time'])
+            df = df.sort_values('time')
+            data[symbol] = df
+    return data
 
-    # Iterate through dates in range
-    date = start_date
-    while date <= end_date:
-        print(f"\n📅 Fetching data for {date.strftime('%Y-%m-%d')}")
+def main():
+    """Main pipeline: fetch data, calculate signals, and optionally run backtest."""
+    eastern = pytz.timezone("US/Eastern")
+    today = datetime.now(eastern).date()
+    start = f"{today}T04:00:00-05:00"
+    end = f"{today}T20:00:00-05:00"
 
-        # Time windows for that day
-        pre_start = eastern.localize(datetime.combine(date, datetime.min.time()) + timedelta(hours=4))
-        market_open = eastern.localize(datetime.combine(date, datetime.min.time()) + timedelta(hours=9, minutes=30))
-        now_end = eastern.localize(datetime.combine(date, datetime.min.time()) + timedelta(hours=16))
+    print(f"\n📅 Fetching data for {today}\n")
+    data = fetch_all_data(start, end)
 
-        for symbol in symbols:
-            print(f"\n🔹 {symbol} — Premarket")
-            pre_df = fetch_bars(symbol, pre_start, market_open)
-            print(pre_df.tail(2))
-            
-            print(f"🔸 {symbol} — Regular Market")
-            reg_df = fetch_bars(symbol, market_open, now_end)
-            print(reg_df.tail(2))
+    all_signals = []
+    for symbol, df in data.items():
+        print(f"Processing data for {symbol}...")
+        df = calculate_signals(df)
 
-            # Append to full dataset
-            all_data.append(pre_df)
-            all_data.append(reg_df)
+        # Debugging: Add pdb here to inspect the dataframe before we check for buy_signal
+        pdb.set_trace()
 
-        date += timedelta(days=1)
+        # Ensure 'buy_signal' column exists after calculation
+        if 'buy_signal' not in df.columns:
+            print(f"❌ 'buy_signal' column is missing in {symbol}. Skipping.")
+            continue
 
-    return pd.concat(all_data, ignore_index=True)
+        # Check if 'buy_signal' exists for this symbol and print it
+        print(f"Checking 'buy_signal' after calculation for {symbol}:\n", df[['symbol', 'buy_signal']].head())
 
-# Running the fetch function and signal engine
+        buy_signals = extract_signals(df)
+        short_signals = extract_short_signals(df)
+
+        if not buy_signals.empty:
+            all_signals.append(buy_signals)
+
+        if not short_signals.empty:
+            all_signals.append(short_signals)
+
+    if all_signals:
+        signals_df = pd.concat(all_signals)
+
+        # Debugging: Add pdb here to inspect signals_df before passing to backtest
+        pdb.set_trace()
+
+        # Debugging: Check if 'buy_signal' is present in signals_df before passing to backtest
+        print(f"📊 Checking the contents of signals_df:\n", signals_df.head())
+
+        signals_df.to_csv("all_signals.csv", index=False)
+
+        # Optional alerting or backtest trigger
+        trigger_alerts(signals_df)
+
+        # Debugging: Check 'buy_signal' column before backtest
+        print(f"Checking 'buy_signal' column in signals_df:\n", signals_df[['symbol', 'buy_signal']].head())
+
+        run_backtest(data, signals_df)
+
+
 if __name__ == "__main__":
-   if __name__ == '__main__':
-    symbols = ['QQQ', 'SPY', 'TSLA']
-    data = fetch_data(symbols, start_date=date(2025, 3, 21), end_date=date(2025, 3, 28))
-    print("\n✅ All data fetched successfully.\n")
-    print(data.tail())
-
-    # Run the signal engine
-    data_with_signals = calculate_signals(data)
-    signals = extract_signals(data_with_signals)
-    print("\n📈 Detected Buy Signals")
-    print(signals.tail())
-
-    # Optional: Save signals to CSV
-    signals.to_csv("buy_signals.csv", index=False)
-    print("\n💾 Buy signals saved to 'buy_signals.csv'")
-
-    # Optional: Save short signals to CSV
-    short_signals = data_with_signals[data_with_signals['short_signal']]
-    short_signals.to_csv("short_signals.csv", index=False)
-    print("\n💾 Short signals saved to 'short_signals.csv'")
-
-    # Running the backtest after signals
-    backtest_results = run_backtest(data_with_signals, signals)
-
-    # Optional: Save backtest results to CSV
-    backtest_results.to_csv("backtest_results.csv", index=False)
-    print("\n📊 Backtest results saved to 'backtest_results.csv'")
+    main()
