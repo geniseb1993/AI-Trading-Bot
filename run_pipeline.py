@@ -25,9 +25,7 @@ if __name__ == '__main__':
     print("\n💾 Short signals saved to 'short_signals.csv'")
 
     # Running the backtest after signals
-    buy_signals = data_with_signals[data_with_signals['buy_signal'] == True]
-
-    backtest_results = run_backtest(data_with_signals, buy_signals)
+    backtest_results = run_backtest(data_with_signals, signals)
 
     # Optional: Save backtest results to CSV
     backtest_results.to_csv("backtest_results.csv", index=False)

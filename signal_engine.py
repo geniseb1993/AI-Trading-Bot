@@ -37,6 +37,7 @@ def calculate_vwap(dataframe):
     return dataframe
 
 # --- Signal Logic ---
+<<<<<<< HEAD
 def calculate_signals(dataframe):
     """Calculate buy and short signals."""
     dataframe = dataframe.copy()
@@ -50,6 +51,40 @@ def calculate_signals(dataframe):
         (dataframe['ema_9'].shift(1) <= dataframe['ema_21'].shift(1))
     )
     dataframe['momentum_up'] = dataframe['pct_change'] > 0.2
+=======
+def calculate_signals(df):
+    df = df.copy()
+    df['ema_9'] = calculate_ema(df, 9)
+    df['ema_21'] = calculate_ema(df, 21)
+    df['pct_change'] = df['close'].pct_change() * 100
+    df['avg_volume'] = df['volume'].rolling(window=20).mean()
+    df['volume_surge'] = df['volume'] > 1.5 * df['avg_volume']
+    df['ema_crossover'] = (df['ema_9'] > df['ema_21']) & (df['ema_9'].shift(1) <= df['ema_21'].shift(1))
+    df['momentum_up'] = df['pct_change'] > 0.2
+
+    df = calculate_rsi(df)
+    df = calculate_macd(df)
+    df = calculate_vwap(df)
+
+    df['signal_score'] = 0
+    df.loc[df['ema_crossover'], 'signal_score'] += 1
+    df.loc[df['volume_surge'], 'signal_score'] += 1
+    df.loc[df['momentum_up'], 'signal_score'] += 1
+    df.loc[df['rsi'] < 40, 'signal_score'] += 1
+    df.loc[df['macd_hist'] > 0, 'signal_score'] += 1
+
+    df['buy_signal'] = df['signal_score'] >= 3
+
+    if not BUY_ONLY:
+        df['short_signal'] = (
+        (df['ema_9'] < df['ema_21']) &
+        (df['ema_9'].shift(1) >= df['ema_21'].shift(1)) &
+        (df['volume'] > 2 * df['avg_volume']) &
+        (df['pct_change'] <= -0.3)
+    )
+    else:
+        df['short_signal'] = False
+>>>>>>> origin/main
 
     dataframe = calculate_rsi(dataframe)
     dataframe = calculate_macd(dataframe)
@@ -83,12 +118,25 @@ def calculate_signals(dataframe):
     return dataframe
 
 # --- Signal Extraction Utilities ---
+<<<<<<< HEAD
 def extract_signals(dataframe):
     """Return DataFrame containing only buy signals."""
     if 'buy_signal' not in dataframe.columns:
         print("Signal column not found. Run calculate_signals() first.")
         return pd.DataFrame()
     return dataframe[dataframe['buy_signal']][['symbol', 'time', 'close', 'volume', 'ema_9', 'ema_21', 'pct_change', 'rsi', 'macd_hist', 'signal_score']]
+=======
+
+def extract_signals(df):
+    if 'buy_signal' not in df.columns and 'signal_score' in df.columns:
+        print("Buy signal column not found. Creating it based on signal_score.")
+        df['buy_signal'] = df['signal_score'] >= 3
+    elif 'buy_signal' not in df.columns:
+        print("Signal column not found. Run calculate_signals() first.")
+        return pd.DataFrame()
+        
+    return df[df['buy_signal']][['symbol', 'time', 'close', 'volume', 'ema_9', 'ema_21', 'pct_change', 'rsi', 'macd_hist', 'signal_score', 'buy_signal']]
+>>>>>>> origin/main
 
 def extract_short_signals(dataframe):
     """Return DataFrame containing only short signals."""
