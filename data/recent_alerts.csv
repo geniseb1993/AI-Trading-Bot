@@ -1,0 +1,11 @@
+timestamp,alert_type,symbol,message,priority
+2023-07-05 14:30:22,price,AAPL,Apple stock exceeded upper price threshold of $195.50,high
+2023-07-05 14:15:45,technical,AMZN,RSI overbought signal detected on Amazon (value: 78.3),medium
+2023-07-05 13:50:18,news,TSLA,Breaking news: Tesla announces new factory in Asia,high
+2023-07-05 13:32:05,pattern,MSFT,Bullish engulfing pattern detected on Microsoft daily chart,medium
+2023-07-05 13:05:12,volatility,VIX,Market volatility increasing rapidly (VIX +15%),high
+2023-07-05 12:45:33,system,BOT4,Bot #4 paused due to unexpected market conditions,high
+2023-07-05 12:30:18,volume,NFLX,Unusual volume spike detected in Netflix trading,medium
+2023-07-05 12:10:45,performance,PORTFOLIO,Portfolio drawdown exceeded 2% daily threshold,high
+2023-07-05 11:52:33,technical,SPY,MACD bearish crossover on S&P 500 ETF,medium
+2023-07-05 11:45:20,system,API,Third-party data provider connection restored,low 

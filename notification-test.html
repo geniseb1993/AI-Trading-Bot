@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Desktop Notification Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    button {
+      background-color: #4CAF50;
+      border: none;
+      color: white;
+      padding: 10px 20px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 16px;
+      margin: 10px 2px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .card {
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    code {
+      background-color: #f5f5f5;
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Desktop Notification Test</h1>
+  
+  <div class="card">
+    <h2>Test Trading Alert Notification</h2>
+    <p>Click the button below to test a desktop notification for a trading alert:</p>
+    <button id="testTradeAlert">Test Trading Alert</button>
+  </div>
+  
+  <div class="card">
+    <h2>Test Generic Notification</h2>
+    <p>Click the button below to test a simple desktop notification:</p>
+    <button id="testSimpleNotification">Test Simple Notification</button>
+  </div>
+  
+  <div class="card">
+    <h2>How It Works</h2>
+    <p>This test uses the browser's Notification API to display desktop notifications. The same mechanism is used in the AI Trading Bot application.</p>
+    <p>When you click the button, the browser will:</p>
+    <ol>
+      <li>Ask for permission to show notifications (if not already granted)</li>
+      <li>Create a notification that appears in your operating system's notification area</li>
+    </ol>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const tradeAlertButton = document.getElementById('testTradeAlert');
+      const simpleButton = document.getElementById('testSimpleNotification');
+      
+      // Check if browser supports notifications
+      if (!("Notification" in window)) {
+        alert("This browser does not support desktop notifications");
+        tradeAlertButton.disabled = true;
+        simpleButton.disabled = true;
+      }
+      
+      // Function to check permissions and show notification
+      function showNotification(title, message, icon) {
+        if (Notification.permission === "granted") {
+          const notification = new Notification(title, {
+            body: message,
+            icon: icon || null
+          });
+          
+          notification.onclick = function() {
+            window.focus();
+            notification.close();
+          };
+        } 
+        else if (Notification.permission !== "denied") {
+          Notification.requestPermission().then(function(permission) {
+            if (permission === "granted") {
+              const notification = new Notification(title, {
+                body: message,
+                icon: icon || null
+              });
+              
+              notification.onclick = function() {
+                window.focus();
+                notification.close();
+              };
+            }
+          });
+        }
+      }
+      
+      // Trade alert button
+      tradeAlertButton.addEventListener('click', function() {
+        const title = "Trading Opportunity";
+        const message = "AAPL bullish signal detected at $195.67. Consider entering a long position.";
+        showNotification(title, message);
+      });
+      
+      // Simple notification button
+      simpleButton.addEventListener('click', function() {
+        const title = "Test Notification";
+        const message = "This is a test notification from the AI Trading Bot.";
+        showNotification(title, message);
+      });
+    });
+  </script>
+</body>
+</html> 

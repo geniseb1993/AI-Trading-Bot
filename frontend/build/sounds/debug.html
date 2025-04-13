@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sound Test</title>
+  <style>
+    body {
+      font-family: 'Share Tech Mono', monospace;
+      max-width: 500px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #121212;
+      color: #0ae0ec;
+    }
+    h1 {
+      text-align: center;
+      text-shadow: 0 0 10px rgba(10, 224, 236, 0.5);
+    }
+    button {
+      padding: 10px 20px;
+      margin: 10px;
+      cursor: pointer;
+      border-radius: 4px;
+      font-family: 'Share Tech Mono', monospace;
+    }
+    .success {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+    }
+    .error {
+      background-color: #f44336;
+      color: white;
+      border: none;
+    }
+    .info {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: rgba(10, 224, 236, 0.1);
+      border: 1px solid rgba(10, 224, 236, 0.3);
+      border-radius: 4px;
+    }
+    .links {
+      margin-top: 20px;
+    }
+    a {
+      color: #0ae0ec;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <h1>Sound Test Page</h1>
+  <p>Use the buttons below to test if the sound files work correctly.</p>
+  
+  <button class="success" onclick="playSound('./access-granted-87075.mp3')">Play Access Granted</button>
+  <button class="error" onclick="playSound('./access-denied-101308.mp3')">Play Access Denied</button>
+  
+  <div class="info">
+    <p><strong>Sound File Status:</strong></p>
+    <div id="status">Checking sound files...</div>
+  </div>
+  
+  <div class="links">
+    <p><strong>Direct Links to Sound Files:</strong></p>
+    <p><a href="./access-granted-87075.mp3" target="_blank">access-granted-87075.mp3</a></p>
+    <p><a href="./access-denied-101308.mp3" target="_blank">access-denied-101308.mp3</a></p>
+    <p><a href="./" target="_blank">View All Sound Files</a></p>
+  </div>
+  
+  <script>
+    function playSound(soundFile) {
+      // Create a new audio element each time
+      const audio = new Audio(soundFile);
+      
+      // Add event listeners to track playback
+      audio.addEventListener('playing', () => {
+        console.log(`Playing ${soundFile}`);
+      });
+      
+      audio.addEventListener('ended', () => {
+        console.log(`Finished playing ${soundFile}`);
+      });
+      
+      // Handle errors
+      audio.addEventListener('error', (e) => {
+        console.error('Error playing sound:', e);
+        alert(`Error playing ${soundFile}. Check console for details.`);
+      });
+      
+      // Play the sound
+      audio.play().catch(e => {
+        console.error('Error playing sound:', e);
+        alert(`Error playing ${soundFile}. Check console for details.`);
+      });
+    }
+    
+    // Check if sound files exist
+    function checkSoundFiles() {
+      const statusEl = document.getElementById('status');
+      const files = [
+        'access-granted-87075.mp3',
+        'access-denied-101308.mp3'
+      ];
+      
+      const results = [];
+      
+      Promise.all(files.map(file => 
+        fetch(file)
+          .then(response => {
+            if (response.ok) {
+              results.push(`✅ ${file} is available`);
+            } else {
+              results.push(`❌ ${file} returned status ${response.status}`);
+            }
+          })
+          .catch(error => {
+            results.push(`❌ ${file} error: ${error.message}`);
+          })
+      )).then(() => {
+        statusEl.innerHTML = results.join('<br>');
+      });
+    }
+    
+    // Run the check when page loads
+    window.addEventListener('load', checkSoundFiles);
+  </script>
+</body>
+</html> 

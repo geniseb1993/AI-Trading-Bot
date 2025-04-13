@@ -1,0 +1,45 @@
+symbol,name,price,daily_change,daily_change_percent,volume,market_cap,sector,trend_signal
+SPY,S&P 500 ETF,458.75,2.45,0.54,65425235,458750000000,Index,Bullish
+QQQ,Nasdaq 100 ETF,392.48,3.25,0.83,48523541,392480000000,Technology,Bullish
+DIA,Dow Jones ETF,356.35,1.25,0.35,15624587,356350000000,Index,Neutral
+IWM,Russell 2000 ETF,201.85,-0.75,-0.37,28547125,201850000000,Small Cap,Bearish
+XLF,Financial Sector ETF,39.85,0.45,1.14,32568412,39850000000,Financial,Bullish
+XLE,Energy Sector ETF,85.32,-1.25,-1.45,18654235,85320000000,Energy,Bearish
+XLK,Technology Sector ETF,195.45,2.85,1.48,25648751,195450000000,Technology,Bullish
+XLV,Healthcare Sector ETF,142.35,0.65,0.46,12548632,142350000000,Healthcare,Neutral
+XLI,Industrial Sector ETF,118.75,1.15,0.98,14569852,118750000000,Industrial,Bullish
+XLP,Consumer Staples ETF,75.45,-0.35,-0.46,9865421,75450000000,Consumer Staples,Neutral
+XLY,Consumer Discretionary ETF,185.25,1.85,1.01,15698745,185250000000,Consumer Discretionary,Bullish
+VIX,Volatility Index,15.85,-0.65,-3.94,0,0,Volatility,Bearish
+TNX,10 Year Treasury Yield,3.91,0.05,1.29,0,0,Bond,Neutral
+DXY,US Dollar Index,102.45,-0.25,-0.24,0,0,Currency,Bearish
+GLD,Gold ETF,186.35,1.25,0.68,14568952,186350000000,Precious Metal,Bullish
+BTC-USD,Bitcoin,38945.25,845.25,2.22,32568421000,765845210000,Cryptocurrency,Bullish
+ETH-USD,Ethereum,2245.85,65.45,3.00,15698745000,270548621000,Cryptocurrency,Bullish
+index_name,current_value,daily_change,percent_change,signal,description
+S&P 500,4536.34,12.58,0.28,bullish,Index showing overall bullish momentum with strong support at 4500
+NASDAQ,14220.35,45.65,0.32,bullish,Technology sector leading market gains with positive momentum
+DOW JONES,35123.65,-8.45,-0.02,neutral,Sideways movement with industrial stocks showing mixed signals
+RUSSELL 2000,1989.45,-5.67,-0.28,bearish,Small caps underperforming - potential weakness indicator
+VIX,16.45,-0.35,-2.08,bullish,Low volatility suggests market confidence
+10Y TREASURY,3.85,0.02,0.52,neutral,Yields stabilizing after recent increases
+USD INDEX,103.45,-0.15,-0.14,bearish,Dollar weakening against major currencies
+GOLD,1945.75,12.35,0.64,bullish,Safe haven demand increasing alongside equity markets
+BITCOIN,29850.45,650.75,2.23,bullish,Crypto showing strong recovery with increased volume
+CRUDE OIL,78.35,1.25,1.62,bullish,Energy prices rising on supply concerns
+sector,daily_change,weekly_change,monthly_change,ytd_change,market_cap_billions,volume_millions,pe_ratio,volatility
+Technology,0.85,2.45,5.67,18.35,11245.8,325.6,28.4,0.92
+Healthcare,-0.35,1.25,2.78,7.65,4895.2,185.3,21.5,0.78
+Financial Services,0.42,0.95,3.25,9.40,6530.7,275.8,14.2,0.85
+Consumer Cyclical,0.65,1.85,4.20,12.75,3875.5,210.4,24.6,0.88
+Communication Services,0.95,2.65,6.30,15.40,2985.6,195.7,22.8,0.95
+Industrials,0.25,1.40,3.85,11.25,4250.8,165.9,18.5,0.82
+Basic Materials,-0.15,0.85,2.45,6.85,2150.4,125.7,15.8,0.79
+Energy,0.55,1.75,3.95,8.45,3780.2,215.6,12.4,0.94
+Utilities,-0.25,0.55,1.85,3.75,1750.3,95.4,16.7,0.65
+Real Estate,-0.45,0.75,2.15,5.25,1450.6,85.2,18.9,0.72
+Consumer Defensive,0.30,1.20,2.95,7.80,2650.9,135.8,20.3,0.68
+S&P 500,0.45,1.65,3.85,12.45,38750.5,1250.6,21.5,0.84
+NASDAQ,0.75,2.25,5.25,16.85,18950.7,950.4,26.8,0.91
+DOW JONES,0.35,1.45,3.45,9.85,9850.4,750.3,18.7,0.81
+RUSSELL 2000,0.55,1.85,4.15,10.65,3250.8,450.7,22.4,0.89 

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audio Loading Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    h1 {
+      color: #333;
+      text-align: center;
+    }
+    .test-container {
+      background-color: #fff;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .results {
+      margin-top: 20px;
+      border: 1px solid #ddd;
+      padding: 10px;
+      border-radius: 4px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .success {
+      color: #4CAF50;
+    }
+    .error {
+      color: #f44336;
+    }
+  </style>
+</head>
+<body>
+  <h1>Audio Loading Test</h1>
+  
+  <div class="test-container">
+    <h2>Test Audio Files</h2>
+    <p>Click on buttons below to test different audio files:</p>
+    
+    <div>
+      <button onclick="testAudio('sounds/access-granted-87075.mp3', 'granted')">Test Granted Sound</button>
+      <button onclick="testAudio('sounds/access-denied-101308.mp3', 'denied')">Test Denied Sound</button>
+    </div>
+    
+    <div>
+      <button onclick="testAudio('sounds/access-granted.mp3', 'granted-alt')">Test Alt Granted Sound</button>
+      <button onclick="testAudio('sounds/access-denied.mp3', 'denied-alt')">Test Alt Denied Sound</button>
+    </div>
+    
+    <div class="results" id="results">
+      <p>Results will appear here...</p>
+    </div>
+  </div>
+  
+  <div class="test-container">
+    <h2>File Size Verification</h2>
+    <p>Check file sizes to verify they are valid audio files:</p>
+    <button onclick="checkFileSizes()">Check File Sizes</button>
+    <div class="results" id="size-results">
+      <p>Size results will appear here...</p>
+    </div>
+  </div>
+
+  <script>
+    function logResult(message, isError = false) {
+      const resultsDiv = document.getElementById('results');
+      const p = document.createElement('p');
+      p.textContent = message;
+      p.className = isError ? 'error' : 'success';
+      resultsDiv.appendChild(p);
+      resultsDiv.scrollTop = resultsDiv.scrollHeight;
+    }
+    
+    function logSizeResult(message, isError = false) {
+      const resultsDiv = document.getElementById('size-results');
+      const p = document.createElement('p');
+      p.textContent = message;
+      p.className = isError ? 'error' : 'success';
+      resultsDiv.appendChild(p);
+      resultsDiv.scrollTop = resultsDiv.scrollHeight;
+    }
+    
+    function testAudio(path, type) {
+      logResult(`Testing ${type} sound from ${path}...`);
+      
+      fetch(path)
+        .then(response => {
+          if (response.ok) {
+            logResult(`✓ File ${path} fetched successfully (${response.status})`, false);
+            return response.blob();
+          } else {
+            throw new Error(`Failed to fetch file: ${response.status}`);
+          }
+        })
+        .then(blob => {
+          logResult(`✓ File size: ${blob.size} bytes`, false);
+          
+          if (blob.size < 1000) {
+            logResult(`⚠️ Warning: ${path} file size is too small (${blob.size} bytes), might not be valid audio`, true);
+          }
+          
+          // Try to play the audio
+          const audio = new Audio(path);
+          
+          audio.addEventListener('canplaythrough', () => {
+            logResult(`✓ Audio can play: ${path}`, false);
+            audio.play()
+              .then(() => {
+                logResult(`✓ Playing audio: ${path}`, false);
+                setTimeout(() => {
+                  audio.pause();
+                  logResult(`✓ Audio stopped: ${path}`, false);
+                }, 2000);
+              })
+              .catch(error => {
+                logResult(`✗ Failed to play audio: ${error.message}`, true);
+              });
+          });
+          
+          audio.addEventListener('error', (e) => {
+            logResult(`✗ Error loading audio: ${e.type}`, true);
+          });
+          
+          audio.load();
+        })
+        .catch(error => {
+          logResult(`✗ Error: ${error.message}`, true);
+        });
+    }
+    
+    function checkFileSizes() {
+      const files = [
+        'sounds/access-granted-87075.mp3',
+        'sounds/access-denied-101308.mp3',
+        'sounds/access-granted.mp3',
+        'sounds/access-denied.mp3'
+      ];
+      
+      files.forEach(path => {
+        fetch(path)
+          .then(response => {
+            if (response.ok) {
+              return response.blob();
+            } else {
+              throw new Error(`Failed to fetch file: ${response.status}`);
+            }
+          })
+          .then(blob => {
+            logSizeResult(`✓ ${path}: ${blob.size} bytes`);
+            if (blob.size < 1000) {
+              logSizeResult(`⚠️ Warning: ${path} is too small (${blob.size} bytes), might not be valid audio`, true);
+            }
+          })
+          .catch(error => {
+            logSizeResult(`✗ ${path}: ${error.message}`, true);
+          });
+      });
+    }
+  </script>
+</body>
+</html> 

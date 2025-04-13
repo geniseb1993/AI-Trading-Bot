@@ -1,0 +1,902 @@
+[
+  {
+    "id": "1744500027644_2653349048",
+    "timestamp": "2025-04-12T18:20:27.644917",
+    "activity_type": "system_action",
+    "description": "Bot status retrieved",
+    "details": {
+      "status": {
+        "running": false,
+        "last_cycle": null,
+        "next_cycle": null,
+        "active_trades_count": 65
+      }
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744500427524_2653349048",
+    "timestamp": "2025-04-12T18:27:07.524621",
+    "activity_type": "system_action",
+    "description": "Bot status retrieved",
+    "details": {
+      "status": {
+        "running": false,
+        "last_cycle": null,
+        "next_cycle": null,
+        "active_trades_count": 65
+      }
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744500427593_2653349048",
+    "timestamp": "2025-04-12T18:27:07.593204",
+    "activity_type": "system_action",
+    "description": "Bot status retrieved",
+    "details": {
+      "status": {
+        "running": false,
+        "last_cycle": null,
+        "next_cycle": null,
+        "active_trades_count": 65
+      }
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744501175425_552676057",
+    "timestamp": "2025-04-12T18:39:35.425758",
+    "activity_type": "system_action",
+    "description": "Bot status retrieved",
+    "details": {
+      "status": {
+        "running": false,
+        "last_cycle": null,
+        "next_cycle": null,
+        "active_trades_count": 65
+      }
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744501189134_1939234441",
+    "timestamp": "2025-04-12T18:39:49.134813",
+    "activity_type": "system_action",
+    "description": "Bot started",
+    "details": {
+      "success": true,
+      "message": "Bot started successfully"
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744501189143_2471807369",
+    "timestamp": "2025-04-12T18:39:49.143456",
+    "activity_type": "strategy_switch",
+    "description": "Switched to primary trading strategy",
+    "details": {
+      "old_strategy": "idle",
+      "new_strategy": "trend_following",
+      "reason": "Bot activation",
+      "market_regime": "bullish"
+    },
+    "symbol": null,
+    "source": "strategy_manager"
+  },
+  {
+    "id": "1744501189150_3756049505",
+    "timestamp": "2025-04-12T18:39:49.150783",
+    "activity_type": "market_analysis",
+    "description": "Initial market analysis completed",
+    "details": {
+      "prediction": "bullish",
+      "confidence": 0.78,
+      "key_levels": {
+        "support": 425.5,
+        "resistance": 455.75
+      },
+      "market_sentiment": "positive",
+      "volatility": "moderate"
+    },
+    "symbol": "SPY",
+    "source": "market_analyzer"
+  },
+  {
+    "id": "1744501189165_1681056302",
+    "timestamp": "2025-04-12T18:39:49.165010",
+    "activity_type": "signal_generated",
+    "description": "Generated LONG signal for AAPL",
+    "details": {
+      "signal_score": 7.2,
+      "position_type": "LONG",
+      "price": 331.15,
+      "confidence": 0.72,
+      "indicators": {
+        "rsi": 67.6,
+        "macd": 1.12,
+        "ma_crossover": true,
+        "volume_surge": true
+      }
+    },
+    "symbol": "AAPL",
+    "source": "ai_signal_engine"
+  },
+  {
+    "id": "1744501189178_3706456789",
+    "timestamp": "2025-04-12T18:39:49.178251",
+    "activity_type": "signal_generated",
+    "description": "Generated LONG signal for MSFT",
+    "details": {
+      "signal_score": 7.1,
+      "position_type": "LONG",
+      "price": 371.29,
+      "confidence": 0.71,
+      "indicators": {
+        "rsi": 73.6,
+        "macd": 0.59,
+        "ma_crossover": true,
+        "volume_surge": false
+      }
+    },
+    "symbol": "MSFT",
+    "source": "ai_signal_engine"
+  },
+  {
+    "id": "1744501189200_1736608879",
+    "timestamp": "2025-04-12T18:39:49.200201",
+    "activity_type": "trade_entry",
+    "description": "Entered LONG position in NVDA",
+    "details": {
+      "position_type": "LONG",
+      "entry_price": 252.53,
+      "stop_loss": 239.9,
+      "take_profit": 277.78,
+      "quantity": 68,
+      "reason": "Strong momentum detected",
+      "risk_percentage": 1.0
+    },
+    "symbol": "NVDA",
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744501189237_3426031655",
+    "timestamp": "2025-04-12T18:39:49.237008",
+    "activity_type": "system_action",
+    "description": "Trading cycle executed manually",
+    "details": {
+      "success": true,
+      "message": "Trading cycle completed successfully"
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744501189239_2320661767",
+    "timestamp": "2025-04-12T18:39:49.239155",
+    "activity_type": "market_analysis",
+    "description": "Updated market analysis for IWM",
+    "details": {
+      "prediction": "bullish",
+      "confidence": 0.81,
+      "key_levels": {
+        "support": 387.22,
+        "resistance": 465.99
+      },
+      "market_sentiment": "neutral",
+      "sector_performance": {
+        "technology": -1.29,
+        "financials": -0.33,
+        "healthcare": 0.74,
+        "consumer": 0.7
+      }
+    },
+    "symbol": "IWM",
+    "source": "market_analyzer"
+  },
+  {
+    "id": "1744501189241_2501695013",
+    "timestamp": "2025-04-12T18:39:49.241538",
+    "activity_type": "trade_exit",
+    "description": "Exited SHORT position in GOOGL with -0.22% loss",
+    "details": {
+      "position_type": "SHORT",
+      "entry_price": 455.62,
+      "exit_price": 456.62,
+      "profit": -1.0,
+      "profit_pct": -0.22,
+      "exit_reason": "Technical reversal",
+      "holding_period": "1 days"
+    },
+    "symbol": "GOOGL",
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744501189682_552676057",
+    "timestamp": "2025-04-12T18:39:49.682066",
+    "activity_type": "system_action",
+    "description": "Bot status retrieved",
+    "details": {
+      "status": {
+        "running": true,
+        "last_cycle": "2025-04-12 18:39:49",
+        "next_cycle": "2025-04-12 18:44:49",
+        "active_trades_count": 65
+      }
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744501229564_3426031655",
+    "timestamp": "2025-04-12T18:40:29.564632",
+    "activity_type": "system_action",
+    "description": "Trading cycle executed manually",
+    "details": {
+      "success": true,
+      "message": "Trading cycle completed successfully"
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744501229567_1106928272",
+    "timestamp": "2025-04-12T18:40:29.567304",
+    "activity_type": "risk_adjustment",
+    "description": "Adjusted risk parameters based on market conditions",
+    "details": {
+      "old_risk_per_trade": 0.017,
+      "new_risk_per_trade": 0.011,
+      "reason": "Market volatility change",
+      "volatility_index": 28.1,
+      "adjustment_factor": 0.65
+    },
+    "symbol": null,
+    "source": "risk_manager"
+  },
+  {
+    "id": "1744501229571_2320661767",
+    "timestamp": "2025-04-12T18:40:29.571930",
+    "activity_type": "market_analysis",
+    "description": "Updated market analysis for IWM",
+    "details": {
+      "prediction": "neutral",
+      "confidence": 0.65,
+      "key_levels": {
+        "support": 399.58,
+        "resistance": 449.03
+      },
+      "market_sentiment": "neutral",
+      "sector_performance": {
+        "technology": -0.58,
+        "financials": 1.03,
+        "healthcare": 0.92,
+        "consumer": 0.68
+      }
+    },
+    "symbol": "IWM",
+    "source": "market_analyzer"
+  },
+  {
+    "id": "1744501229576_1497529071",
+    "timestamp": "2025-04-12T18:40:29.576454",
+    "activity_type": "signal_generated",
+    "description": "Generated SHORT signal for AMZN",
+    "details": {
+      "signal_score": 8.9,
+      "position_type": "SHORT",
+      "price": 198.12,
+      "confidence": 0.89,
+      "indicators": {
+        "rsi": 49.7,
+        "macd": -0.62,
+        "ma_crossover": false,
+        "volume_surge": true
+      },
+      "time_frame": "1h"
+    },
+    "symbol": "AMZN",
+    "source": "ai_signal_engine"
+  },
+  {
+    "id": "1744501229580_4195130777",
+    "timestamp": "2025-04-12T18:40:29.580480",
+    "activity_type": "trade_exit",
+    "description": "Exited SHORT position in META with 2.27% profit",
+    "details": {
+      "position_type": "SHORT",
+      "entry_price": 483.23,
+      "exit_price": 472.25,
+      "profit": 10.98,
+      "profit_pct": 2.27,
+      "exit_reason": "Risk management",
+      "holding_period": "5 days"
+    },
+    "symbol": "META",
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744501230004_552676057",
+    "timestamp": "2025-04-12T18:40:30.004149",
+    "activity_type": "system_action",
+    "description": "Bot status retrieved",
+    "details": {
+      "status": {
+        "running": true,
+        "last_cycle": "2025-04-12 18:39:49",
+        "next_cycle": "2025-04-12 18:44:49",
+        "active_trades_count": 65
+      }
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744501258299_3497959458",
+    "timestamp": "2025-04-12T18:40:58.299644",
+    "activity_type": "system_action",
+    "description": "Bot stopped",
+    "details": {
+      "success": true,
+      "message": "Bot stopped successfully"
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744501258712_552676057",
+    "timestamp": "2025-04-12T18:40:58.712480",
+    "activity_type": "system_action",
+    "description": "Bot status retrieved",
+    "details": {
+      "status": {
+        "running": false,
+        "last_cycle": "2025-04-12 18:39:49",
+        "next_cycle": null,
+        "active_trades_count": 65
+      }
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744501397210_552676057",
+    "timestamp": "2025-04-12T18:43:17.210378",
+    "activity_type": "system_action",
+    "description": "Bot status retrieved",
+    "details": {
+      "status": {
+        "running": false,
+        "last_cycle": "2025-04-12 18:39:49",
+        "next_cycle": null,
+        "active_trades_count": 65
+      }
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744501575008_552676057",
+    "timestamp": "2025-04-12T18:46:15.008418",
+    "activity_type": "system_action",
+    "description": "Bot status retrieved",
+    "details": {
+      "status": {
+        "running": false,
+        "last_cycle": "2025-04-12 18:39:49",
+        "next_cycle": null,
+        "active_trades_count": 65
+      }
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744501589340_3352985302",
+    "timestamp": "2025-04-12T18:46:29.340586",
+    "activity_type": "system_action",
+    "description": "Retrieved 20 historical trades",
+    "details": {
+      "history_count": 20
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744501778785_552676057",
+    "timestamp": "2025-04-12T18:49:38.785886",
+    "activity_type": "system_action",
+    "description": "Bot status retrieved",
+    "details": {
+      "status": {
+        "running": false,
+        "last_cycle": "2025-04-12 18:39:49",
+        "next_cycle": null,
+        "active_trades_count": 65
+      }
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744501781358_3352985302",
+    "timestamp": "2025-04-12T18:49:41.358399",
+    "activity_type": "system_action",
+    "description": "Retrieved 20 historical trades",
+    "details": {
+      "history_count": 20
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744501784676_3582673321",
+    "timestamp": "2025-04-12T18:49:44.676822",
+    "activity_type": "system_action",
+    "description": "Portfolio performance retrieved for 30 days",
+    "details": {
+      "days": 30
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744501930023_552676057",
+    "timestamp": "2025-04-12T18:52:10.023795",
+    "activity_type": "system_action",
+    "description": "Bot status retrieved",
+    "details": {
+      "status": {
+        "running": false,
+        "last_cycle": "2025-04-12 18:39:49",
+        "next_cycle": null,
+        "active_trades_count": 65
+      }
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744501932751_3352985302",
+    "timestamp": "2025-04-12T18:52:12.751192",
+    "activity_type": "system_action",
+    "description": "Retrieved 20 historical trades",
+    "details": {
+      "history_count": 20
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744501936911_3582673321",
+    "timestamp": "2025-04-12T18:52:16.911570",
+    "activity_type": "system_action",
+    "description": "Portfolio performance retrieved for 30 days",
+    "details": {
+      "days": 30
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744502055080_552676057",
+    "timestamp": "2025-04-12T18:54:15.080572",
+    "activity_type": "system_action",
+    "description": "Bot status retrieved",
+    "details": {
+      "status": {
+        "running": false,
+        "last_cycle": "2025-04-12 18:39:49",
+        "next_cycle": null,
+        "active_trades_count": 65
+      }
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744502076052_3352985302",
+    "timestamp": "2025-04-12T18:54:36.052076",
+    "activity_type": "system_action",
+    "description": "Retrieved 20 historical trades",
+    "details": {
+      "history_count": 20
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744502082902_3582673321",
+    "timestamp": "2025-04-12T18:54:42.902732",
+    "activity_type": "system_action",
+    "description": "Portfolio performance retrieved for 30 days",
+    "details": {
+      "days": 30
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744502404062_552676057",
+    "timestamp": "2025-04-12T19:00:04.062054",
+    "activity_type": "system_action",
+    "description": "Bot status retrieved",
+    "details": {
+      "status": {
+        "running": false,
+        "last_cycle": "2025-04-12 18:39:49",
+        "next_cycle": null,
+        "active_trades_count": 65
+      }
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744502410811_3352985302",
+    "timestamp": "2025-04-12T19:00:10.811194",
+    "activity_type": "system_action",
+    "description": "Retrieved 20 historical trades",
+    "details": {
+      "history_count": 20
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744502412739_3582673321",
+    "timestamp": "2025-04-12T19:00:12.739240",
+    "activity_type": "system_action",
+    "description": "Portfolio performance retrieved for 30 days",
+    "details": {
+      "days": 30
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744502444778_552676057",
+    "timestamp": "2025-04-12T19:00:44.778935",
+    "activity_type": "system_action",
+    "description": "Bot status retrieved",
+    "details": {
+      "status": {
+        "running": false,
+        "last_cycle": "2025-04-12 18:39:49",
+        "next_cycle": null,
+        "active_trades_count": 65
+      }
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744502457794_3426031655",
+    "timestamp": "2025-04-12T19:00:57.794133",
+    "activity_type": "system_action",
+    "description": "Trading cycle executed manually",
+    "details": {
+      "success": true,
+      "message": "Trading cycle completed successfully"
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744502457803_590354763",
+    "timestamp": "2025-04-12T19:00:57.803480",
+    "activity_type": "trade_exit",
+    "description": "Exited SHORT position in MSFT with -0.82% loss",
+    "details": {
+      "position_type": "SHORT",
+      "entry_price": 419.46,
+      "exit_price": 422.88,
+      "profit": -3.42,
+      "profit_pct": -0.82,
+      "exit_reason": "AI prediction change",
+      "holding_period": "4 days"
+    },
+    "symbol": "MSFT",
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744502458077_552676057",
+    "timestamp": "2025-04-12T19:00:58.077251",
+    "activity_type": "system_action",
+    "description": "Bot status retrieved",
+    "details": {
+      "status": {
+        "running": false,
+        "last_cycle": "2025-04-12 18:39:49",
+        "next_cycle": null,
+        "active_trades_count": 65
+      }
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744502875737_552676057",
+    "timestamp": "2025-04-12T19:07:55.737066",
+    "activity_type": "system_action",
+    "description": "Bot status retrieved",
+    "details": {
+      "status": {
+        "running": false,
+        "last_cycle": "2025-04-12 18:39:49",
+        "next_cycle": null,
+        "active_trades_count": 65
+      }
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744503046442_552676057",
+    "timestamp": "2025-04-12T19:10:46.442581",
+    "activity_type": "system_action",
+    "description": "Bot status retrieved",
+    "details": {
+      "status": {
+        "running": false,
+        "last_cycle": "2025-04-12 18:39:49",
+        "next_cycle": null,
+        "active_trades_count": 65
+      }
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744503285945_552676057",
+    "timestamp": "2025-04-12T19:14:45.945806",
+    "activity_type": "system_action",
+    "description": "Bot status retrieved",
+    "details": {
+      "status": {
+        "running": false,
+        "last_cycle": "2025-04-12 18:39:49",
+        "next_cycle": null,
+        "active_trades_count": 65
+      }
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744503620441_552676057",
+    "timestamp": "2025-04-12T19:20:20.441330",
+    "activity_type": "system_action",
+    "description": "Bot status retrieved",
+    "details": {
+      "status": {
+        "running": false,
+        "last_cycle": "2025-04-12 18:39:49",
+        "next_cycle": null,
+        "active_trades_count": 65
+      }
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744505789229_187031982",
+    "timestamp": "2025-04-12T19:56:29.229775",
+    "activity_type": "system_action",
+    "description": "Bot status retrieved",
+    "details": {
+      "status": {
+        "running": false,
+        "last_cycle": null,
+        "next_cycle": null,
+        "active_trades_count": 65
+      }
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744513027294_2957094419",
+    "timestamp": "2025-04-12T21:57:07.294334",
+    "activity_type": "system_action",
+    "description": "Bot status retrieved",
+    "details": {
+      "status": {
+        "running": false,
+        "last_cycle": null,
+        "next_cycle": null,
+        "active_trades_count": 65
+      }
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744549071797_1181508077",
+    "timestamp": "2025-04-13T07:57:51.797439",
+    "activity_type": "system_action",
+    "description": "Bot status retrieved",
+    "details": {
+      "status": {
+        "running": false,
+        "last_cycle": null,
+        "next_cycle": null,
+        "active_trades_count": 65
+      }
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744549327044_2464372484",
+    "timestamp": "2025-04-13T08:02:07.044019",
+    "activity_type": "system_action",
+    "description": "Retrieved 20 historical trades",
+    "details": {
+      "history_count": 20
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744549330992_4093754759",
+    "timestamp": "2025-04-13T08:02:10.992236",
+    "activity_type": "system_action",
+    "description": "Portfolio performance retrieved for 30 days",
+    "details": {
+      "days": 30
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744549347868_1181508077",
+    "timestamp": "2025-04-13T08:02:27.868724",
+    "activity_type": "system_action",
+    "description": "Bot status retrieved",
+    "details": {
+      "status": {
+        "running": false,
+        "last_cycle": null,
+        "next_cycle": null,
+        "active_trades_count": 65
+      }
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744549351125_2549585001",
+    "timestamp": "2025-04-13T08:02:31.125973",
+    "activity_type": "system_action",
+    "description": "Bot started",
+    "details": {
+      "success": true,
+      "message": "Bot started successfully"
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744549351137_3085959107",
+    "timestamp": "2025-04-13T08:02:31.137566",
+    "activity_type": "strategy_switch",
+    "description": "Switched to primary trading strategy",
+    "details": {
+      "old_strategy": "idle",
+      "new_strategy": "trend_following",
+      "reason": "Bot activation",
+      "market_regime": "bullish"
+    },
+    "symbol": null,
+    "source": "strategy_manager"
+  },
+  {
+    "id": "1744549351158_1168309553",
+    "timestamp": "2025-04-13T08:02:31.158760",
+    "activity_type": "market_analysis",
+    "description": "Initial market analysis completed",
+    "details": {
+      "prediction": "bullish",
+      "confidence": 0.78,
+      "key_levels": {
+        "support": 425.5,
+        "resistance": 455.75
+      },
+      "market_sentiment": "positive",
+      "volatility": "moderate"
+    },
+    "symbol": "SPY",
+    "source": "market_analyzer"
+  },
+  {
+    "id": "1744549351170_3606113481",
+    "timestamp": "2025-04-13T08:02:31.170444",
+    "activity_type": "signal_generated",
+    "description": "Generated LONG signal for AAPL",
+    "details": {
+      "signal_score": 8.4,
+      "position_type": "LONG",
+      "price": 306.45,
+      "confidence": 0.84,
+      "indicators": {
+        "rsi": 60.5,
+        "macd": 0.65,
+        "ma_crossover": true,
+        "volume_surge": true
+      }
+    },
+    "symbol": "AAPL",
+    "source": "ai_signal_engine"
+  },
+  {
+    "id": "1744549351177_3328702126",
+    "timestamp": "2025-04-13T08:02:31.177386",
+    "activity_type": "signal_generated",
+    "description": "Generated LONG signal for MSFT",
+    "details": {
+      "signal_score": 8.7,
+      "position_type": "LONG",
+      "price": 490.41,
+      "confidence": 0.87,
+      "indicators": {
+        "rsi": 65.5,
+        "macd": 0.92,
+        "ma_crossover": true,
+        "volume_surge": true
+      }
+    },
+    "symbol": "MSFT",
+    "source": "ai_signal_engine"
+  },
+  {
+    "id": "1744549351189_3664030970",
+    "timestamp": "2025-04-13T08:02:31.189122",
+    "activity_type": "trade_entry",
+    "description": "Entered LONG position in NVDA",
+    "details": {
+      "position_type": "LONG",
+      "entry_price": 196.71,
+      "stop_loss": 186.87,
+      "take_profit": 216.38,
+      "quantity": 85,
+      "reason": "Strong momentum detected",
+      "risk_percentage": 1.0
+    },
+    "symbol": "NVDA",
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744549351224_3889840209",
+    "timestamp": "2025-04-13T08:02:31.224853",
+    "activity_type": "system_action",
+    "description": "Trading cycle executed manually",
+    "details": {
+      "success": true,
+      "message": "Trading cycle completed successfully"
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744549351856_1181508077",
+    "timestamp": "2025-04-13T08:02:31.856448",
+    "activity_type": "system_action",
+    "description": "Bot status retrieved",
+    "details": {
+      "status": {
+        "running": true,
+        "last_cycle": "2025-04-13 08:02:31",
+        "next_cycle": "2025-04-13 08:07:31",
+        "active_trades_count": 65
+      }
+    },
+    "symbol": null,
+    "source": "ai_trader"
+  }
+]

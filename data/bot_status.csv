@@ -1,0 +1,9 @@
+bot_id,name,strategy,status,last_active,trades_today,win_rate,profit_today
+1,MACD-RSI Crossover,momentum,online,2023-07-05 14:32:15,8,75.0,3.2
+2,Bollinger Band Reversal,mean_reversion,online,2023-07-05 14:30:45,5,60.0,1.8
+3,Adaptive Moving Average,trend_following,offline,2023-07-05 09:15:22,2,50.0,0.7
+4,Volume Profile Analysis,volatility,paused,2023-07-05 12:45:33,4,25.0,-1.5
+5,Fibonacci Retracement,support_resistance,online,2023-07-05 14:28:19,6,83.3,4.1
+6,News Sentiment Analyzer,sentiment,testing,2023-07-05 13:10:55,0,0.0,0.0
+7,Ichimoku Cloud Strategy,multi_factor,online,2023-07-05 14:31:02,3,66.7,2.3
+8,Elliott Wave Detector,pattern_recognition,maintenance,2023-07-04 16:45:12,0,0.0,0.0 
