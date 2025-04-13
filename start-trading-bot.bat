@@ -1,0 +1,3 @@
+@echo off
+echo Starting AI Trading Bot...
+node start-servers.js 

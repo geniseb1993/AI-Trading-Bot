@@ -1,0 +1,16 @@
+metric_name,current_value,target_range_min,target_range_max,status,description
+Portfolio Beta,1.15,0.8,1.2,Warning,Portfolio beta slightly above target range
+Value at Risk (VaR),4850.25,0,5000,Acceptable,Daily 95% VaR within acceptable range
+Max Drawdown,12.35,0,15,Acceptable,Maximum historical drawdown below critical threshold
+Sharpe Ratio,1.85,1.5,3,Acceptable,Risk-adjusted return ratio within acceptable range
+Sortino Ratio,2.15,1.8,4,Acceptable,Downside risk-adjusted return ratio within target
+Diversification Score,72.5,70,100,Acceptable,Portfolio diversification metrics at acceptable level
+Correlation Risk,0.65,0,0.6,Warning,Increased correlation between positions detected
+Volatility,15.25,0,18,Acceptable,Portfolio volatility within target range
+Market Exposure,68.5,0,70,Acceptable,Percentage of portfolio exposed to market risk
+Leverage Ratio,1.8,1,2,Acceptable,Portfolio leverage within acceptable limits
+Concentration Risk,24.5,0,20,Warning,Top 5 positions exceed target concentration
+Liquidity Risk,3.5,0,5,Acceptable,Average days to liquidate full positions
+Tail Risk,5.85,0,6,Acceptable,Expected shortfall metric within acceptable range
+Stress Test Result,-8.45,-10,0,Acceptable,Projected loss in severe market stress scenario
+Currency Risk,3.25,0,5,Acceptable,Exposure to foreign currency fluctuations 

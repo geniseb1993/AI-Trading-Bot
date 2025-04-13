@@ -1,0 +1,27 @@
+{
+  "notification_settings": {
+    "email": {
+      "enabled": false,
+      "sender_email": "",
+      "recipient_email": "",
+      "smtp_server": "smtp.gmail.com",
+      "smtp_port": 587,
+      "password": ""
+    },
+    "sms": {
+      "enabled": false
+    },
+    "desktop": {
+      "enabled": true
+    },
+    "voice": {
+      "enabled": true,
+      "use_hume_ai": true,
+      "hume_api_key": "",
+      "hume_secret_key": ""
+    },
+    "sound": {
+      "enabled": true
+    }
+  }
+} 

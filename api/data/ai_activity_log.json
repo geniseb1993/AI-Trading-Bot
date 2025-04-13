@@ -1,0 +1,792 @@
+[
+  {
+    "id": "1744498000310_1098487687",
+    "timestamp": "2025-04-11T00:06:40.310794",
+    "activity_type": "backtest",
+    "description": "Completed backtest for trend_following strategy",
+    "details": {
+      "period": "87 days",
+      "win_rate": 0.53,
+      "profit_factor": 2.2,
+      "max_drawdown": 0.18,
+      "trade_count": 26
+    },
+    "symbol": null,
+    "source": "backtest_engine"
+  },
+  {
+    "id": "1744498000315_1023069015",
+    "timestamp": "2025-04-12T01:33:40.310794",
+    "activity_type": "market_analysis",
+    "description": "Completed market analysis for SPY",
+    "details": {
+      "prediction": "neutral",
+      "confidence": 0.65,
+      "key_levels": {
+        "support": 322.03,
+        "resistance": 322.66
+      },
+      "market_sentiment": "negative"
+    },
+    "symbol": "SPY",
+    "source": "market_analyzer"
+  },
+  {
+    "id": "1744498000320_856376224",
+    "timestamp": "2025-04-12T01:36:40.310794",
+    "activity_type": "trade_exit",
+    "description": "Exited SHORT position in QQQ with 9.09% profit",
+    "details": {
+      "position_type": "SHORT",
+      "entry_price": 446.69,
+      "exit_price": 406.08,
+      "profit": 40.61,
+      "profit_pct": 9.09,
+      "exit_reason": "Technical reversal"
+    },
+    "symbol": "QQQ",
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744498000321_3550336721",
+    "timestamp": "2025-04-11T22:11:40.310794",
+    "activity_type": "trade_entry",
+    "description": "Entered LONG position in XLF",
+    "details": {
+      "position_type": "LONG",
+      "entry_price": 241.72,
+      "stop_loss": 229.63,
+      "take_profit": 265.89,
+      "quantity": 38,
+      "reason": "Strong momentum detected"
+    },
+    "symbol": "XLF",
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744498000322_2975574270",
+    "timestamp": "2025-04-12T02:53:40.310794",
+    "activity_type": "trade_exit",
+    "description": "Exited SHORT position in AAPL with 9.09% profit",
+    "details": {
+      "position_type": "SHORT",
+      "entry_price": 270.55,
+      "exit_price": 245.95,
+      "profit": 24.6,
+      "profit_pct": 9.09,
+      "exit_reason": "Target reached"
+    },
+    "symbol": "AAPL",
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744498000323_3504428934",
+    "timestamp": "2025-04-11T11:19:40.310794",
+    "activity_type": "risk_adjustment",
+    "description": "Adjusted risk parameters",
+    "details": {
+      "old_risk_per_trade": 0.027,
+      "new_risk_per_trade": 0.01,
+      "max_open_positions": 5,
+      "reason": "Portfolio value change"
+    },
+    "symbol": null,
+    "source": "risk_manager"
+  },
+  {
+    "id": "1744498000324_1248540145",
+    "timestamp": "2025-04-12T13:51:40.310794",
+    "activity_type": "strategy_switch",
+    "description": "Switched strategy from trend_following to breakout",
+    "details": {
+      "old_strategy": "trend_following",
+      "new_strategy": "breakout",
+      "reason": "Market conditions changed",
+      "market_regime": "bullish"
+    },
+    "symbol": null,
+    "source": "strategy_manager"
+  },
+  {
+    "id": "1744498000326_1023069015",
+    "timestamp": "2025-04-12T15:28:40.310794",
+    "activity_type": "market_analysis",
+    "description": "Completed market analysis for SPY",
+    "details": {
+      "prediction": "neutral",
+      "confidence": 0.83,
+      "key_levels": {
+        "support": 388.21,
+        "resistance": 491.35
+      },
+      "market_sentiment": "mixed"
+    },
+    "symbol": "SPY",
+    "source": "market_analyzer"
+  },
+  {
+    "id": "1744498000332_3217059617",
+    "timestamp": "2025-04-12T14:28:40.310794",
+    "activity_type": "system_action",
+    "description": "Scheduled maintenance",
+    "details": {
+      "status": "success",
+      "duration_seconds": 24
+    },
+    "symbol": null,
+    "source": "system"
+  },
+  {
+    "id": "1744498000334_536649735",
+    "timestamp": "2025-04-12T04:16:40.310794",
+    "activity_type": "trade_entry",
+    "description": "Entered LONG position in NVDA",
+    "details": {
+      "position_type": "LONG",
+      "entry_price": 145.56,
+      "stop_loss": 138.28,
+      "take_profit": 160.12,
+      "quantity": 45,
+      "reason": "Strong momentum detected"
+    },
+    "symbol": "NVDA",
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744498000338_1631542117",
+    "timestamp": "2025-04-12T04:22:40.310794",
+    "activity_type": "signal_generated",
+    "description": "Generated SHORT signal for MSFT",
+    "details": {
+      "signal_score": 9.4,
+      "position_type": "SHORT",
+      "price": 111.42,
+      "indicators": {
+        "rsi": 36.3,
+        "macd": 0.54,
+        "ma_crossover": true,
+        "volume_surge": false
+      }
+    },
+    "symbol": "MSFT",
+    "source": "ai_signal_engine"
+  },
+  {
+    "id": "1744498000340_177147538",
+    "timestamp": "2025-04-11T23:03:40.310794",
+    "activity_type": "trade_entry",
+    "description": "Entered LONG position in MSFT",
+    "details": {
+      "position_type": "LONG",
+      "entry_price": 407.61,
+      "stop_loss": 387.23,
+      "take_profit": 448.37,
+      "quantity": 77,
+      "reason": "Strong momentum detected"
+    },
+    "symbol": "MSFT",
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744498000344_396390838",
+    "timestamp": "2025-04-12T15:39:40.310794",
+    "activity_type": "signal_generated",
+    "description": "Generated SHORT signal for SPY",
+    "details": {
+      "signal_score": 8.8,
+      "position_type": "SHORT",
+      "price": 372.32,
+      "indicators": {
+        "rsi": 44.9,
+        "macd": -0.75,
+        "ma_crossover": false,
+        "volume_surge": false
+      }
+    },
+    "symbol": "SPY",
+    "source": "ai_signal_engine"
+  },
+  {
+    "id": "1744498000349_856376224",
+    "timestamp": "2025-04-12T16:16:40.310794",
+    "activity_type": "trade_exit",
+    "description": "Exited SHORT position in QQQ with 9.09% profit",
+    "details": {
+      "position_type": "SHORT",
+      "entry_price": 307.8,
+      "exit_price": 279.82,
+      "profit": 27.98,
+      "profit_pct": 9.09,
+      "exit_reason": "Target reached"
+    },
+    "symbol": "QQQ",
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744498000353_774085898",
+    "timestamp": "2025-04-11T23:06:40.310794",
+    "activity_type": "trade_entry",
+    "description": "Entered LONG position in TSLA",
+    "details": {
+      "position_type": "LONG",
+      "entry_price": 269.5,
+      "stop_loss": 256.02,
+      "take_profit": 296.45,
+      "quantity": 41,
+      "reason": "Strong momentum detected"
+    },
+    "symbol": "TSLA",
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744498000357_3467632451",
+    "timestamp": "2025-04-12T03:55:40.310794",
+    "activity_type": "signal_generated",
+    "description": "Generated LONG signal for XLF",
+    "details": {
+      "signal_score": 7.1,
+      "position_type": "LONG",
+      "price": 231.88,
+      "indicators": {
+        "rsi": 72.5,
+        "macd": -1.41,
+        "ma_crossover": true,
+        "volume_surge": false
+      }
+    },
+    "symbol": "XLF",
+    "source": "ai_signal_engine"
+  },
+  {
+    "id": "1744498000363_1555767704",
+    "timestamp": "2025-04-12T04:49:40.310794",
+    "activity_type": "signal_generated",
+    "description": "Generated SHORT signal for TSLA",
+    "details": {
+      "signal_score": 8.8,
+      "position_type": "SHORT",
+      "price": 158.84,
+      "indicators": {
+        "rsi": 21.5,
+        "macd": 0.16,
+        "ma_crossover": true,
+        "volume_surge": true
+      }
+    },
+    "symbol": "TSLA",
+    "source": "ai_signal_engine"
+  },
+  {
+    "id": "1744498000375_3226978828",
+    "timestamp": "2025-04-11T00:05:40.310794",
+    "activity_type": "trade_exit",
+    "description": "Exited LONG position in TSLA with 11.11% profit",
+    "details": {
+      "position_type": "LONG",
+      "entry_price": 135.0,
+      "exit_price": 150.0,
+      "profit": 15.0,
+      "profit_pct": 11.11,
+      "exit_reason": "Risk management"
+    },
+    "symbol": "TSLA",
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744498000396_3550336721",
+    "timestamp": "2025-04-10T18:38:40.310794",
+    "activity_type": "trade_entry",
+    "description": "Entered LONG position in XLF",
+    "details": {
+      "position_type": "LONG",
+      "entry_price": 317.33,
+      "stop_loss": 301.46,
+      "take_profit": 349.06,
+      "quantity": 75,
+      "reason": "Strong momentum detected"
+    },
+    "symbol": "XLF",
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744498000449_788461358",
+    "timestamp": "2025-04-11T02:57:40.310794",
+    "activity_type": "trade_exit",
+    "description": "Exited LONG position in NVDA with 11.11% profit",
+    "details": {
+      "position_type": "LONG",
+      "entry_price": 416.71,
+      "exit_price": 463.01,
+      "profit": 46.3,
+      "profit_pct": 11.11,
+      "exit_reason": "Stop loss hit"
+    },
+    "symbol": "NVDA",
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744498000498_3686102265",
+    "timestamp": "2025-04-11T06:29:40.310794",
+    "activity_type": "signal_generated",
+    "description": "Generated LONG signal for AAPL",
+    "details": {
+      "signal_score": 9.0,
+      "position_type": "LONG",
+      "price": 172.75,
+      "indicators": {
+        "rsi": 79.0,
+        "macd": 1.62,
+        "ma_crossover": false,
+        "volume_surge": false
+      }
+    },
+    "symbol": "AAPL",
+    "source": "ai_signal_engine"
+  },
+  {
+    "id": "1744498000573_261223188",
+    "timestamp": "2025-04-11T06:15:40.310794",
+    "activity_type": "system_action",
+    "description": "Market data updated",
+    "details": {
+      "status": "success",
+      "duration_seconds": 10
+    },
+    "symbol": null,
+    "source": "system"
+  },
+  {
+    "id": "1744498000682_1631542117",
+    "timestamp": "2025-04-10T19:34:40.310794",
+    "activity_type": "signal_generated",
+    "description": "Generated SHORT signal for MSFT",
+    "details": {
+      "signal_score": 6.2,
+      "position_type": "SHORT",
+      "price": 491.84,
+      "indicators": {
+        "rsi": 35.6,
+        "macd": -1.07,
+        "ma_crossover": false,
+        "volume_surge": true
+      }
+    },
+    "symbol": "MSFT",
+    "source": "ai_signal_engine"
+  },
+  {
+    "id": "1744498000733_4109035264",
+    "timestamp": "2025-04-12T07:32:40.310794",
+    "activity_type": "backtest",
+    "description": "Completed backtest for breakout strategy",
+    "details": {
+      "period": "45 days",
+      "win_rate": 0.41,
+      "profit_factor": 1.2,
+      "max_drawdown": 0.06,
+      "trade_count": 48
+    },
+    "symbol": null,
+    "source": "backtest_engine"
+  },
+  {
+    "id": "1744498000747_785939449",
+    "timestamp": "2025-04-11T07:53:40.310794",
+    "activity_type": "trade_entry",
+    "description": "Entered SHORT position in GOOGL",
+    "details": {
+      "position_type": "SHORT",
+      "entry_price": 115.58,
+      "stop_loss": 121.36,
+      "take_profit": 104.02,
+      "quantity": 68,
+      "reason": "Bearish reversal pattern"
+    },
+    "symbol": "GOOGL",
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744498000763_4028634679",
+    "timestamp": "2025-04-11T07:19:40.310794",
+    "activity_type": "strategy_switch",
+    "description": "Switched strategy from trend_following to mean_reversion",
+    "details": {
+      "old_strategy": "trend_following",
+      "new_strategy": "mean_reversion",
+      "reason": "Volatility adjustment",
+      "market_regime": "bearish"
+    },
+    "symbol": null,
+    "source": "strategy_manager"
+  },
+  {
+    "id": "1744498000766_2548480302",
+    "timestamp": "2025-04-11T06:49:40.310794",
+    "activity_type": "trade_entry",
+    "description": "Entered SHORT position in AMZN",
+    "details": {
+      "position_type": "SHORT",
+      "entry_price": 335.3,
+      "stop_loss": 352.07,
+      "take_profit": 301.77,
+      "quantity": 95,
+      "reason": "Bearish reversal pattern"
+    },
+    "symbol": "AMZN",
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744498000769_3217059617",
+    "timestamp": "2025-04-11T18:49:40.310794",
+    "activity_type": "system_action",
+    "description": "Scheduled maintenance",
+    "details": {
+      "status": "success",
+      "duration_seconds": 24
+    },
+    "symbol": null,
+    "source": "system"
+  },
+  {
+    "id": "1744498000781_3394197802",
+    "timestamp": "2025-04-10T21:27:40.310794",
+    "activity_type": "trade_entry",
+    "description": "Entered SHORT position in TSLA",
+    "details": {
+      "position_type": "SHORT",
+      "entry_price": 424.97,
+      "stop_loss": 446.22,
+      "take_profit": 382.47,
+      "quantity": 100,
+      "reason": "Bearish reversal pattern"
+    },
+    "symbol": "TSLA",
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744498000816_3504428934",
+    "timestamp": "2025-04-12T07:30:40.310794",
+    "activity_type": "risk_adjustment",
+    "description": "Adjusted risk parameters",
+    "details": {
+      "old_risk_per_trade": 0.03,
+      "new_risk_per_trade": 0.011,
+      "max_open_positions": 3,
+      "reason": "Portfolio value change"
+    },
+    "symbol": null,
+    "source": "risk_manager"
+  },
+  {
+    "id": "1744498000830_3394197802",
+    "timestamp": "2025-04-12T17:10:40.310794",
+    "activity_type": "trade_entry",
+    "description": "Entered SHORT position in TSLA",
+    "details": {
+      "position_type": "SHORT",
+      "entry_price": 135.57,
+      "stop_loss": 142.35,
+      "take_profit": 122.01,
+      "quantity": 1,
+      "reason": "Bearish reversal pattern"
+    },
+    "symbol": "TSLA",
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744498000850_1303070325",
+    "timestamp": "2025-04-11T09:40:40.310794",
+    "activity_type": "market_analysis",
+    "description": "Completed market analysis for NVDA",
+    "details": {
+      "prediction": "bullish",
+      "confidence": 0.79,
+      "key_levels": {
+        "support": 225.69,
+        "resistance": 266.08
+      },
+      "market_sentiment": "negative"
+    },
+    "symbol": "NVDA",
+    "source": "market_analyzer"
+  },
+  {
+    "id": "1744498000874_2938536316",
+    "timestamp": "2025-04-11T22:34:40.310794",
+    "activity_type": "strategy_switch",
+    "description": "Switched strategy from trend_following to momentum",
+    "details": {
+      "old_strategy": "trend_following",
+      "new_strategy": "momentum",
+      "reason": "Performance optimization",
+      "market_regime": "choppy"
+    },
+    "symbol": null,
+    "source": "strategy_manager"
+  },
+  {
+    "id": "1744498000882_3226978828",
+    "timestamp": "2025-04-11T01:07:40.310794",
+    "activity_type": "trade_exit",
+    "description": "Exited LONG position in TSLA with 11.11% profit",
+    "details": {
+      "position_type": "LONG",
+      "entry_price": 125.71,
+      "exit_price": 139.68,
+      "profit": 13.97,
+      "profit_pct": 11.11,
+      "exit_reason": "Stop loss hit"
+    },
+    "symbol": "TSLA",
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744498000893_1614608521",
+    "timestamp": "2025-04-12T10:23:40.310794",
+    "activity_type": "trade_exit",
+    "description": "Exited SHORT position in TSLA with 9.09% profit",
+    "details": {
+      "position_type": "SHORT",
+      "entry_price": 295.82,
+      "exit_price": 268.93,
+      "profit": 26.89,
+      "profit_pct": 9.09,
+      "exit_reason": "Risk management"
+    },
+    "symbol": "TSLA",
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744498000963_3504428934",
+    "timestamp": "2025-04-10T19:11:40.310794",
+    "activity_type": "risk_adjustment",
+    "description": "Adjusted risk parameters",
+    "details": {
+      "old_risk_per_trade": 0.014,
+      "new_risk_per_trade": 0.025,
+      "max_open_positions": 10,
+      "reason": "Performance optimization"
+    },
+    "symbol": null,
+    "source": "risk_manager"
+  },
+  {
+    "id": "1744498000971_200053619",
+    "timestamp": "2025-04-12T04:13:40.310794",
+    "activity_type": "trade_entry",
+    "description": "Entered SHORT position in META",
+    "details": {
+      "position_type": "SHORT",
+      "entry_price": 424.16,
+      "stop_loss": 445.37,
+      "take_profit": 381.74,
+      "quantity": 48,
+      "reason": "Bearish reversal pattern"
+    },
+    "symbol": "META",
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744498000987_2548480302",
+    "timestamp": "2025-04-11T10:17:40.310794",
+    "activity_type": "trade_entry",
+    "description": "Entered SHORT position in AMZN",
+    "details": {
+      "position_type": "SHORT",
+      "entry_price": 212.61,
+      "stop_loss": 223.24,
+      "take_profit": 191.35,
+      "quantity": 85,
+      "reason": "Bearish reversal pattern"
+    },
+    "symbol": "AMZN",
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744498001009_1783679397",
+    "timestamp": "2025-04-12T13:19:40.310794",
+    "activity_type": "strategy_switch",
+    "description": "Switched strategy from mean_reversion to trend_following",
+    "details": {
+      "old_strategy": "mean_reversion",
+      "new_strategy": "trend_following",
+      "reason": "Volatility adjustment",
+      "market_regime": "choppy"
+    },
+    "symbol": null,
+    "source": "strategy_manager"
+  },
+  {
+    "id": "1744498001030_3693949151",
+    "timestamp": "2025-04-12T13:05:40.310794",
+    "activity_type": "market_analysis",
+    "description": "Completed market analysis for TSLA",
+    "details": {
+      "prediction": "neutral",
+      "confidence": 0.73,
+      "key_levels": {
+        "support": 172.71,
+        "resistance": 241.13
+      },
+      "market_sentiment": "positive"
+    },
+    "symbol": "TSLA",
+    "source": "market_analyzer"
+  },
+  {
+    "id": "1744498001086_1955574169",
+    "timestamp": "2025-04-11T00:19:40.310794",
+    "activity_type": "market_analysis",
+    "description": "Completed market analysis for XLF",
+    "details": {
+      "prediction": "bearish",
+      "confidence": 0.92,
+      "key_levels": {
+        "support": 172.07,
+        "resistance": 335.57
+      },
+      "market_sentiment": "mixed"
+    },
+    "symbol": "XLF",
+    "source": "market_analyzer"
+  },
+  {
+    "id": "1744498001113_177147538",
+    "timestamp": "2025-04-11T19:35:40.310794",
+    "activity_type": "trade_entry",
+    "description": "Entered LONG position in MSFT",
+    "details": {
+      "position_type": "LONG",
+      "entry_price": 277.0,
+      "stop_loss": 263.15,
+      "take_profit": 304.7,
+      "quantity": 28,
+      "reason": "Strong momentum detected"
+    },
+    "symbol": "MSFT",
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744498001120_1955574169",
+    "timestamp": "2025-04-10T21:12:40.310794",
+    "activity_type": "market_analysis",
+    "description": "Completed market analysis for XLF",
+    "details": {
+      "prediction": "neutral",
+      "confidence": 0.59,
+      "key_levels": {
+        "support": 101.43,
+        "resistance": 296.97
+      },
+      "market_sentiment": "negative"
+    },
+    "symbol": "XLF",
+    "source": "market_analyzer"
+  },
+  {
+    "id": "1744498001125_1949128401",
+    "timestamp": "2025-04-11T17:39:40.310794",
+    "activity_type": "trade_exit",
+    "description": "Exited SHORT position in XLF with 9.09% profit",
+    "details": {
+      "position_type": "SHORT",
+      "entry_price": 128.27,
+      "exit_price": 116.61,
+      "profit": 11.66,
+      "profit_pct": 9.09,
+      "exit_reason": "Stop loss hit"
+    },
+    "symbol": "XLF",
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744498001130_3504428934",
+    "timestamp": "2025-04-10T21:25:40.310794",
+    "activity_type": "risk_adjustment",
+    "description": "Adjusted risk parameters",
+    "details": {
+      "old_risk_per_trade": 0.012,
+      "new_risk_per_trade": 0.023,
+      "max_open_positions": 4,
+      "reason": "Portfolio value change"
+    },
+    "symbol": null,
+    "source": "risk_manager"
+  },
+  {
+    "id": "1744498001133_1023069015",
+    "timestamp": "2025-04-12T00:49:40.310794",
+    "activity_type": "market_analysis",
+    "description": "Completed market analysis for SPY",
+    "details": {
+      "prediction": "bearish",
+      "confidence": 0.63,
+      "key_levels": {
+        "support": 189.73,
+        "resistance": 298.71
+      },
+      "market_sentiment": "positive"
+    },
+    "symbol": "SPY",
+    "source": "market_analyzer"
+  },
+  {
+    "id": "1744498001137_4109035264",
+    "timestamp": "2025-04-10T19:41:40.310794",
+    "activity_type": "backtest",
+    "description": "Completed backtest for breakout strategy",
+    "details": {
+      "period": "154 days",
+      "win_rate": 0.63,
+      "profit_factor": 1.7,
+      "max_drawdown": 0.12,
+      "trade_count": 93
+    },
+    "symbol": null,
+    "source": "backtest_engine"
+  },
+  {
+    "id": "1744498001151_1614608521",
+    "timestamp": "2025-04-11T14:59:40.310794",
+    "activity_type": "trade_exit",
+    "description": "Exited SHORT position in TSLA with 9.09% profit",
+    "details": {
+      "position_type": "SHORT",
+      "entry_price": 364.26,
+      "exit_price": 331.15,
+      "profit": 33.11,
+      "profit_pct": 9.09,
+      "exit_reason": "Risk management"
+    },
+    "symbol": "TSLA",
+    "source": "ai_trader"
+  },
+  {
+    "id": "1744498001154_4028634679",
+    "timestamp": "2025-04-11T10:55:40.310794",
+    "activity_type": "strategy_switch",
+    "description": "Switched strategy from trend_following to mean_reversion",
+    "details": {
+      "old_strategy": "trend_following",
+      "new_strategy": "mean_reversion",
+      "reason": "Volatility adjustment",
+      "market_regime": "trending"
+    },
+    "symbol": null,
+    "source": "strategy_manager"
+  },
+  {
+    "id": "1744498001164_3504428934",
+    "timestamp": "2025-04-11T16:04:40.310794",
+    "activity_type": "risk_adjustment",
+    "description": "Adjusted risk parameters",
+    "details": {
+      "old_risk_per_trade": 0.018,
+      "new_risk_per_trade": 0.026,
+      "max_open_positions": 6,
+      "reason": "Portfolio value change"
+    },
+    "symbol": null,
+    "source": "risk_manager"
+  }
+]

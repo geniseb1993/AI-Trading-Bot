@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Audio Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 10px;
+      cursor: pointer;
+    }
+    .audio-test {
+      border: 1px solid #ccc;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Testing Audio Files</h1>
+  
+  <div class="audio-test">
+    <h2>1. Direct HTML5 Audio Element</h2>
+    <audio controls>
+      <source src="audio/access-granted-87075.mp3" type="audio/mpeg">
+      Your browser does not support the audio element.
+    </audio>
+    <p>Access Granted Sound</p>
+    
+    <audio controls>
+      <source src="audio/access-denied-101308.mp3" type="audio/mpeg">
+      Your browser does not support the audio element.
+    </audio>
+    <p>Access Denied Sound</p>
+  </div>
+  
+  <div class="audio-test">
+    <h2>2. JavaScript Play Method</h2>
+    <button onclick="playSound('granted')">Play Access Granted</button>
+    <button onclick="playSound('denied')">Play Access Denied</button>
+    <p id="status"></p>
+  </div>
+  
+  <div class="audio-test">
+    <h2>3. Alternative Paths</h2>
+    <button onclick="playSoundFromPath('/audio/access-granted-87075.mp3')">Path: /audio/access-granted-87075.mp3</button>
+    <button onclick="playSoundFromPath('/audio/access-denied-101308.mp3')">Path: /audio/access-denied-101308.mp3</button>
+    <button onclick="playSoundFromPath('/sounds/access-granted-87075.mp3')">Path: /sounds/access-granted-87075.mp3</button>
+    <button onclick="playSoundFromPath('/sounds/access-denied-101308.mp3')">Path: /sounds/access-denied-101308.mp3</button>
+  </div>
+  
+  <script>
+    // Pre-load audio elements
+    const grantedAudio = new Audio('audio/access-granted-87075.mp3');
+    const deniedAudio = new Audio('audio/access-denied-101308.mp3');
+    
+    // Play a sound using the pre-loaded audio elements
+    function playSound(type) {
+      const statusElement = document.getElementById('status');
+      
+      try {
+        if (type === 'granted') {
+          statusElement.textContent = 'Playing access granted sound...';
+          grantedAudio.currentTime = 0;
+          grantedAudio.play()
+            .then(() => {
+              statusElement.textContent = 'Access granted sound played successfully!';
+            })
+            .catch(error => {
+              statusElement.textContent = `Error playing access granted sound: ${error.message}`;
+              console.error('Error playing access granted sound:', error);
+            });
+        } else {
+          statusElement.textContent = 'Playing access denied sound...';
+          deniedAudio.currentTime = 0;
+          deniedAudio.play()
+            .then(() => {
+              statusElement.textContent = 'Access denied sound played successfully!';
+            })
+            .catch(error => {
+              statusElement.textContent = `Error playing access denied sound: ${error.message}`;
+              console.error('Error playing access denied sound:', error);
+            });
+        }
+      } catch (error) {
+        statusElement.textContent = `Error playing sound: ${error.message}`;
+        console.error('Error playing sound:', error);
+      }
+    }
+    
+    // Play sound from a specific path
+    function playSoundFromPath(path) {
+      try {
+        const audio = new Audio(path);
+        audio.play()
+          .then(() => {
+            console.log(`Sound from ${path} played successfully!`);
+          })
+          .catch(error => {
+            console.error(`Error playing sound from ${path}:`, error);
+          });
+      } catch (error) {
+        console.error(`Error creating audio element for ${path}:`, error);
+      }
+    }
+  </script>
+</body>
+</html> 

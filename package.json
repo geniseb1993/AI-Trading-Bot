@@ -1,0 +1,25 @@
+{
+  "name": "ai-trading-bot",
+  "version": "1.0.0",
+  "description": "AI Trading Bot with React frontend and Python backend",
+  "scripts": {
+    "dev": "cd frontend && npm run dev",
+    "start-frontend": "cd frontend && npm start",
+    "start-api": "python start-api.py",
+    "install-api-deps": "pip install flask flask-cors pandas",
+    "start": "node start-servers.js"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.8.4",
+    "node-cron": "^3.0.3",
+    "recharts": "^2.15.2"
+  },
+  "devDependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/icons-material": "^7.0.2",
+    "@mui/material": "^7.0.2"
+  }
+}
