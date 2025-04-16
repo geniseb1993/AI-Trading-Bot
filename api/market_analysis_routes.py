@@ -35,6 +35,162 @@ try:
 except Exception as e:
     logger.error(f"Error initializing Unusual Whales API: {str(e)}")
 
+@bp.route('/market-data/<symbol>', methods=['GET'])
+def api_get_market_data(symbol):
+    """
+    Get comprehensive market data for a specific symbol
+    
+    Args:
+        symbol: Stock symbol to get data for
+    
+    Query parameters:
+        timeframe: Timeframe for data (1m, 5m, 15m, 30m, 1h, 1d)
+        days: Number of days of data to return
+    
+    Returns:
+        JSON response with market data
+    """
+    timeframe = request.args.get('timeframe', '1d')
+    days = int(request.args.get('days', 30))
+    
+    logger.info(f"Market data requested for {symbol}, timeframe: {timeframe}, days: {days}")
+    
+    try:
+        # Generate bars data (timestamps and OHLC values)
+        bars = generate_market_bars(symbol, timeframe, days)
+        
+        # Generate market overview data to complement live market view
+        market_overview = {
+            # Key statistics
+            "stats": {
+                "52_week_high": round(calculate_52_week_high(bars), 2),
+                "52_week_low": round(calculate_52_week_low(bars), 2),
+                "avg_volume": calculate_avg_volume(bars),
+                "volatility": round(calculate_volatility(bars), 2),
+                "performance_ytd": round(random.uniform(-15, 30), 2),
+                "performance_1m": round(random.uniform(-8, 8), 2),
+                "performance_3m": round(random.uniform(-15, 15), 2),
+                "performance_1y": round(random.uniform(-25, 45), 2),
+            },
+            
+            # Technical indicators
+            "technical_indicators": {
+                "rsi": round(random.uniform(30, 70), 2),
+                "macd": {
+                    "value": round(random.uniform(-5, 5), 2),
+                    "signal": round(random.uniform(-3, 3), 2),
+                    "histogram": round(random.uniform(-2, 2), 2)
+                },
+                "bollinger_bands": {
+                    "upper": round(bars[-1]["close"] * (1 + random.uniform(0.01, 0.05)), 2),
+                    "middle": round(bars[-1]["close"], 2),
+                    "lower": round(bars[-1]["close"] * (1 - random.uniform(0.01, 0.05)), 2)
+                },
+                "moving_averages": {
+                    "sma_20": round(calculate_sma(bars, 20), 2),
+                    "sma_50": round(calculate_sma(bars, 50), 2),
+                    "sma_200": round(calculate_sma(bars, 200), 2),
+                    "ema_12": round(calculate_ema(bars, 12), 2),
+                    "ema_26": round(calculate_ema(bars, 26), 2)
+                }
+            },
+            
+            # Market sentiment
+            "market_sentiment": {
+                "analysts_rating": random.choice(["Strong Buy", "Buy", "Hold", "Sell", "Strong Sell"]),
+                "analyst_count": random.randint(5, 30),
+                "price_target": {
+                    "low": round(bars[-1]["close"] * (1 - random.uniform(0.05, 0.2)), 2),
+                    "average": round(bars[-1]["close"] * (1 + random.uniform(0.05, 0.15)), 2),
+                    "high": round(bars[-1]["close"] * (1 + random.uniform(0.1, 0.3)), 2)
+                },
+                "social_sentiment": round(random.uniform(-100, 100), 2),
+                "institutional_ownership": round(random.uniform(0, 100), 2),
+                "short_interest": round(random.uniform(0, 30), 2)
+            },
+            
+            # Related sectors performance
+            "sector_performance": generate_sector_performance(),
+            
+            # Upcoming events
+            "upcoming_events": generate_upcoming_events(symbol)
+        }
+        
+        return jsonify({
+            "success": True,
+            "symbol": symbol,
+            "timeframe": timeframe,
+            "days": days,
+            "bars": bars,
+            "market_overview": market_overview,
+            "isRealData": False,
+            "source": "mock",
+            "message": "Market data retrieved successfully"
+        })
+        
+    except Exception as e:
+        logger.error(f"Error generating market data for {symbol}: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@bp.route('/market/ai_signals/<symbol>', methods=['GET'])
+def api_get_market_ai_signals(symbol):
+    """
+    Get AI-generated signals for a specific symbol.
+    
+    Args:
+        symbol: Stock symbol to get signals for
+        
+    Returns:
+        JSON response with AI signals data
+    """
+    try:
+        # Generate mock AI signal data for demo purposes
+        mock_signals = {
+            "symbol": symbol,
+            "timestamp": datetime.now().isoformat(),
+            "signals": [
+                {
+                    "type": "bullish",
+                    "timeframe": "1d",
+                    "confidence": round(random.uniform(0.65, 0.95), 2),
+                    "description": f"Bullish signal detected for {symbol} on daily chart",
+                    "indicators": [
+                        {"name": "RSI", "value": random.randint(30, 40), "threshold": 30, "signal": "oversold"},
+                        {"name": "MACD", "value": random.uniform(-1, 0), "threshold": 0, "signal": "crossover soon"},
+                        {"name": "Moving Average", "value": f"Price near {random.randint(10, 50)} day MA support"}
+                    ]
+                },
+                {
+                    "type": "consolidation",
+                    "timeframe": "4h",
+                    "confidence": round(random.uniform(0.7, 0.9), 2),
+                    "description": f"{symbol} is consolidating in a tight range on 4h chart",
+                    "indicators": [
+                        {"name": "Bollinger Bands", "value": "Narrowing", "signal": "low volatility"},
+                        {"name": "Volume", "value": "Decreasing", "signal": "consolidation phase"}
+                    ]
+                }
+            ],
+            "ai_analysis": f"AI analysis indicates {symbol} is showing signs of potential upward movement based on technical pattern recognition and sentiment analysis. Key support at previous resistance level with positive momentum building.",
+            "risk_level": random.choice(["low", "medium", "high"]),
+            "opportunity_score": round(random.uniform(1, 10), 1)
+        }
+        
+        return jsonify({
+            "success": True,
+            "data": mock_signals
+        })
+        
+    except Exception as e:
+        logger.error(f"Error generating AI signals for {symbol}: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
 @bp.route('/market-analysis/get-data', methods=['POST'])
 def api_get_market_analysis():
     """Get market analysis data based on the requested timeframe"""
@@ -213,6 +369,105 @@ def register_routes(app):
     app.register_blueprint(bp)
     logger.info("Market analysis routes registered")
 
+# Helper function to generate market data bars
+def generate_market_bars(symbol, timeframe, days=30):
+    """
+    Generate market data bars for a given symbol and timeframe
+    
+    Args:
+        symbol: Stock ticker symbol
+        timeframe: Data timeframe (1m, 5m, 15m, 30m, 1h, 1d)
+        days: Number of days of data to return
+        
+    Returns:
+        List of bar data with date, open, high, low, close, volume and change
+    """
+    # Base price and volatility for the symbol
+    base_prices = {
+        "SPY": 475, "QQQ": 425, "AAPL": 175, "MSFT": 415, "TSLA": 175, 
+        "NVDA": 900, "AMD": 155, "AMZN": 175, "GOOGL": 170, "META": 485
+    }
+    
+    base_price = base_prices.get(symbol, random.uniform(50, 500))
+    volatility = random.uniform(0.005, 0.02)  # Daily volatility
+    
+    # Determine number of bars based on timeframe and days
+    bars_per_day = {
+        "1m": 390,  # 6.5 hours × 60 minutes
+        "5m": 78,   # 6.5 hours × 12 periods per hour
+        "15m": 26,  # 6.5 hours × 4 periods per hour
+        "30m": 13,  # 6.5 hours × 2 periods per hour
+        "1h": 7,    # ~7 hours in a trading day
+        "1d": 1     # 1 bar per day
+    }
+    
+    periods = min(bars_per_day.get(timeframe, 1) * days, 1000)  # Cap at 1000 bars
+    
+    # Generate bars
+    bars = []
+    last_price = base_price
+    end_date = datetime.now()
+    
+    # Set start date based on timeframe
+    if timeframe == "1d":
+        delta = timedelta(days=1)
+    elif timeframe == "1h":
+        delta = timedelta(hours=1)
+    elif timeframe == "30m":
+        delta = timedelta(minutes=30)
+    elif timeframe == "15m":
+        delta = timedelta(minutes=15)
+    elif timeframe == "5m":
+        delta = timedelta(minutes=5)
+    else:  # 1m
+        delta = timedelta(minutes=1)
+    
+    # Generate bars from newest to oldest
+    for i in range(periods):
+        date = end_date - (delta * i)
+        
+        # Skip weekends for daily data
+        if timeframe == "1d" and date.weekday() >= 5:
+            continue
+        
+        # More volatility for shorter timeframes
+        tf_volatility = volatility
+        if timeframe in ["1m", "5m"]:
+            tf_volatility = volatility * 0.5
+        
+        # Random price movement
+        change = random.uniform(-tf_volatility, tf_volatility)
+        close_price = last_price * (1 + change)
+        
+        # Generate OHLC
+        high_price = close_price * (1 + random.uniform(0, tf_volatility))
+        low_price = close_price * (1 - random.uniform(0, tf_volatility))
+        open_price = last_price
+        
+        # Ensure high is the highest and low is the lowest
+        high_price = max(high_price, open_price, close_price)
+        low_price = min(low_price, open_price, close_price)
+        
+        # Random volume - higher on bigger price moves
+        volume_base = abs(change) * 1000000 * (random.uniform(0.5, 1.5))
+        volume = int(max(volume_base, 10000))
+        
+        bars.append({
+            'date': date.strftime("%Y-%m-%d %H:%M:%S"),
+            'open': round(open_price, 2),
+            'high': round(high_price, 2),
+            'low': round(low_price, 2),
+            'close': round(close_price, 2),
+            'volume': volume,
+            'change': round(((close_price - open_price) / open_price) * 100, 2)
+        })
+        
+        last_price = close_price
+    
+    # Reverse to get oldest to newest
+    bars.reverse()
+    return bars
+
 # Helper functions for generating mock data
 def generate_mock_market_data(symbol, timeframe, days):
     """Generate mock market data for the given timeframe"""
@@ -336,7 +591,7 @@ def generate_ai_market_insights(symbol):
             "description": "Supply chain issues persist, creating both challenges and opportunities."
         }
     ]
-    
+
     return {
         "market_summary": market_summary,
         "trade_suggestions": trade_suggestions,
@@ -402,4 +657,107 @@ def generate_mock_institutional_flow_data(limit=20, symbols=None, flow_type=None
         
         flow_data.append(flow_item)
     
-    return flow_data 
+    return flow_data
+
+# Helper functions for market data calculations
+def calculate_52_week_high(bars):
+    """Calculate 52-week high from bar data"""
+    if not bars:
+        return 0
+    return max([bar["high"] for bar in bars])
+
+def calculate_52_week_low(bars):
+    """Calculate 52-week low from bar data"""
+    if not bars:
+        return 0
+    return min([bar["low"] for bar in bars])
+
+def calculate_avg_volume(bars):
+    """Calculate average volume from bar data"""
+    if not bars:
+        return 0
+    return int(sum([bar["volume"] for bar in bars]) / len(bars))
+
+def calculate_volatility(bars):
+    """Calculate volatility (standard deviation) from bar data"""
+    if not bars or len(bars) < 2:
+        return 0
+    
+    # Calculate daily returns
+    returns = []
+    for i in range(1, len(bars)):
+        prev_close = bars[i-1]["close"]
+        curr_close = bars[i]["close"]
+        daily_return = (curr_close - prev_close) / prev_close
+        returns.append(daily_return)
+    
+    # Calculate standard deviation
+    mean_return = sum(returns) / len(returns)
+    variance = sum([(r - mean_return) ** 2 for r in returns]) / len(returns)
+    return (variance ** 0.5) * 100  # Convert to percentage
+
+def calculate_sma(bars, period):
+    """Calculate Simple Moving Average for the given period"""
+    if not bars or len(bars) < period:
+        return bars[-1]["close"] if bars else 0
+    
+    closes = [bar["close"] for bar in bars[-period:]]
+    return sum(closes) / period
+
+def calculate_ema(bars, period):
+    """Calculate Exponential Moving Average for the given period"""
+    if not bars:
+        return 0
+    
+    # For simplicity, we'll use a smoothing factor based on the period
+    alpha = 2 / (period + 1)
+    
+    # Start with SMA for the first EMA value
+    ema = calculate_sma(bars[:period], period)
+    
+    # Calculate EMA for the rest of the data
+    for i in range(period, len(bars)):
+        ema = (bars[i]["close"] * alpha) + (ema * (1 - alpha))
+    
+    return ema
+
+def generate_sector_performance():
+    """Generate mock sector performance data"""
+    sectors = [
+        "Technology", "Healthcare", "Financials", "Consumer Discretionary", 
+        "Industrials", "Communication Services", "Consumer Staples", 
+        "Energy", "Utilities", "Materials", "Real Estate"
+    ]
+    
+    return [{
+        "name": sector,
+        "performance_1d": round(random.uniform(-3, 3), 2),
+        "performance_1m": round(random.uniform(-10, 10), 2),
+        "performance_ytd": round(random.uniform(-20, 30), 2),
+    } for sector in sectors]
+
+def generate_upcoming_events(symbol):
+    """Generate mock upcoming events for a symbol"""
+    # Current date
+    now = datetime.now()
+    
+    # Generate a random future date within the next 3 months
+    def random_future_date():
+        days_ahead = random.randint(1, 90)
+        future_date = now + timedelta(days=days_ahead)
+        return future_date.strftime("%Y-%m-%d")
+    
+    # List of possible event types
+    event_types = [
+        "Earnings Report", "Dividend Payment", "Ex-Dividend Date",
+        "Conference Call", "Investor Day", "Product Launch",
+        "Industry Conference", "Analyst Meeting"
+    ]
+    
+    # Generate 0-3 upcoming events
+    num_events = random.randint(0, 3)
+    return [{
+        "date": random_future_date(),
+        "type": random.choice(event_types),
+        "description": f"{symbol} {random.choice(event_types).lower()} scheduled"
+    } for _ in range(num_events)] 
