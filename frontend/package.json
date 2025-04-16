@@ -58,6 +58,7 @@
   "proxy": "http://localhost:5000",
   "devDependencies": {
     "concurrently": "^9.1.2",
+    "http-proxy-middleware": "^3.0.5",
     "react-scripts": "5.0.1"
   }
 }

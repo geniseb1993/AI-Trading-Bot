@@ -1,0 +1,5 @@
+{
+  "name": "System Alert",
+  "subject": "System Alert: {title}",
+  "body": "{message}"
+}

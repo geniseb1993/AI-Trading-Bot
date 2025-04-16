@@ -33,7 +33,8 @@ import {
   ShowChart as ShowChartIcon,
   Insights as InsightsIcon,
   Security as SecurityIcon,
-  SmartToy as SmartToyIcon
+  SmartToy as SmartToyIcon,
+  BugReport as BugReportIcon
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { motion } from 'framer-motion';
@@ -145,6 +146,7 @@ const Layout = ({ children }) => {
     { name: 'Risk Management', path: '/risk-management', icon: <SecurityIcon /> },
     { name: 'Bot Management', path: '/bot-management', icon: <SmartToyIcon /> },
     { name: 'Settings', path: '/settings', icon: <SettingsIcon /> },
+    { name: 'Debug', path: '/debug', icon: <BugReportIcon /> },
   ];
 
   const handleDrawerOpen = () => {

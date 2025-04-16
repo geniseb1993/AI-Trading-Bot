@@ -104,26 +104,35 @@ const InstitutionalFlow = () => {
       'Citadel', 'Renaissance Technologies', 'Two Sigma', 'AQR Capital', 'Point72'
     ];
     
+    // Generate valid direction values - this was causing the toUpperCase error
+    const validDirections = ['buy', 'sell'];
+    const validCallPutTypes = ['call', 'put'];
+    
     for (let i = 0; i < 20; i++) {
       const symbol = symbols[Math.floor(Math.random() * symbols.length)];
       const sector = sectors[Math.floor(Math.random() * sectors.length)];
       const institution = institutions[Math.floor(Math.random() * institutions.length)];
-      const direction = Math.random() > 0.5 ? 'buy' : 'sell';
+      const direction = validDirections[Math.floor(Math.random() * validDirections.length)];
       const date = new Date();
       date.setHours(date.getHours() - Math.floor(Math.random() * 72));
+      
+      // Base object with common properties all mock items must have
+      const baseItem = {
+        id: i + 1,
+        timestamp: date.toISOString(),
+        symbol,
+        sector,
+        institution,
+        direction
+      };
       
       let mockItem = {};
       
       // Generate different data based on tab
       if (tabValue === 0) { // Options Flow
         mockItem = {
-          id: i + 1,
-          timestamp: date.toISOString(),
-          symbol,
-          sector,
-          institution,
-          direction,
-          contract_type: Math.random() > 0.5 ? 'call' : 'put',
+          ...baseItem,
+          contract_type: validCallPutTypes[Math.floor(Math.random() * validCallPutTypes.length)],
           strike: (Math.random() * 200 + 50).toFixed(2),
           expiry: (() => {
             const expiry = new Date();
@@ -137,26 +146,18 @@ const InstitutionalFlow = () => {
         };
       } else if (tabValue === 1) { // Dark Pool
         mockItem = {
-          id: i + 1,
-          timestamp: date.toISOString(),
-          symbol,
-          sector,
-          institution,
-          direction,
+          ...baseItem,
           price: (Math.random() * 1000 + 10).toFixed(2),
           volume: Math.floor(Math.random() * 1000000 + 10000),
           value: (Math.random() * 10000000 + 100000).toFixed(2),
           vwap: (Math.random() * 1000 + 10).toFixed(2),
           market_share: (Math.random() * 15).toFixed(2) + '%',
+          contract_type: 'none', // Ensure this exists to avoid undefined errors
         };
       } else if (tabValue === 2) { // 13F Filings
         mockItem = {
-          id: i + 1,
-          timestamp: date.toISOString(),
-          symbol,
-          sector,
-          institution,
-          direction,
+          ...baseItem,
+          contract_type: 'none', // Ensure this exists to avoid undefined errors
           shares: Math.floor(Math.random() * 10000000 + 100000),
           value: (Math.random() * 100000000 + 1000000).toFixed(2),
           change: (Math.random() * 40 - 20).toFixed(2) + '%',
@@ -169,13 +170,10 @@ const InstitutionalFlow = () => {
         };
       } else { // Insider Trading
         mockItem = {
-          id: i + 1,
-          timestamp: date.toISOString(),
-          symbol,
-          sector,
+          ...baseItem,
+          contract_type: 'none', // Ensure this exists to avoid undefined errors
           insider_name: `${['John', 'Jane', 'Michael', 'Sarah', 'Robert', 'Emily'][Math.floor(Math.random() * 6)]} ${['Smith', 'Johnson', 'Williams', 'Jones', 'Brown', 'Davis'][Math.floor(Math.random() * 6)]}`,
           position: ['CEO', 'CFO', 'CTO', 'Director', 'VP', 'Board Member'][Math.floor(Math.random() * 6)],
-          direction,
           shares: Math.floor(Math.random() * 100000 + 1000),
           value: (Math.random() * 5000000 + 50000).toFixed(2),
           price: (Math.random() * 1000 + 10).toFixed(2),
@@ -292,14 +290,27 @@ const InstitutionalFlow = () => {
   };
 
   const renderTableRow = (item) => {
+    // Add a safety check for undefined items
+    if (!item) return null;
+    
+    // Helper function to safely get string values
+    const safeStr = (value) => {
+      return value !== undefined && value !== null ? String(value) : '';
+    };
+    
+    // Helper function to safely get numeric values
+    const safeNum = (value) => {
+      return !isNaN(Number(value)) ? Number(value) : 0;
+    };
+    
     switch (tabValue) {
       case 0: // Options Flow
         return (
           <TableRow key={item.id} hover>
-            <TableCell>{new Date(item.timestamp).toLocaleTimeString()}</TableCell>
+            <TableCell>{item.timestamp ? new Date(item.timestamp).toLocaleTimeString() : 'N/A'}</TableCell>
             <TableCell>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                {item.symbol}
+                {safeStr(item.symbol)}
                 {item.unusual && (
                   <Chip 
                     label="UNUSUAL" 
@@ -312,27 +323,27 @@ const InstitutionalFlow = () => {
             </TableCell>
             <TableCell>
               <Chip 
-                label={item.direction.toUpperCase()} 
-                color={item.direction === 'buy' ? 'success' : 'error'}
+                label={safeStr(item.direction).toUpperCase()} 
+                color={safeStr(item.direction) === 'buy' ? 'success' : 'error'}
                 size="small"
-                icon={item.direction === 'buy' ? <TrendingUp fontSize="small" /> : <TrendingDown fontSize="small" />}
+                icon={safeStr(item.direction) === 'buy' ? <TrendingUp fontSize="small" /> : <TrendingDown fontSize="small" />}
               />
             </TableCell>
             <TableCell>
               <Chip 
-                label={item.contract_type.toUpperCase()} 
-                color={item.contract_type === 'call' ? 'primary' : 'secondary'}
+                label={safeStr(item.contract_type).toUpperCase()} 
+                color={safeStr(item.contract_type) === 'call' ? 'primary' : 'secondary'}
                 size="small"
               />
             </TableCell>
-            <TableCell>${item.strike}</TableCell>
-            <TableCell>{item.expiry}</TableCell>
-            <TableCell align="right">${Number(item.premium).toLocaleString()}</TableCell>
-            <TableCell align="right">{item.volume.toLocaleString()}</TableCell>
-            <TableCell>{item.institution}</TableCell>
+            <TableCell>${safeStr(item.strike)}</TableCell>
+            <TableCell>{safeStr(item.expiry)}</TableCell>
+            <TableCell align="right">${safeNum(item.premium).toLocaleString()}</TableCell>
+            <TableCell align="right">{safeNum(item.volume).toLocaleString()}</TableCell>
+            <TableCell>{safeStr(item.institution)}</TableCell>
             <TableCell align="center">
-              <IconButton size="small" onClick={() => toggleFavorite(item.symbol)}>
-                {favoriteSymbols.includes(item.symbol) ? 
+              <IconButton size="small" onClick={() => toggleFavorite(safeStr(item.symbol))}>
+                {favoriteSymbols.includes(safeStr(item.symbol)) ? 
                   <Star fontSize="small" color="warning" /> : 
                   <StarBorder fontSize="small" />
                 }
@@ -343,24 +354,24 @@ const InstitutionalFlow = () => {
       case 1: // Dark Pool
         return (
           <TableRow key={item.id} hover>
-            <TableCell>{new Date(item.timestamp).toLocaleTimeString()}</TableCell>
-            <TableCell>{item.symbol}</TableCell>
+            <TableCell>{item.timestamp ? new Date(item.timestamp).toLocaleTimeString() : 'N/A'}</TableCell>
+            <TableCell>{safeStr(item.symbol)}</TableCell>
             <TableCell>
               <Chip 
-                label={item.direction.toUpperCase()} 
-                color={item.direction === 'buy' ? 'success' : 'error'}
+                label={safeStr(item.direction).toUpperCase()} 
+                color={safeStr(item.direction) === 'buy' ? 'success' : 'error'}
                 size="small"
-                icon={item.direction === 'buy' ? <TrendingUp fontSize="small" /> : <TrendingDown fontSize="small" />}
+                icon={safeStr(item.direction) === 'buy' ? <TrendingUp fontSize="small" /> : <TrendingDown fontSize="small" />}
               />
             </TableCell>
-            <TableCell align="right">${item.price}</TableCell>
-            <TableCell align="right">{Number(item.volume).toLocaleString()}</TableCell>
-            <TableCell align="right">${Number(item.value).toLocaleString()}</TableCell>
-            <TableCell>{item.institution}</TableCell>
-            <TableCell>{item.market_share}</TableCell>
+            <TableCell align="right">${safeStr(item.price)}</TableCell>
+            <TableCell align="right">{safeNum(item.volume).toLocaleString()}</TableCell>
+            <TableCell align="right">${safeNum(item.value).toLocaleString()}</TableCell>
+            <TableCell>{safeStr(item.institution)}</TableCell>
+            <TableCell>{safeStr(item.market_share)}</TableCell>
             <TableCell align="center">
-              <IconButton size="small" onClick={() => toggleFavorite(item.symbol)}>
-                {favoriteSymbols.includes(item.symbol) ? 
+              <IconButton size="small" onClick={() => toggleFavorite(safeStr(item.symbol))}>
+                {favoriteSymbols.includes(safeStr(item.symbol)) ? 
                   <Star fontSize="small" color="warning" /> : 
                   <StarBorder fontSize="small" />
                 }
@@ -371,30 +382,30 @@ const InstitutionalFlow = () => {
       case 2: // 13F Filings
         return (
           <TableRow key={item.id} hover>
-            <TableCell>{item.filing_date}</TableCell>
-            <TableCell>{item.symbol}</TableCell>
-            <TableCell>{item.institution}</TableCell>
-            <TableCell>{item.quarter}</TableCell>
+            <TableCell>{safeStr(item.filing_date)}</TableCell>
+            <TableCell>{safeStr(item.symbol)}</TableCell>
+            <TableCell>{safeStr(item.institution)}</TableCell>
+            <TableCell>{safeStr(item.quarter)}</TableCell>
             <TableCell>
               <Chip 
-                label={item.direction.toUpperCase()} 
-                color={item.direction === 'buy' ? 'success' : 'error'}
+                label={safeStr(item.direction).toUpperCase()} 
+                color={safeStr(item.direction) === 'buy' ? 'success' : 'error'}
                 size="small"
-                icon={item.direction === 'buy' ? <TrendingUp fontSize="small" /> : <TrendingDown fontSize="small" />}
+                icon={safeStr(item.direction) === 'buy' ? <TrendingUp fontSize="small" /> : <TrendingDown fontSize="small" />}
               />
             </TableCell>
-            <TableCell align="right">{Number(item.shares).toLocaleString()}</TableCell>
-            <TableCell align="right">${Number(item.value).toLocaleString()}</TableCell>
+            <TableCell align="right">{safeNum(item.shares).toLocaleString()}</TableCell>
+            <TableCell align="right">${safeNum(item.value).toLocaleString()}</TableCell>
             <TableCell>
               <Chip 
-                label={item.change} 
-                color={parseFloat(item.change) > 0 ? 'success' : 'error'}
+                label={safeStr(item.change)} 
+                color={parseFloat(safeStr(item.change)) > 0 ? 'success' : 'error'}
                 size="small"
               />
             </TableCell>
             <TableCell align="center">
-              <IconButton size="small" onClick={() => toggleFavorite(item.symbol)}>
-                {favoriteSymbols.includes(item.symbol) ? 
+              <IconButton size="small" onClick={() => toggleFavorite(safeStr(item.symbol))}>
+                {favoriteSymbols.includes(safeStr(item.symbol)) ? 
                   <Star fontSize="small" color="warning" /> : 
                   <StarBorder fontSize="small" />
                 }
@@ -405,24 +416,24 @@ const InstitutionalFlow = () => {
       case 3: // Insider Trading
         return (
           <TableRow key={item.id} hover>
-            <TableCell>{item.filing_date}</TableCell>
-            <TableCell>{item.symbol}</TableCell>
-            <TableCell>{item.insider_name}</TableCell>
-            <TableCell>{item.position}</TableCell>
+            <TableCell>{safeStr(item.filing_date)}</TableCell>
+            <TableCell>{safeStr(item.symbol)}</TableCell>
+            <TableCell>{safeStr(item.insider_name)}</TableCell>
+            <TableCell>{safeStr(item.position)}</TableCell>
             <TableCell>
               <Chip 
-                label={item.direction.toUpperCase()} 
-                color={item.direction === 'buy' ? 'success' : 'error'}
+                label={safeStr(item.direction).toUpperCase()} 
+                color={safeStr(item.direction) === 'buy' ? 'success' : 'error'}
                 size="small"
-                icon={item.direction === 'buy' ? <TrendingUp fontSize="small" /> : <TrendingDown fontSize="small" />}
+                icon={safeStr(item.direction) === 'buy' ? <TrendingUp fontSize="small" /> : <TrendingDown fontSize="small" />}
               />
             </TableCell>
-            <TableCell align="right">{Number(item.shares).toLocaleString()}</TableCell>
-            <TableCell align="right">${item.price}</TableCell>
-            <TableCell align="right">${Number(item.value).toLocaleString()}</TableCell>
+            <TableCell align="right">{safeNum(item.shares).toLocaleString()}</TableCell>
+            <TableCell align="right">${safeStr(item.price)}</TableCell>
+            <TableCell align="right">${safeNum(item.value).toLocaleString()}</TableCell>
             <TableCell align="center">
-              <IconButton size="small" onClick={() => toggleFavorite(item.symbol)}>
-                {favoriteSymbols.includes(item.symbol) ? 
+              <IconButton size="small" onClick={() => toggleFavorite(safeStr(item.symbol))}>
+                {favoriteSymbols.includes(safeStr(item.symbol)) ? 
                   <Star fontSize="small" color="warning" /> : 
                   <StarBorder fontSize="small" />
                 }

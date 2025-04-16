@@ -1,6 +1,127 @@
 # AI Trading Bot V2.0
 
-An advanced AI-powered trading bot with real-time market data integration, institutional flow analysis, and trade execution capabilities.
+An advanced AI-powered trading platform with institutional flow analysis, dark pool insights, and real-time market data.
+
+## Getting Started
+
+Follow these steps to set up and run the AI Trading Bot:
+
+### Prerequisites
+
+- Python 3.8 or higher
+- Node.js 14+ and npm
+- API keys for various services (see Configuration section)
+
+### Installation
+
+1. Clone the repository
+2. Install Python dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+3. Install frontend dependencies:
+   ```
+   cd frontend
+   npm install
+   ```
+
+### Starting the Application
+
+We provide several ways to start the application:
+
+#### Option 1: Quick Start (Recommended for first-time users)
+
+```
+.\quick-start.bat
+```
+
+This will:
+- Install required packages
+- Start the API server
+- Start the React frontend
+
+#### Option 2: Full Start with API Verification
+
+```
+.\start-all.bat
+```
+
+This will:
+- Verify all API connections and environment variables
+- Start the API server with real data capabilities
+- Run extensive tests of API integrations
+- Start the React frontend
+
+#### Option 3: Manual Start
+
+Start the API server:
+```
+python minimal_flask_server.py
+```
+
+In a separate terminal, start the frontend:
+```
+cd frontend
+npm start
+```
+
+### Configuration
+
+Create a `.env` file in the root directory with the following parameters:
+
+```
+# Unusual Whales API
+UNUSUAL_WHALES_API_KEY=your_key_here
+
+# Alpaca API credentials
+ALPACA_API_KEY=your_key_here
+ALPACA_API_SECRET=your_secret_here
+ALPACA_BASE_URL=https://paper-api.alpaca.markets
+
+# OpenRouter API for GPT-powered insights
+OPENROUTER_API_KEY=your_key_here
+
+# Hume AI API Key for voice notifications
+HUME_API_KEY=your_key_here
+
+# Application Settings
+APP_ENV=production
+```
+
+## Testing API Connections
+
+To verify your API connections are working properly:
+
+```
+python verify_api_connections.py
+```
+
+This will test:
+- Environment variables
+- Unusual Whales API (dark pool data)
+- Alpaca API (trading)
+- OpenRouter API (AI insights)
+- Local server connectivity
+
+## Troubleshooting
+
+If you're experiencing issues:
+
+1. Verify API connections using `verify_api_connections.py`
+2. Check that all environment variables are set correctly in `.env`
+3. Try running the minimal server directly: `python minimal_flask_server.py`
+4. Look for error messages in the terminal windows
+
+## Features
+
+- Real-time market data integration
+- Institutional flow analysis
+- Dark pool insights
+- AI-powered trading signals
+- Portfolio management
+- Risk management tools
+- Voice notifications
+- Automated trading strategies
 
 ## 🚀 Quick Start
 

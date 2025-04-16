@@ -1,0 +1,5 @@
+{
+  "name": "Trade Execution",
+  "subject": "Trade Executed: {symbol}",
+  "body": "A {action} order for {symbol} has been executed at {price}"
+}

@@ -17,7 +17,7 @@
     "voice": {
       "enabled": true,
       "use_hume_ai": true,
-      "hume_api_key": "",
+      "hume_api_key": "rMPQ1sgN2YMbPcrCJpnaqU4jcHLTMQGG9X9jD9O8qyQB",
       "hume_secret_key": ""
     },
     "sound": {

@@ -11,7 +11,33 @@ import os
 import traceback
 from flask import Blueprint, jsonify, request, send_file
 from execution_model.notification_service import NotificationService, NotificationPriority, NotificationGroup
-from execution_model.hume_voice_service import HumeVoiceService, VoiceStyle
+
+# Try to import the Hume voice service, but provide a fallback mock implementation if it fails
+try:
+    from execution_model.hume_voice_service import HumeVoiceService, VoiceStyle
+    HUME_IMPORT_SUCCESS = True
+except ImportError:
+    # Fallback implementation if import fails
+    class VoiceStyle:
+        PROFESSIONAL = "professional"
+        URGENT = "urgent"
+        CASUAL = "casual"
+    
+    class HumeVoiceService:
+        def __init__(self, api_key=None, secret_key=None):
+            self.api_key = api_key
+            self.secret_key = secret_key
+            
+        def speak(self, text, voice_style=None, priority="medium"):
+            print(f"Mock HumeVoiceService: Would speak '{text}' with priority {priority}")
+            return True
+            
+        def test_voice(self):
+            print("Mock HumeVoiceService: Voice test")
+            return True
+    
+    HUME_IMPORT_SUCCESS = False
+
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -33,7 +59,10 @@ try:
         api_key=os.environ.get("HUME_API_KEY"),
         secret_key=os.environ.get("HUME_SECRET_KEY")
     )
-    logger.info("Hume Voice Service initialized successfully")
+    if HUME_IMPORT_SUCCESS:
+        logger.info("Hume Voice Service initialized successfully")
+    else:
+        logger.warning("Using mock implementation of Hume Voice Service (import failed)")
 except Exception as e:
     logger.error(f"Failed to initialize Hume Voice Service: {str(e)}")
     logger.error(traceback.format_exc())
@@ -91,7 +120,7 @@ def speak_notification():
             elif priority_str == 'low':
                 voice_style = VoiceStyle.CASUAL
             
-            logger.info(f"Using Hume voice service with style: {voice_style.name}")
+            logger.info(f"Using Hume voice service with style: {voice_style}")
             try:
                 success = hume_voice.speak(message, voice_style, priority_str)
                 if not success:
