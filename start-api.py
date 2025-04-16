@@ -25,13 +25,16 @@ if not os.path.exists(app_path):
     print(f"Error: {app_path} not found!")
     sys.exit(1)
 
-# Change to the root directory
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
+# Change to the api directory
+os.chdir(api_dir)
+print(f"Changed directory to: {os.getcwd()}")
 
 # Make sure both root and api directories are in the Python path
 root_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, root_dir)
 sys.path.insert(0, api_dir)
+# Add execution_model to Python path
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'execution_model'))
 
 # Add api/lib to Python path explicitly
 lib_dir = os.path.join(api_dir, 'lib')
@@ -44,9 +47,16 @@ print("Python path:")
 for path in sys.path:
     print(f" - {path}")
 
+# Run the Flask app directly instead of importing it
 try:
-    from api.app import app
-    app.run(debug=True, port=5000)
+    print(f"Running Flask app: {app_path}")
+    # Use subprocess to run the app.py directly
+    result = subprocess.run([sys.executable, app_path], 
+                          cwd=api_dir,
+                          env=os.environ.copy())
+    if result.returncode != 0:
+        print(f"Flask app exited with error code: {result.returncode}")
+        sys.exit(result.returncode)
 except Exception as e:
     print(f"Error starting Flask app: {str(e)}")
     sys.exit(1) 

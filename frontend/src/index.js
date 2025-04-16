@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -7,43 +7,24 @@ import theme from './theme';
 import App from './App';
 import { NotificationProvider } from './contexts/NotificationContext';
 import './index.css';
+import reportWebVitals from './reportWebVitals';
 
-// Enable debugging for troubleshooting
-const DEBUG = process.env.NODE_ENV === 'development';
-if (DEBUG) {
-  console.log('Running in development mode with debug enabled');
-}
+// Handle ResizeObserver errors
+const originalConsoleError = console.error;
+console.error = function(msg) {
+  if (typeof msg === 'string' && msg.includes('ResizeObserver')) {
+    // Ignore ResizeObserver errors
+    return;
+  }
+  originalConsoleError.apply(console, arguments);
+};
 
-// Global ResizeObserver error handler to prevent console errors
-if (typeof window !== 'undefined') {
-  // Prevent ResizeObserver loop limit exceeded errors from breaking the app
-  const originalConsoleError = console.error;
-  console.error = (...args) => {
-    if (
-      args[0]?.includes?.('ResizeObserver loop limit exceeded') ||
-      args[0]?.includes?.('ResizeObserver loop completed with undelivered notifications')
-    ) {
-      // Just ignore these specific errors
-      return;
-    }
-    originalConsoleError(...args);
-  };
+// Create root with React 18 API
+const container = document.getElementById('root');
+const root = createRoot(container);
 
-  // Global error handler for ResizeObserver errors
-  window.addEventListener('error', (event) => {
-    if (
-      event.message === 'ResizeObserver loop limit exceeded' ||
-      event.message.includes('ResizeObserver loop completed with undelivered notifications')
-    ) {
-      event.stopImmediatePropagation();
-      event.preventDefault();
-      return false;
-    }
-  });
-}
-
-// Render the application
-ReactDOM.render(
+// Render application
+root.render(
   <React.StrictMode>
     <NotificationProvider>
       <Router>
@@ -53,6 +34,8 @@ ReactDOM.render(
         </ThemeProvider>
       </Router>
     </NotificationProvider>
-  </React.StrictMode>,
-  document.getElementById('root')
-); 
+  </React.StrictMode>
+);
+
+// Report web vitals
+reportWebVitals(); 

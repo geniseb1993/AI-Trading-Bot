@@ -127,6 +127,7 @@ class AlpacaAPI:
         self.api_key = api_key
         self.api_secret = api_secret
         self.base_url = base_url
+        self.data_url = 'https://data.alpaca.markets'
         self.session = requests.Session()
         
         if api_key and api_secret:
@@ -157,34 +158,91 @@ class AlpacaAPI:
             logger.error("Alpaca API credentials not provided")
             return {"error": "API credentials not provided"}
         
-        endpoint = ""
-        if data_type == 'bars':
-            endpoint = f"{self.base_url}/v2/stocks/bars"
-            params = {
-                'symbols': ','.join(symbols),
-                'timeframe': timeframe,
-                'limit': limit
-            }
-        elif data_type == 'quotes':
-            endpoint = f"{self.base_url}/v2/stocks/quotes/latest"
-            params = {
-                'symbols': ','.join(symbols)
-            }
-        elif data_type == 'trades':
-            endpoint = f"{self.base_url}/v2/stocks/trades/latest"
-            params = {
-                'symbols': ','.join(symbols)
-            }
-        else:
-            return {"error": f"Unsupported data type: {data_type}"}
-            
         try:
-            response = self.session.get(endpoint, params=params)
-            response.raise_for_status()
-            return response.json()
+            if data_type == 'bars':
+                # Form URL for v2 bars endpoint
+                all_data = {'bars': {}}
+                
+                for symbol in symbols:
+                    # Create endpoint for this symbol
+                    endpoint = f"{self.data_url}/v2/stocks/{symbol}/bars"
+                    params = {
+                        'timeframe': timeframe,
+                        'limit': limit,
+                        'adjustment': 'raw'
+                    }
+                    
+                    response = self.session.get(endpoint, params=params)
+                    response.raise_for_status()
+                    data = response.json()
+                    
+                    # Process the data
+                    if 'bars' in data:
+                        all_data['bars'][symbol] = data['bars']
+                    else:
+                        logger.warning(f"No bars data found for {symbol}")
+                        all_data['bars'][symbol] = []
+                
+                # If we only have one symbol, return its data directly for compatibility
+                if len(symbols) == 1 and len(all_data['bars']) > 0:
+                    return all_data
+                else:
+                    return all_data
+                    
+            elif data_type == 'quotes':
+                # Form URL for quotes endpoint
+                all_data = {'quotes': {}}
+                
+                for symbol in symbols:
+                    symbol_endpoint = f"{self.data_url}/v2/stocks/{symbol}/quotes/latest"
+                    
+                    try:
+                        response = self.session.get(symbol_endpoint)
+                        response.raise_for_status()
+                        data = response.json()
+                        
+                        if 'quote' in data:
+                            all_data['quotes'][symbol] = data['quote']
+                        else:
+                            logger.warning(f"No quote data found for {symbol}")
+                            all_data['quotes'][symbol] = {}
+                    except Exception as e:
+                        logger.error(f"Error fetching quote for {symbol}: {e}")
+                        all_data['quotes'][symbol] = {}
+                
+                return all_data
+                
+            elif data_type == 'trades':
+                # Form URL for trades endpoint
+                all_data = {'trades': {}}
+                
+                for symbol in symbols:
+                    symbol_endpoint = f"{self.data_url}/v2/stocks/{symbol}/trades/latest"
+                    
+                    try:
+                        response = self.session.get(symbol_endpoint)
+                        response.raise_for_status()
+                        data = response.json()
+                        
+                        if 'trade' in data:
+                            all_data['trades'][symbol] = data['trade']
+                        else:
+                            logger.warning(f"No trade data found for {symbol}")
+                            all_data['trades'][symbol] = {}
+                    except Exception as e:
+                        logger.error(f"Error fetching trade for {symbol}: {e}")
+                        all_data['trades'][symbol] = {}
+                
+                return all_data
+            else:
+                return {"error": f"Unsupported data type: {data_type}"}
+                
         except requests.exceptions.RequestException as e:
             logger.error(f"Error fetching data from Alpaca: {e}")
-            return {"error": str(e)}
+            return {"error": str(e), "bars": {symbol: [] for symbol in symbols}}
+        except Exception as e:
+            logger.error(f"Unexpected error in Alpaca get_market_data: {e}")
+            return {"error": str(e), "bars": {symbol: [] for symbol in symbols}}
 
 
 class InteractiveBrokersAPI:
@@ -361,6 +419,58 @@ class UnusualWhalesAPI:
             logger.error(f"Error fetching data from Unusual Whales: {e}")
             return {"error": str(e)}
     
+    def get_dark_pool_recent(self, limit: int = 20) -> List[Dict]:
+        """
+        Get recent dark pool data formatted for frontend display.
+        
+        Args:
+            limit: Maximum number of results to return (default 20)
+            
+        Returns:
+            List: Formatted dark pool data records
+        """
+        try:
+            # Call the internal API method to get the raw data
+            raw_data = self.get_dark_pool_data(limit=limit)
+            
+            # Check if there was an error
+            if "error" in raw_data:
+                logger.error(f"Error in get_dark_pool_recent: {raw_data['error']}")
+                return []
+                
+            # Extract and format the data for frontend display
+            formatted_data = []
+            
+            # Process the raw API response - structure may vary based on API
+            records = raw_data.get("data", [])
+            if not isinstance(records, list):
+                logger.error(f"Unexpected data format from Unusual Whales API: {type(records)}")
+                return []
+                
+            for i, record in enumerate(records):
+                # Format the data to match what the frontend expects
+                formatted_record = {
+                    "id": i + 1,  # Generate a sequential ID if not provided
+                    "symbol": record.get("ticker", ""),
+                    "type": "block",  # Default to block for dark pool data
+                    "direction": "call" if record.get("direction", "").lower() == "buy" else "put",
+                    "premium": record.get("size", 0) * record.get("price", 0),
+                    "strike": record.get("price", 0),
+                    "expiry": None,  # Dark pool data doesn't have expiry
+                    "timestamp": record.get("executed_at", datetime.now().isoformat()),
+                    "sentiment": "bullish" if record.get("direction", "").lower() == "buy" else "bearish",
+                    "flow_score": 80,  # Default score
+                    "unusual_score": 85  # Default unusual score
+                }
+                
+                formatted_data.append(formatted_record)
+                
+            return formatted_data
+                
+        except Exception as e:
+            logger.error(f"Error processing dark pool data: {str(e)}")
+            return []
+    
     def get_dark_pool_data(self, symbols: Optional[List[str]] = None, 
                            limit: int = 100,
                            date: Optional[str] = None) -> Dict:
@@ -395,6 +505,58 @@ class UnusualWhalesAPI:
         except requests.exceptions.RequestException as e:
             logger.error(f"Error fetching dark pool data from Unusual Whales: {e}")
             return {"error": str(e)}
+    
+    def get_dark_pool_symbol(self, symbol: str) -> List[Dict]:
+        """
+        Get dark pool data for a specific symbol, formatted for frontend display.
+        
+        Args:
+            symbol: Symbol to get data for (required)
+            
+        Returns:
+            List: Formatted dark pool data records for the symbol
+        """
+        try:
+            # Call the internal API method to get the raw data
+            raw_data = self.get_dark_pool_by_ticker(symbol)
+            
+            # Check if there was an error
+            if "error" in raw_data:
+                logger.error(f"Error in get_dark_pool_symbol for {symbol}: {raw_data['error']}")
+                return []
+                
+            # Extract and format the data for frontend display
+            formatted_data = []
+            
+            # Process the raw API response - structure may vary based on API
+            records = raw_data.get("data", [])
+            if not isinstance(records, list):
+                logger.error(f"Unexpected data format from Unusual Whales API for {symbol}: {type(records)}")
+                return []
+                
+            for i, record in enumerate(records):
+                # Format the data to match what the frontend expects
+                formatted_record = {
+                    "id": i + 1,  # Generate a sequential ID if not provided
+                    "symbol": symbol,
+                    "type": "block",  # Default to block for dark pool data
+                    "direction": "call" if record.get("direction", "").lower() == "buy" else "put",
+                    "premium": record.get("size", 0) * record.get("price", 0),
+                    "strike": record.get("price", 0),
+                    "expiry": None,  # Dark pool data doesn't have expiry
+                    "timestamp": record.get("executed_at", datetime.now().isoformat()),
+                    "sentiment": "bullish" if record.get("direction", "").lower() == "buy" else "bearish",
+                    "flow_score": 80,  # Default score
+                    "unusual_score": 85  # Default unusual score
+                }
+                
+                formatted_data.append(formatted_record)
+                
+            return formatted_data
+                
+        except Exception as e:
+            logger.error(f"Error processing dark pool data for {symbol}: {str(e)}")
+            return []
     
     def get_dark_pool_by_ticker(self, symbol: str, 
                                start_date: Optional[str] = None,

@@ -14,6 +14,7 @@ import TradeSetups from './pages/TradeSetups';
 import Settings from './pages/Settings';
 import RiskManagement from './pages/RiskManagement';
 import BotManagement from './pages/BotManagement';
+import Debug from './pages/Debug';
 import { Button } from '@mui/material';
 import NotificationContext from './contexts/NotificationContext';
 
@@ -69,6 +70,7 @@ function App() {
         <Route path="/risk-management" element={<RiskManagement />} />
         <Route path="/bot-management" element={<BotManagement />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/debug" element={<Debug />} />
       </Routes>
       
       <Button 

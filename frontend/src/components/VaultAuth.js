@@ -542,15 +542,15 @@ const VaultAuth = ({ onAuthenticated }) => {
         setStatus('success');
         setSuccess(true); // Set success state for visual alert
         setError(false);
-        setMessage('ACCESS GRANTED');
-        
+      setMessage('ACCESS GRANTED');
+      
         // Show startup modal after successful authentication
-        setTimeout(() => {
+      setTimeout(() => {
           // Check if the user has previously disabled the startup modal
           const shouldShowStartupModal = localStorage.getItem('showStartupModal') !== 'false';
           if (shouldShowStartupModal) {
             setShowStartupModal(true);
-          } else {
+    } else {
             handleAuthSuccess();
           }
         }, 1500);
@@ -559,14 +559,14 @@ const VaultAuth = ({ onAuthenticated }) => {
         setStatus('error');
         setError(true); // Set error state for visual alert
         setSuccess(false);
-        setMessage('ACCESS DENIED');
+      setMessage('ACCESS DENIED');
         setAttemptCount(attemptCount + 1);
-        setTimeout(() => {
-          setPin('');
+      setTimeout(() => {
+        setPin('');
           setStatus('idle');
           setMessage('');
           setShowMessage(false); // Hide message after error timeout
-        }, 2000);
+      }, 2000);
     }
     }, 1000);
   };
@@ -929,222 +929,222 @@ const VaultAuth = ({ onAuthenticated }) => {
 
   return (
     <>
-      <MotionConfig>
-        <AnimatePresence mode="wait">
+    <MotionConfig>
+      <AnimatePresence mode="wait">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: alpha(theme.palette.background.default, 0.85),
+            backdropFilter: 'blur(8px)',
+            zIndex: 1300,
+          }}
+        >
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: alpha(theme.palette.background.default, 0.85),
-              backdropFilter: 'blur(8px)',
-              zIndex: 1300,
-            }}
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', damping: 20, stiffness: 100 }}
           >
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: 'spring', damping: 20, stiffness: 100 }}
+            <Paper
+              elevation={24}
+              sx={{
+                padding: 4,
+                borderRadius: 4,
+                maxWidth: 400,
+                width: '100%',
+                backgroundColor: alpha(theme.palette.background.paper, 0.9),
+                border: `1px solid ${alpha(theme.palette.primary.main, 0.3)}`,
+                position: 'relative',
+                overflow: 'hidden',
+              }}
             >
-              <Paper
-                elevation={24}
+              {/* Animated glowing background */}
+              <Box
                 sx={{
-                  padding: 4,
-                  borderRadius: 4,
-                  maxWidth: 400,
-                  width: '100%',
-                  backgroundColor: alpha(theme.palette.background.paper, 0.9),
-                  border: `1px solid ${alpha(theme.palette.primary.main, 0.3)}`,
-                  position: 'relative',
-                  overflow: 'hidden',
+                  position: 'absolute',
+                  top: '-50%',
+                  left: '-50%',
+                  right: '-50%',
+                  bottom: '-50%',
+                  background: `radial-gradient(circle, ${alpha(theme.palette.primary.main, 0.1)} 0%, transparent 70%)`,
+                  animation: 'pulse 3s infinite ease-in-out',
+                  '@keyframes pulse': {
+                    '0%': { opacity: 0.3, transform: 'scale(0.9)' },
+                    '50%': { opacity: 0.6, transform: 'scale(1.1)' },
+                    '100%': { opacity: 0.3, transform: 'scale(0.9)' },
+                  },
                 }}
-              >
-                {/* Animated glowing background */}
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    top: '-50%',
-                    left: '-50%',
-                    right: '-50%',
-                    bottom: '-50%',
-                    background: `radial-gradient(circle, ${alpha(theme.palette.primary.main, 0.1)} 0%, transparent 70%)`,
-                    animation: 'pulse 3s infinite ease-in-out',
-                    '@keyframes pulse': {
-                      '0%': { opacity: 0.3, transform: 'scale(0.9)' },
-                      '50%': { opacity: 0.6, transform: 'scale(1.1)' },
-                      '100%': { opacity: 0.3, transform: 'scale(0.9)' },
-                    },
-                  }}
-                />
-                
-                <Box sx={{ position: 'relative', zIndex: 1 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 3 }}>
-                    <motion.div
-                      animate={{ rotate: [0, 360] }}
-                      transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-                    >
-                      <Lock 
-                        sx={{ 
-                          fontSize: 48, 
-                          color: error ? theme.palette.error.main : 
-                                 success ? theme.palette.success.main : 
-                                 theme.palette.primary.main,
-                          mr: 2 
-                        }} 
-                      />
-                    </motion.div>
-                    <Typography 
-                      variant="h4" 
-                      component="h1" 
-                      fontFamily="Share Tech Mono, monospace"
-                      color={theme.palette.primary.main}
-                      sx={{ textShadow: `0 0 8px ${alpha(theme.palette.primary.main, 0.5)}` }}
-                    >
-                      VAULT ACCESS
-                    </Typography>
-                  </Box>
-                  
+              />
+              
+              <Box sx={{ position: 'relative', zIndex: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 3 }}>
+                  <motion.div
+                    animate={{ rotate: [0, 360] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                  >
+                    <Lock 
+                      sx={{ 
+                        fontSize: 48, 
+                        color: error ? theme.palette.error.main : 
+                               success ? theme.palette.success.main : 
+                               theme.palette.primary.main,
+                        mr: 2 
+                      }} 
+                    />
+                  </motion.div>
                   <Typography 
-                    align="center" 
-                    variant="subtitle1" 
-                    mb={3}
+                    variant="h4" 
+                    component="h1" 
                     fontFamily="Share Tech Mono, monospace"
-                    color={theme.palette.text.secondary}
+                    color={theme.palette.primary.main}
+                    sx={{ textShadow: `0 0 8px ${alpha(theme.palette.primary.main, 0.5)}` }}
+                  >
+                    VAULT ACCESS
+                  </Typography>
+                </Box>
+                
+                <Typography 
+                  align="center" 
+                  variant="subtitle1" 
+                  mb={3}
+                  fontFamily="Share Tech Mono, monospace"
+                  color={theme.palette.text.secondary}
+                  sx={{ 
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 1
+                  }}
+                >
+                  <Fingerprint color="primary" />
+                  Enter 4-Digit Security PIN
+                </Typography>
+                
+                {/* PIN Display */}
+                <Box sx={{ mb: 3, position: 'relative' }}>
+                  <TextField
+                    fullWidth
+                    variant="outlined"
+                    type="password"
+                    value={pin}
+                    onChange={handlePinChange}
+                    inputProps={{ 
+                      maxLength: 4,
+                      style: { 
+                        textAlign: 'center',
+                        fontFamily: 'Share Tech Mono, monospace',
+                        fontSize: '2rem',
+                        letterSpacing: '1rem',
+                        color: error ? theme.palette.error.main : 
+                               success ? theme.palette.success.main : 
+                               theme.palette.primary.main
+                      } 
+                    }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '& fieldset': {
+                          borderColor: error ? theme.palette.error.main : 
+                                      success ? theme.palette.success.main : 
+                                      alpha(theme.palette.primary.main, 0.5),
+                          borderWidth: 2,
+                          borderRadius: 2
+                        },
+                        '&:hover fieldset': {
+                          borderColor: error ? theme.palette.error.main : 
+                                      success ? theme.palette.success.main : 
+                                      theme.palette.primary.main
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: error ? theme.palette.error.main : 
+                                      success ? theme.palette.success.main : 
+                                      theme.palette.primary.main
+                        }
+                      }
+                    }}
+                  />
+                  
+                  {/* Digital display showing PIN as dots */}
+                  <Box 
                     sx={{ 
+                      position: 'absolute', 
+                      top: '50%', 
+                      left: 0, 
+                      right: 0, 
+                      transform: 'translateY(-50%)',
                       display: 'flex',
-                      alignItems: 'center',
                       justifyContent: 'center',
-                      gap: 1
+                      gap: 2,
+                      pointerEvents: 'none'
                     }}
                   >
-                    <Fingerprint color="primary" />
-                    Enter 4-Digit Security PIN
-                  </Typography>
+                    {[...Array(4)].map((_, index) => (
+                      <Box 
+                        key={index}
+                        sx={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: '50%',
+                          backgroundColor: pin.length > index 
+                            ? error 
+                              ? theme.palette.error.main 
+                              : success 
+                                ? theme.palette.success.main 
+                                : theme.palette.primary.main
+                            : 'transparent',
+                          border: `2px solid ${
+                            error 
+                              ? alpha(theme.palette.error.main, 0.5) 
+                              : success 
+                                ? alpha(theme.palette.success.main, 0.5) 
+                                : alpha(theme.palette.primary.main, 0.5)
+                          }`,
+                          transition: 'all 0.2s ease'
+                        }}
+                      />
+                    ))}
+                  </Box>
+                </Box>
+                
+                {/* Keypad */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                  {renderKeypad()}
                   
-                  {/* PIN Display */}
-                  <Box sx={{ mb: 3, position: 'relative' }}>
-                    <TextField
-                      fullWidth
-                      variant="outlined"
-                      type="password"
-                      value={pin}
-                      onChange={handlePinChange}
-                      inputProps={{ 
-                        maxLength: 4,
-                        style: { 
-                          textAlign: 'center',
-                          fontFamily: 'Share Tech Mono, monospace',
-                          fontSize: '2rem',
-                          letterSpacing: '1rem',
-                          color: error ? theme.palette.error.main : 
-                                 success ? theme.palette.success.main : 
-                                 theme.palette.primary.main
-                        } 
-                      }}
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          '& fieldset': {
-                            borderColor: error ? theme.palette.error.main : 
-                                        success ? theme.palette.success.main : 
-                                        alpha(theme.palette.primary.main, 0.5),
-                            borderWidth: 2,
-                            borderRadius: 2
-                          },
-                          '&:hover fieldset': {
-                            borderColor: error ? theme.palette.error.main : 
-                                        success ? theme.palette.success.main : 
-                                        theme.palette.primary.main
-                          },
-                          '&.Mui-focused fieldset': {
-                            borderColor: error ? theme.palette.error.main : 
-                                        success ? theme.palette.success.main : 
-                                        theme.palette.primary.main
-                          }
-                        }
-                      }}
-                    />
-                    
-                    {/* Digital display showing PIN as dots */}
-                    <Box 
+                  <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+                    <Button 
+                      variant="outlined" 
+                      color="error" 
+                      onClick={handleClear}
                       sx={{ 
-                        position: 'absolute', 
-                        top: '50%', 
-                        left: 0, 
-                        right: 0, 
-                        transform: 'translateY(-50%)',
-                        display: 'flex',
-                        justifyContent: 'center',
-                        gap: 2,
-                        pointerEvents: 'none'
+                        width: 140,
+                        fontFamily: 'Share Tech Mono, monospace',
+                        borderRadius: 2
                       }}
                     >
-                      {[...Array(4)].map((_, index) => (
-                        <Box 
-                          key={index}
-                          sx={{
-                            width: 20,
-                            height: 20,
-                            borderRadius: '50%',
-                            backgroundColor: pin.length > index 
-                              ? error 
-                                ? theme.palette.error.main 
-                                : success 
-                                  ? theme.palette.success.main 
-                                  : theme.palette.primary.main
-                              : 'transparent',
-                            border: `2px solid ${
-                              error 
-                                ? alpha(theme.palette.error.main, 0.5) 
-                                : success 
-                                  ? alpha(theme.palette.success.main, 0.5) 
-                                  : alpha(theme.palette.primary.main, 0.5)
-                            }`,
-                            transition: 'all 0.2s ease'
-                          }}
-                        />
-                      ))}
-                    </Box>
+                      CLEAR
+                    </Button>
                   </Box>
-                  
-                  {/* Keypad */}
-                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                    {renderKeypad()}
-                    
-                    <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-                      <Button 
-                        variant="outlined" 
-                        color="error" 
-                        onClick={handleClear}
-                        sx={{ 
-                          width: 140,
-                          fontFamily: 'Share Tech Mono, monospace',
-                          borderRadius: 2
-                        }}
-                      >
-                        CLEAR
-                      </Button>
-                    </Box>
-                  </Box>
+                </Box>
                   
                   {/* Visual alerts */}
                   <AnimatePresence>
                     {error && showMessage && renderDangerAlert()}
                     {success && showMessage && renderInitializationModal()}
                   </AnimatePresence>
-                </Box>
-              </Paper>
-            </motion.div>
+              </Box>
+            </Paper>
           </motion.div>
-        </AnimatePresence>
-      </MotionConfig>
+        </motion.div>
+      </AnimatePresence>
+    </MotionConfig>
       
       {/* Add the StartupIntelligenceModal */}
       <StartupIntelligenceModal 

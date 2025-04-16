@@ -1,0 +1,26 @@
+{
+  "broker": {
+    "name": "alpaca",
+    "live_trading": false,
+    "paper_trading": true,
+    "api_key": "",
+    "api_secret": "",
+    "base_url": "https://paper-api.alpaca.markets",
+    "data_url": "https://data.alpaca.markets"
+  },
+  "trading_parameters": {
+    "max_position_size": 5000,
+    "max_trades_per_day": 10,
+    "default_stop_loss_percent": 2.0,
+    "default_take_profit_percent": 5.0,
+    "position_sizing_type": "fixed",
+    "fixed_position_size": 1000
+  },
+  "risk_management": {
+    "max_loss_per_trade_percent": 2.0,
+    "max_daily_loss_percent": 5.0,
+    "max_open_positions": 5,
+    "cooldown_period_minutes": 15,
+    "max_trades_per_stock_daily": 3
+  }
+} 

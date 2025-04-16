@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Box, 
   Table, 
@@ -150,56 +150,92 @@ const InstitutionalFlowTable = () => {
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [rowsPerPage] = useState(10);
+  const [isRealData, setIsRealData] = useState(false);
+  const [source, setSource] = useState('unknown');
 
-  const fetchFlowData = async () => {
+  const fetchFlowData = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
-      // Replace with your actual API endpoint
-      const response = await axios.get('/api/institutional-flow');
-      setFlowData(response.data);
+      const response = await fetch('/api/institutional-flow');
+      const responseData = await response.json();
+      
+      console.log("Institutional flow API response:", responseData);
+      
+      if (responseData.success) {
+        // New format - data is nested under data key and has success field
+        setFlowData(responseData.data || []);
+        setSource(responseData.source || 'unknown');
+        setIsRealData(responseData.source !== 'mock');
+        setError(null);
+      } else {
+        // Handle API error
+        console.error("API Error:", responseData.error);
+        setError(responseData.error || "Failed to fetch institutional flow data");
+        setFlowData(mockFlowData);
+        setIsRealData(false);
+      }
     } catch (err) {
-      console.error('Error fetching institutional flow data:', err);
-      setError('Failed to load institutional flow data. Using mock data instead.');
+      console.error("Failed to fetch institutional flow data:", err);
+      setError("Failed to fetch institutional flow data");
       setFlowData(mockFlowData);
+      setIsRealData(false);
     } finally {
       setLoading(false);
     }
-  };
+  }, [mockFlowData]);
 
-  useEffect(() => {
-    fetchFlowData();
+  const fetchFilteredData = useCallback(async (filters) => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/institutional-flow/get-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(filters)
+      });
+      
+      const responseData = await response.json();
+      console.log("Filtered institutional flow API response:", responseData);
+      
+      if (responseData.success) {
+        setFlowData(responseData.data || []);
+        setIsRealData(true);
+        setError(null);
+      } else {
+        // Handle API error
+        console.error("API Error:", responseData.error);
+        setError(responseData.error || "Failed to fetch filtered institutional flow data");
+        setFlowData(mockFlowData);
+        setIsRealData(false);
+      }
+    } catch (err) {
+      console.error("Failed to fetch filtered institutional flow data:", err);
+      setError("Failed to fetch filtered institutional flow data");
+      setFlowData(mockFlowData);
+      setIsRealData(false);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   const handleFilterChange = (field, value) => {
     setFilters({ ...filters, [field]: value });
   };
 
-  const applyFilters = () => {
-    // If we're using real API data, ideally we'd send these filters to the backend
-    // For now, we'll filter the data we have client-side
-    setLoading(true);
-    
-    let filteredData = loading ? [] : (flowData.length > 0 ? flowData : mockFlowData);
-    
-    if (filters.symbol) {
-      filteredData = filteredData.filter(item => item.symbol === filters.symbol);
+  const handleFilterSubmit = (event) => {
+    if (event.preventDefault) {
+      event.preventDefault();
     }
     
-    if (filters.type) {
-      filteredData = filteredData.filter(item => item.type === filters.type);
-    }
+    const filterData = {
+      symbols: filters.symbol ? [filters.symbol] : undefined,
+      type: filters.type || undefined,
+      direction: filters.direction || undefined
+    };
     
-    if (filters.direction) {
-      filteredData = filteredData.filter(item => item.direction === filters.direction);
-    }
-    
-    if (filters.sentiment) {
-      filteredData = filteredData.filter(item => item.sentiment === filters.sentiment);
-    }
-    
-    setFlowData(filteredData);
-    setLoading(false);
+    console.log("Applying filters:", filterData);
+    fetchFilteredData(filterData);
   };
 
   const resetFilters = () => {
@@ -214,29 +250,33 @@ const InstitutionalFlowTable = () => {
 
   // Effect to apply filters when they change
   useEffect(() => {
-    if (!loading) {
-      applyFilters();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters]);
+    fetchFlowData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const formatPremium = (premium) => {
-    if (premium >= 1000000) {
-      return `$${(premium / 1000000).toFixed(2)}M`;
-    } else if (premium >= 1000) {
-      return `$${(premium / 1000).toFixed(2)}K`;
+    const numPremium = parseFloat(premium) || 0;
+    if (numPremium >= 1000000) {
+      return `$${(numPremium / 1000000).toFixed(2)}M`;
+    } else if (numPremium >= 1000) {
+      return `$${(numPremium / 1000).toFixed(2)}K`;
     }
-    return `$${premium}`;
+    return `$${numPremium}`;
   };
 
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', { 
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      console.error('Error formatting date:', e);
+      return 'Invalid date';
+    }
   };
 
   // Calculate pagination
@@ -249,6 +289,12 @@ const InstitutionalFlowTable = () => {
     page * rowsPerPage
   );
 
+  // Function to safely get string values with fallbacks
+  const safeString = (value, fallback = '') => {
+    if (value === undefined || value === null) return fallback;
+    return String(value);
+  };
+
   return (
     <Box sx={{ width: '100%' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, alignItems: 'center' }}>
@@ -260,6 +306,14 @@ const InstitutionalFlowTable = () => {
           }}
         >
           Institutional Flow Data
+          {!isRealData && (
+            <Chip 
+              size="small" 
+              label="Demo Data" 
+              color="warning"
+              sx={{ ml: 2, fontFamily: 'Roboto' }}
+            />
+          )}
         </Typography>
         
         <Box sx={{ display: 'flex', gap: 1 }}>
@@ -360,11 +414,25 @@ const InstitutionalFlowTable = () => {
         </Box>
       )}
       
-      {error && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
+      <Box sx={{ mt: 2, display: 'flex', alignItems: 'center' }}>
+        {isRealData ? (
+          <Typography variant="body2" color="text.secondary">
+            Data source: {source}
+          </Typography>
+        ) : (
+          <Chip 
+            label="Demo Data" 
+            color="warning" 
+            size="small" 
+            sx={{ mr: 1 }} 
+          />
+        )}
+        {error && (
+          <Typography variant="body2" color="error" sx={{ ml: 1 }}>
+            {error}
+          </Typography>
+        )}
+      </Box>
       
       <TableContainer 
         component={Paper}
@@ -400,10 +468,10 @@ const InstitutionalFlowTable = () => {
                 {paginatedData.length > 0 ? (
                   paginatedData.map((flow) => (
                     <TableRow key={flow.id}>
-                      <TableCell sx={{ fontWeight: 'bold' }}>{flow.symbol}</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>{safeString(flow.symbol)}</TableCell>
                       <TableCell>
                         <Chip 
-                          label={flow.type} 
+                          label={safeString(flow.type)} 
                           size="small"
                           sx={{ 
                             backgroundColor: flow.type === 'sweep' 
@@ -422,27 +490,27 @@ const InstitutionalFlowTable = () => {
                       </TableCell>
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          {flow.direction === 'call' ? (
+                          {safeString(flow.direction) === 'call' ? (
                             <TrendingUpIcon fontSize="small" sx={{ color: theme.palette.success.main, mr: 0.5 }} />
                           ) : (
                             <TrendingDownIcon fontSize="small" sx={{ color: theme.palette.error.main, mr: 0.5 }} />
                           )}
-                          {flow.direction}
+                          {safeString(flow.direction)}
                         </Box>
                       </TableCell>
                       <TableCell sx={{ fontWeight: 'bold' }}>{formatPremium(flow.premium)}</TableCell>
-                      <TableCell>${flow.strike}</TableCell>
-                      <TableCell>{new Date(flow.expiry).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}</TableCell>
-                      <TableCell>{formatDate(flow.timestamp)}</TableCell>
+                      <TableCell>${flow.strike || 0}</TableCell>
+                      <TableCell>{flow.expiry ? new Date(flow.expiry).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : 'N/A'}</TableCell>
+                      <TableCell>{flow.timestamp ? formatDate(flow.timestamp) : 'N/A'}</TableCell>
                       <TableCell>
                         <Chip 
-                          label={flow.sentiment} 
+                          label={safeString(flow.sentiment)} 
                           size="small"
                           sx={{ 
-                            backgroundColor: flow.sentiment === 'bullish' 
+                            backgroundColor: safeString(flow.sentiment) === 'bullish' 
                               ? alpha(theme.palette.success.main, 0.2)
                               : alpha(theme.palette.error.main, 0.2),
-                            color: flow.sentiment === 'bullish' 
+                            color: safeString(flow.sentiment) === 'bullish' 
                               ? theme.palette.success.main
                               : theme.palette.error.main,
                             fontWeight: 'bold'
@@ -458,7 +526,7 @@ const InstitutionalFlowTable = () => {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            background: `conic-gradient(${theme.palette.primary.main} ${flow.unusual_score}%, transparent 0)`,
+                            background: `conic-gradient(${theme.palette.primary.main} ${flow.unusual_score || 0}%, transparent 0)`,
                             position: 'relative'
                           }}
                         >
@@ -475,7 +543,7 @@ const InstitutionalFlowTable = () => {
                               fontSize: '0.75rem'
                             }}
                           >
-                            {flow.unusual_score}
+                            {flow.unusual_score || 0}
                           </Box>
                         </Box>
                       </TableCell>
@@ -509,7 +577,7 @@ const InstitutionalFlowTable = () => {
       
       <Box sx={{ mt: 1, display: 'flex', justifyContent: 'space-between' }}>
         <Typography variant="caption" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
-          {error ? 'Using mock data (Unusual Whales API format)' : 'Data source: Unusual Whales API'}
+          {isRealData ? 'Data source: Unusual Whales API' : 'Using demo data (Unusual Whales API format)'}
         </Typography>
         
         <IconButton 

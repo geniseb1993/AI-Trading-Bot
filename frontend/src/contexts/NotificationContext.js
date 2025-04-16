@@ -17,16 +17,10 @@ export const NotificationGroup = {
   ERROR: 'error'
 };
 
+// Create context
 const NotificationContext = createContext();
 
-export const useNotification = () => {
-  const context = useContext(NotificationContext);
-  if (!context) {
-    throw new Error('useNotification must be used within a NotificationProvider');
-  }
-  return context;
-};
-
+// Context provider component
 export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -52,10 +46,10 @@ export const NotificationProvider = ({ children }) => {
 
   // Load notifications and settings from localStorage on initial render
   useEffect(() => {
-    const savedNotifications = localStorage.getItem('notifications');
+      const savedNotifications = localStorage.getItem('notifications');
     const savedSettings = localStorage.getItem('notificationSettings');
     
-    if (savedNotifications) {
+      if (savedNotifications) {
       try {
         setNotifications(JSON.parse(savedNotifications));
       } catch (error) {
@@ -66,7 +60,7 @@ export const NotificationProvider = ({ children }) => {
     if (savedSettings) {
       try {
         setNotificationSettings(JSON.parse(savedSettings));
-      } catch (error) {
+    } catch (error) {
         console.error('Error parsing saved notification settings:', error);
       }
     }
@@ -74,7 +68,7 @@ export const NotificationProvider = ({ children }) => {
 
   // Save notifications to localStorage when they change
   useEffect(() => {
-    localStorage.setItem('notifications', JSON.stringify(notifications));
+      localStorage.setItem('notifications', JSON.stringify(notifications));
   }, [notifications]);
   
   // Save notification settings to localStorage when they change
@@ -277,7 +271,29 @@ export const NotificationProvider = ({ children }) => {
     }
   }, [notificationSettings.voice]);
 
-  const value = {
+  // Show a notification
+  const showNotification = (title, message, severity = 'info') => {
+    const id = Date.now();
+    const newNotification = {
+      id,
+      title,
+      message,
+      severity,
+      timestamp: new Date().toISOString()
+    };
+    
+    setNotifications(prev => [...prev, newNotification]);
+    
+    // Auto-remove notification after 5 seconds
+    setTimeout(() => {
+      removeNotification(id);
+    }, 5000);
+    
+    return id;
+  };
+
+  // The context value
+  const contextValue = {
     notifications,
     unreadCount,
     isConnected,
@@ -290,19 +306,29 @@ export const NotificationProvider = ({ children }) => {
     updateNotificationSettings,
     getFilteredNotifications,
     sendDesktopNotification,
-    sendVoiceNotification
+    sendVoiceNotification,
+    showNotification
   };
 
   // Expose context to window for troubleshooting
   if (typeof window !== 'undefined') {
-    window.__NOTIFICATION_CONTEXT__ = value;
+    window.__NOTIFICATION_CONTEXT__ = contextValue;
   }
 
   return (
-    <NotificationContext.Provider value={value}>
+    <NotificationContext.Provider value={contextValue}>
       {children}
     </NotificationContext.Provider>
   );
+}; 
+
+// Custom hook for using the notification context
+export const useNotification = () => {
+  const context = useContext(NotificationContext);
+  if (!context) {
+    throw new Error('useNotification must be used within a NotificationProvider');
+  }
+  return context;
 };
 
 export default NotificationContext; 
