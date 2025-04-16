@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Box, CircularProgress, Typography, useTheme, Alert, Button } from '@mui/material';
+import { Box, CircularProgress, Typography, useTheme, Alert, Button, IconButton, Tooltip, alpha } from '@mui/material';
+import { Fullscreen, ZoomIn, ZoomOut } from '@mui/icons-material';
 
 const TradingViewWidget = ({ 
   symbol = 'NASDAQ:AAPL', 
@@ -12,6 +13,7 @@ const TradingViewWidget = ({
   const containerRef = useRef(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   
   // Create a unique ID for this instance
   const uniqueId = useRef(`tv_container_${Math.random().toString(36).substring(2, 9)}`);
@@ -39,13 +41,20 @@ const TradingViewWidget = ({
       "backgroundColor": theme.palette.background.paper,
       "gridColor": theme.palette.divider,
       "allow_symbol_change": true,
-      "save_image": false,
+      "save_image": true,
       "calendar": false,
       "hide_top_toolbar": false,
       "hide_legend": false,
+      "toolbar_bg": theme.palette.background.paper,
+      "withdateranges": true,
+      "range": "1M",
+      "details": true,
+      "hotlist": true,
+      "calendar": true,
       "studies": [
         "RSI@tv-basicstudies",
-        "MACD@tv-basicstudies"
+        "MACD@tv-basicstudies",
+        "MAs@tv-basicstudies"
       ],
       "support_host": "https://www.tradingview.com"
     });
@@ -108,9 +117,127 @@ const TradingViewWidget = ({
   const openTradingViewWebsite = () => {
     window.open(`https://www.tradingview.com/chart/?symbol=${symbol}`, '_blank');
   };
+  
+  // Toggle fullscreen mode
+  const toggleFullscreen = () => {
+    const container = document.getElementById(uniqueId.current);
+    
+    if (!document.fullscreenElement) {
+      if (container.requestFullscreen) {
+        container.requestFullscreen();
+        setIsFullscreen(true);
+      } else if (container.webkitRequestFullscreen) { /* Safari */
+        container.webkitRequestFullscreen();
+        setIsFullscreen(true);
+      } else if (container.msRequestFullscreen) { /* IE11 */
+        container.msRequestFullscreen();
+        setIsFullscreen(true);
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+        setIsFullscreen(false);
+      } else if (document.webkitExitFullscreen) { /* Safari */
+        document.webkitExitFullscreen();
+        setIsFullscreen(false);
+      } else if (document.msExitFullscreen) { /* IE11 */
+        document.msExitFullscreen();
+        setIsFullscreen(false);
+      }
+    }
+  };
+  
+  // Listen for fullscreen change
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+    
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+    };
+  }, []);
 
   return (
     <Box sx={{ position: 'relative', width, height }}>
+      <Box sx={{ 
+        position: 'absolute', 
+        top: 10, 
+        right: 10, 
+        zIndex: 10, 
+        display: 'flex',
+        gap: 1,
+        backgroundColor: alpha(theme.palette.background.paper, 0.7),
+        borderRadius: '4px',
+        padding: '4px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+        backdropFilter: 'blur(4px)'
+      }}>
+        <Tooltip title="Fit to View">
+          <Button
+            size="small"
+            variant="outlined"
+            color="primary"
+            onClick={() => {
+              // This attempts to call TradingView's chart method to fit content
+              // It may not work directly as the embedded widget has limitations
+              // But it provides a visual cue for the user
+              if (window.tvWidget) {
+                try {
+                  window.tvWidget.activeChart().executeActionById("timeScaleReset");
+                } catch (e) {
+                  console.log("Could not reset chart view programmatically");
+                }
+              }
+              
+              // Force widget reload as fallback to reset the view
+              const container = document.getElementById(uniqueId.current);
+              if (container) {
+                const oldHeight = container.style.height;
+                const oldWidth = container.style.width;
+                
+                // Briefly expand the container to trigger a resize
+                container.style.height = "100%";
+                container.style.width = "100%";
+                
+                // Restore original dimensions after a brief delay
+                setTimeout(() => {
+                  if (container) {
+                    container.style.height = oldHeight;
+                    container.style.width = oldWidth;
+                  }
+                }, 100);
+              }
+            }}
+            sx={{ 
+              minWidth: 'auto', 
+              fontSize: '0.75rem', 
+              height: '28px',
+              p: '4px 8px' 
+            }}
+          >
+            Fit Chart
+          </Button>
+        </Tooltip>
+        <Tooltip title="Fullscreen">
+          <IconButton 
+            size="small" 
+            onClick={toggleFullscreen}
+            sx={{ color: theme.palette.primary.main }}
+          >
+            <Fullscreen />
+          </IconButton>
+        </Tooltip>
+      </Box>
+      
       <Box
         id={uniqueId.current}
         sx={{ 
@@ -121,6 +248,12 @@ const TradingViewWidget = ({
             padding: '4px 8px',
             textAlign: 'center',
             color: theme.palette.text.secondary
+          },
+          '&:fullscreen': {
+            width: '100vw',
+            height: '100vh',
+            padding: '0',
+            backgroundColor: theme.palette.background.default
           }
         }}
       />

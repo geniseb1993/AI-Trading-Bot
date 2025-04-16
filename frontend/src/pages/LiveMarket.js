@@ -100,27 +100,27 @@ const LiveMarket = () => {
     return symbolMapping[symbol] || `NASDAQ:${symbol}`;
   };
 
-  // Check API connection
-  const checkApiConnection = () => {
+    // Check API connection
+    const checkApiConnection = () => {
     console.log('Checking API connection...');
     fetch(`${API_BASE_URL}/api/health`, { method: 'GET' })
-      .then(response => response.json())
-      .then(data => {
+        .then(response => response.json())
+        .then(data => {
         console.log('API health check response:', data);
-        setApiConnected(data.status === 'ok');
+          setApiConnected(data.status === 'ok');
         setAlpacaConnected(data.alpaca_connected === true);
         // Set real data flag based on API response
         setIsRealData(data.using_real_data === true);
         console.log(`API Connected: ${data.status === 'ok'}, Alpaca Connected: ${data.alpaca_connected}, Using Real Data: ${data.using_real_data}`);
-      })
+        })
       .catch((error) => {
         console.error('API health check failed:', error);
         // Do NOT force apiConnected to true when there's a real error
-        setApiConnected(false);
+          setApiConnected(false);
         setAlpacaConnected(false);
         setIsRealData(false);
-      });
-  };
+        });
+    };
 
   // Fetch chart data for the selected symbol
   const fetchChartData = useCallback(async () => {
@@ -321,7 +321,7 @@ const LiveMarket = () => {
     
     setTradeSetups(mockTradeSetups);
   };
-
+  
   // Modify the useEffect to also fetch AI trade setups
   useEffect(() => {
     // Initial data fetch
@@ -342,7 +342,7 @@ const LiveMarket = () => {
     
     return () => clearInterval(intervalId);
   }, [fetchChartData, fetchAITradeSetups]); // Add both fetchChartData and fetchAITradeSetups as dependencies
-  
+
   // Fetch AI Trade Setups when tab changes to AI Trade Setups
   useEffect(() => {
     if (tabValue === 1) { // AI Trade Setups tab
