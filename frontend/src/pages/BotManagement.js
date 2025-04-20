@@ -572,56 +572,56 @@ const BotManagement = () => {
                 <DataLabelContainer 
                   type={bot.isRealData ? 'real' : 'mock'}
                   tooltip={bot.isRealData ? "Real bot data from API" : "Sample bot data for demonstration"}
-                >
-                  <ContentCard>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <SmartToy sx={{ mr: 1, color: 'primary.main' }} />
-                        <Typography variant="h6">{bot.name}</Typography>
-                      </Box>
-                      <Box>
-                        {bot.status === 'active' ? (
-                          <Button 
-                            variant="outlined" 
-                            size="small" 
-                            color="warning"
-                            onClick={stopBot}
-                          >
-                            Stop Bot
-                          </Button>
-                        ) : (
-                          <Button 
-                            variant="contained" 
-                            size="small" 
-                            color="success"
-                            onClick={startBot}
-                          >
-                            Start Bot
-                          </Button>
-                        )}
-                      </Box>
+              >
+                <ContentCard>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <SmartToy sx={{ mr: 1, color: 'primary.main' }} />
+                      <Typography variant="h6">{bot.name}</Typography>
                     </Box>
-                    
-                    <TradingBotStatus botData={bot} />
-                    
-                    <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between' }}>
-                      <Button 
-                        variant="outlined" 
-                        size="small"
-                        startIcon={<History />}
-                        onClick={runTradingCycle}
-                      >
-                        Run Trading Cycle
-                      </Button>
-                      <Button 
-                        variant="text" 
-                        size="small"
-                        disabled
-                      >
-                        Edit Settings
-                      </Button>
+                    <Box>
+                      {bot.status === 'active' ? (
+                        <Button 
+                          variant="outlined" 
+                          size="small" 
+                          color="warning"
+                          onClick={stopBot}
+                        >
+                          Stop Bot
+                        </Button>
+                      ) : (
+                        <Button 
+                          variant="contained" 
+                          size="small" 
+                          color="success"
+                          onClick={startBot}
+                        >
+                          Start Bot
+                        </Button>
+                      )}
                     </Box>
-                  </ContentCard>
+                  </Box>
+                  
+                  <TradingBotStatus botData={bot} />
+                  
+                  <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between' }}>
+                    <Button 
+                      variant="outlined" 
+                      size="small"
+                      startIcon={<History />}
+                      onClick={runTradingCycle}
+                    >
+                      Run Trading Cycle
+                    </Button>
+                    <Button 
+                      variant="text" 
+                      size="small"
+                      disabled
+                    >
+                      Edit Settings
+                    </Button>
+                  </Box>
+                </ContentCard>
                 </DataLabelContainer>
               </motion.div>
             ))}
@@ -645,25 +645,25 @@ const BotManagement = () => {
               type="real"
               tooltip="Real activity data from the deep seek scanner logs"
             >
-              <Paper 
-                elevation={0} 
-                sx={{ 
-                  p: 0, 
-                  position: 'relative',
-                  height: '70vh',
-                  overflowY: 'auto',
-                  paddingRight: '16px'
-                }}
-                ref={activityLogRef}
-              >
-                <AIActivityLog />
-                <ScrollIndicator 
-                  containerRef={activityLogRef} 
-                  position="bottom-right" 
-                  threshold={100}
-                  offsetBottom={20}
-                />
-              </Paper>
+            <Paper 
+              elevation={0} 
+              sx={{ 
+                p: 0, 
+                position: 'relative',
+                height: '70vh',
+                overflowY: 'auto',
+                paddingRight: '16px'
+              }}
+              ref={activityLogRef}
+            >
+              <AIActivityLog />
+              <ScrollIndicator 
+                containerRef={activityLogRef} 
+                position="bottom-right" 
+                threshold={100}
+                offsetBottom={20}
+              />
+            </Paper>
             </DataLabelContainer>
           )}
           {tabValue === 1 && (
@@ -673,80 +673,80 @@ const BotManagement = () => {
                 ? "Real trading history data" 
                 : "Sample trading history data for demonstration"}
             >
-              <Paper 
-                elevation={0} 
-                sx={{ p: 2, position: 'relative', maxHeight: '70vh', overflowY: 'auto', paddingRight: '24px' }}
-                ref={tradeHistoryRef}
-              >
-                {tabLoading ? (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-                    <CircularProgress />
-                  </Box>
-                ) : tradingHistory.length > 0 ? (
-                  <TableContainer>
-                    <Table sx={{ minWidth: 650 }} aria-label="trading history table">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Symbol</TableCell>
-                          <TableCell>Position</TableCell>
-                          <TableCell>Entry Date</TableCell>
-                          <TableCell>Exit Date</TableCell>
-                          <TableCell align="right">Entry Price</TableCell>
-                          <TableCell align="right">Exit Price</TableCell>
-                          <TableCell align="right">Quantity</TableCell>
-                          <TableCell align="right">Profit/Loss</TableCell>
-                          <TableCell>Exit Reason</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {tradingHistory.map((trade) => (
-                          <TableRow key={trade.id}>
-                            <TableCell component="th" scope="row">
-                              <strong>{trade.symbol}</strong>
-                            </TableCell>
-                            <TableCell>{trade.position_type}</TableCell>
-                            <TableCell>{formatDate(trade.entry_date)}</TableCell>
-                            <TableCell>{formatDate(trade.exit_date)}</TableCell>
-                            <TableCell align="right">${trade.entry_price ? trade.entry_price.toFixed(2) : '0.00'}</TableCell>
-                            <TableCell align="right">${trade.exit_price ? trade.exit_price.toFixed(2) : '0.00'}</TableCell>
-                            <TableCell align="right">{trade.quantity}</TableCell>
-                            <TableCell 
-                              align="right" 
-                              sx={{ 
-                                color: trade.profit > 0 ? 'success.main' : 'error.main',
-                                fontWeight: 'bold'
-                              }}
-                            >
-                              ${trade.profit ? trade.profit.toFixed(2) : '0.00'} ({trade.profit_pct ? trade.profit_pct.toFixed(2) : '0.00'}%)
-                            </TableCell>
-                            <TableCell>{trade.exit_reason}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                ) : (
-                  <Typography variant="body1" sx={{ textAlign: 'center', py: 3 }}>
-                    No trading history available yet.
-                  </Typography>
-                )}
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-                  <Button 
-                    startIcon={<Refresh />} 
-                    variant="outlined"
-                    onClick={fetchTradingHistory}
-                    disabled={tabLoading}
-                  >
-                    Refresh
-                  </Button>
+            <Paper 
+              elevation={0} 
+              sx={{ p: 2, position: 'relative', maxHeight: '70vh', overflowY: 'auto', paddingRight: '24px' }}
+              ref={tradeHistoryRef}
+            >
+              {tabLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+                  <CircularProgress />
                 </Box>
-                <ScrollIndicator 
-                  containerRef={tradeHistoryRef} 
-                  position="bottom-right" 
-                  threshold={100}
-                  offsetBottom={20}
-                />
-              </Paper>
+              ) : tradingHistory.length > 0 ? (
+                <TableContainer>
+                  <Table sx={{ minWidth: 650 }} aria-label="trading history table">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Symbol</TableCell>
+                        <TableCell>Position</TableCell>
+                        <TableCell>Entry Date</TableCell>
+                        <TableCell>Exit Date</TableCell>
+                        <TableCell align="right">Entry Price</TableCell>
+                        <TableCell align="right">Exit Price</TableCell>
+                        <TableCell align="right">Quantity</TableCell>
+                        <TableCell align="right">Profit/Loss</TableCell>
+                        <TableCell>Exit Reason</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {tradingHistory.map((trade) => (
+                        <TableRow key={trade.id}>
+                          <TableCell component="th" scope="row">
+                            <strong>{trade.symbol}</strong>
+                          </TableCell>
+                          <TableCell>{trade.position_type}</TableCell>
+                          <TableCell>{formatDate(trade.entry_date)}</TableCell>
+                          <TableCell>{formatDate(trade.exit_date)}</TableCell>
+                          <TableCell align="right">${trade.entry_price ? trade.entry_price.toFixed(2) : '0.00'}</TableCell>
+                          <TableCell align="right">${trade.exit_price ? trade.exit_price.toFixed(2) : '0.00'}</TableCell>
+                          <TableCell align="right">{trade.quantity}</TableCell>
+                          <TableCell 
+                            align="right" 
+                            sx={{ 
+                              color: trade.profit > 0 ? 'success.main' : 'error.main',
+                              fontWeight: 'bold'
+                            }}
+                          >
+                            ${trade.profit ? trade.profit.toFixed(2) : '0.00'} ({trade.profit_pct ? trade.profit_pct.toFixed(2) : '0.00'}%)
+                          </TableCell>
+                          <TableCell>{trade.exit_reason}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              ) : (
+                <Typography variant="body1" sx={{ textAlign: 'center', py: 3 }}>
+                  No trading history available yet.
+                </Typography>
+              )}
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                <Button 
+                  startIcon={<Refresh />} 
+                  variant="outlined"
+                  onClick={fetchTradingHistory}
+                  disabled={tabLoading}
+                >
+                  Refresh
+                </Button>
+              </Box>
+              <ScrollIndicator 
+                containerRef={tradeHistoryRef} 
+                position="bottom-right" 
+                threshold={100}
+                offsetBottom={20}
+              />
+            </Paper>
             </DataLabelContainer>
           )}
           {tabValue === 2 && (
@@ -756,166 +756,166 @@ const BotManagement = () => {
                 ? "Real performance data from trading activities" 
                 : "Sample performance data for demonstration"}
             >
-              <Paper 
-                elevation={0} 
-                sx={{ p: 2, position: 'relative', maxHeight: '70vh', overflowY: 'auto', paddingRight: '24px' }}
-                ref={performanceRef}
-              >
-                {tabLoading ? (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-                    <CircularProgress />
-                  </Box>
-                ) : performanceData ? (
-                  <>
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
-                      <ContentCard sx={{ minWidth: 200, flex: 1 }}>
-                        <Typography variant="subtitle2" color="text.secondary">Portfolio Value</Typography>
-                        <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-                          ${performanceData.portfolio_value ? performanceData.portfolio_value.toLocaleString() : '0'}
-                        </Typography>
-                      </ContentCard>
-
-                      <ContentCard sx={{ minWidth: 200, flex: 1 }}>
-                        <Typography variant="subtitle2" color="text.secondary">Total P/L</Typography>
-                        <Typography 
-                          variant="h5" 
-                          sx={{ 
-                            fontWeight: 'bold',
-                            color: performanceData.profit_loss > 0 ? 'success.main' : 'error.main' 
-                          }}
-                        >
-                          ${performanceData.profit_loss ? performanceData.profit_loss.toLocaleString() : '0'} ({performanceData.profit_loss_pct ? performanceData.profit_loss_pct.toFixed(2) : '0.00'}%)
-                        </Typography>
-                      </ContentCard>
-
-                      <ContentCard sx={{ minWidth: 200, flex: 1 }}>
-                        <Typography variant="subtitle2" color="text.secondary">Win Rate</Typography>
-                        <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-                          {performanceData.win_rate ? performanceData.win_rate.toFixed(1) : '0.0'}%
-                        </Typography>
-                      </ContentCard>
-                    </Box>
-
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
-                      <ContentCard sx={{ minWidth: 200, flex: 1 }}>
-                        <Typography variant="subtitle2" color="text.secondary">Total Trades</Typography>
-                        <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-                          {performanceData.total_trades}
-                        </Typography>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-                          <Typography variant="body2" color="success.main">Win: {performanceData.winning_trades}</Typography>
-                          <Typography variant="body2" color="error.main">Loss: {performanceData.losing_trades}</Typography>
-                        </Box>
-                      </ContentCard>
-
-                      <ContentCard sx={{ minWidth: 200, flex: 1 }}>
-                        <Typography variant="subtitle2" color="text.secondary">Avg. Profit/Trade</Typography>
-                        <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-                          ${performanceData.avg_profit_per_trade ? performanceData.avg_profit_per_trade.toFixed(2) : '0.00'}
-                        </Typography>
-                      </ContentCard>
-
-                      <ContentCard sx={{ minWidth: 200, flex: 1 }}>
-                        <Typography variant="subtitle2" color="text.secondary">Largest Gain/Loss</Typography>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-                          <Typography variant="body1" color="success.main" sx={{ fontWeight: 'bold' }}>
-                            +${performanceData.largest_gain ? performanceData.largest_gain.toLocaleString() : '0'}
-                          </Typography>
-                          <Typography variant="body1" color="error.main" sx={{ fontWeight: 'bold' }}>
-                            -${performanceData.largest_loss ? performanceData.largest_loss.toLocaleString() : '0'}
-                          </Typography>
-                        </Box>
-                      </ContentCard>
-                    </Box>
-
-                    <Typography variant="h6" sx={{ mt: 3, mb: 2 }}>
-                      Portfolio Value History (30 Days)
-                    </Typography>
-                    
-                    <Box sx={{ height: 350, width: '100%' }}>
-                      {performanceData.daily_performance && performanceData.daily_performance.length > 0 ? (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart
-                            data={performanceData.daily_performance.map(day => ({
-                              ...day,
-                              starting: performanceData.starting_value
-                            }))}
-                            margin={{ top: 10, right: 30, left: 20, bottom: 30 }}
-                          >
-                            <defs>
-                              <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#3f51b5" stopOpacity={0.8}/>
-                                <stop offset="95%" stopColor="#3f51b5" stopOpacity={0.1}/>
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#ccc" strokeOpacity={0.5} />
-                            <XAxis 
-                              dataKey="date" 
-                              angle={-30}
-                              textAnchor="end"
-                              height={50}
-                              tick={{ fontSize: 12 }}
-                            />
-                            <YAxis 
-                              tickFormatter={formatYAxis}
-                              domain={['auto', 'auto']}
-                            />
-                            <Tooltip content={<CustomTooltip />} />
-                            <Legend />
-                            <ReferenceLine 
-                              y={performanceData.starting_value} 
-                              stroke="#666" 
-                              strokeDasharray="3 3" 
-                              label={{ value: 'Initial Investment', position: 'insideBottomRight' }} 
-                            />
-                            <Area 
-                              type="monotone" 
-                              dataKey="value" 
-                              name="Portfolio Value" 
-                              stroke="#3f51b5" 
-                              fillOpacity={1} 
-                              fill="url(#colorValue)" 
-                              activeDot={{ r: 8 }}
-                            />
-                            <Line 
-                              type="monotone" 
-                              dataKey="starting" 
-                              name="Initial Investment" 
-                              stroke="#666" 
-                              strokeDasharray="5 5" 
-                              dot={false}
-                            />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 10 }}>
-                          No performance history data available.
-                        </Typography>
-                      )}
-                    </Box>
-                  </>
-                ) : (
-                  <Typography variant="body1" sx={{ textAlign: 'center', py: 3 }}>
-                    No performance data available yet.
-                  </Typography>
-                )}
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-                  <Button 
-                    startIcon={<Refresh />} 
-                    variant="outlined"
-                    onClick={fetchPerformanceData}
-                    disabled={tabLoading}
-                  >
-                    Refresh
-                  </Button>
+            <Paper 
+              elevation={0} 
+              sx={{ p: 2, position: 'relative', maxHeight: '70vh', overflowY: 'auto', paddingRight: '24px' }}
+              ref={performanceRef}
+            >
+              {tabLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+                  <CircularProgress />
                 </Box>
-                <ScrollIndicator 
-                  containerRef={performanceRef} 
-                  position="bottom-right" 
-                  threshold={100}
-                  offsetBottom={20}
-                />
-              </Paper>
+              ) : performanceData ? (
+                <>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
+                    <ContentCard sx={{ minWidth: 200, flex: 1 }}>
+                      <Typography variant="subtitle2" color="text.secondary">Portfolio Value</Typography>
+                      <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+                        ${performanceData.portfolio_value ? performanceData.portfolio_value.toLocaleString() : '0'}
+                      </Typography>
+                    </ContentCard>
+
+                    <ContentCard sx={{ minWidth: 200, flex: 1 }}>
+                      <Typography variant="subtitle2" color="text.secondary">Total P/L</Typography>
+                      <Typography 
+                        variant="h5" 
+                        sx={{ 
+                          fontWeight: 'bold',
+                          color: performanceData.profit_loss > 0 ? 'success.main' : 'error.main' 
+                        }}
+                      >
+                        ${performanceData.profit_loss ? performanceData.profit_loss.toLocaleString() : '0'} ({performanceData.profit_loss_pct ? performanceData.profit_loss_pct.toFixed(2) : '0.00'}%)
+                      </Typography>
+                    </ContentCard>
+
+                    <ContentCard sx={{ minWidth: 200, flex: 1 }}>
+                      <Typography variant="subtitle2" color="text.secondary">Win Rate</Typography>
+                      <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+                        {performanceData.win_rate ? performanceData.win_rate.toFixed(1) : '0.0'}%
+                      </Typography>
+                    </ContentCard>
+                  </Box>
+
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
+                    <ContentCard sx={{ minWidth: 200, flex: 1 }}>
+                      <Typography variant="subtitle2" color="text.secondary">Total Trades</Typography>
+                      <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+                        {performanceData.total_trades}
+                      </Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+                        <Typography variant="body2" color="success.main">Win: {performanceData.winning_trades}</Typography>
+                        <Typography variant="body2" color="error.main">Loss: {performanceData.losing_trades}</Typography>
+                      </Box>
+                    </ContentCard>
+
+                    <ContentCard sx={{ minWidth: 200, flex: 1 }}>
+                      <Typography variant="subtitle2" color="text.secondary">Avg. Profit/Trade</Typography>
+                      <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+                        ${performanceData.avg_profit_per_trade ? performanceData.avg_profit_per_trade.toFixed(2) : '0.00'}
+                      </Typography>
+                    </ContentCard>
+
+                    <ContentCard sx={{ minWidth: 200, flex: 1 }}>
+                      <Typography variant="subtitle2" color="text.secondary">Largest Gain/Loss</Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+                        <Typography variant="body1" color="success.main" sx={{ fontWeight: 'bold' }}>
+                          +${performanceData.largest_gain ? performanceData.largest_gain.toLocaleString() : '0'}
+                        </Typography>
+                        <Typography variant="body1" color="error.main" sx={{ fontWeight: 'bold' }}>
+                          -${performanceData.largest_loss ? performanceData.largest_loss.toLocaleString() : '0'}
+                        </Typography>
+                      </Box>
+                    </ContentCard>
+                  </Box>
+
+                  <Typography variant="h6" sx={{ mt: 3, mb: 2 }}>
+                    Portfolio Value History (30 Days)
+                  </Typography>
+                  
+                  <Box sx={{ height: 350, width: '100%' }}>
+                    {performanceData.daily_performance && performanceData.daily_performance.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart
+                          data={performanceData.daily_performance.map(day => ({
+                            ...day,
+                            starting: performanceData.starting_value
+                          }))}
+                          margin={{ top: 10, right: 30, left: 20, bottom: 30 }}
+                        >
+                          <defs>
+                            <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#3f51b5" stopOpacity={0.8}/>
+                              <stop offset="95%" stopColor="#3f51b5" stopOpacity={0.1}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#ccc" strokeOpacity={0.5} />
+                          <XAxis 
+                            dataKey="date" 
+                            angle={-30}
+                            textAnchor="end"
+                            height={50}
+                            tick={{ fontSize: 12 }}
+                          />
+                          <YAxis 
+                            tickFormatter={formatYAxis}
+                            domain={['auto', 'auto']}
+                          />
+                          <Tooltip content={<CustomTooltip />} />
+                          <Legend />
+                          <ReferenceLine 
+                            y={performanceData.starting_value} 
+                            stroke="#666" 
+                            strokeDasharray="3 3" 
+                            label={{ value: 'Initial Investment', position: 'insideBottomRight' }} 
+                          />
+                          <Area 
+                            type="monotone" 
+                            dataKey="value" 
+                            name="Portfolio Value" 
+                            stroke="#3f51b5" 
+                            fillOpacity={1} 
+                            fill="url(#colorValue)" 
+                            activeDot={{ r: 8 }}
+                          />
+                          <Line 
+                            type="monotone" 
+                            dataKey="starting" 
+                            name="Initial Investment" 
+                            stroke="#666" 
+                            strokeDasharray="5 5" 
+                            dot={false}
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 10 }}>
+                        No performance history data available.
+                      </Typography>
+                    )}
+                  </Box>
+                </>
+              ) : (
+                <Typography variant="body1" sx={{ textAlign: 'center', py: 3 }}>
+                  No performance data available yet.
+                </Typography>
+              )}
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                <Button 
+                  startIcon={<Refresh />} 
+                  variant="outlined"
+                  onClick={fetchPerformanceData}
+                  disabled={tabLoading}
+                >
+                  Refresh
+                </Button>
+              </Box>
+              <ScrollIndicator 
+                containerRef={performanceRef} 
+                position="bottom-right" 
+                threshold={100}
+                offsetBottom={20}
+              />
+            </Paper>
             </DataLabelContainer>
           )}
         </Box>

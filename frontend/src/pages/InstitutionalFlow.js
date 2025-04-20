@@ -24,7 +24,8 @@ import {
   Tabs,
   Tab,
   IconButton,
-  Tooltip
+  Tooltip,
+  Badge
 } from '@mui/material';
 import { 
   TrendingUp, 
@@ -33,7 +34,9 @@ import {
   Search, 
   MoreVert,
   Star,
-  StarBorder
+  StarBorder,
+  InfoOutlined,
+  Launch as LaunchIcon
 } from '@mui/icons-material';
 import axios from 'axios';
 
@@ -45,6 +48,8 @@ const InstitutionalFlow = () => {
   const [sectorFilter, setSectorFilter] = useState('all');
   const [favoriteSymbols, setFavoriteSymbols] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isRealData, setIsRealData] = useState(false);
+  const [dataSource, setDataSource] = useState('mock');
 
   const tabOptions = ['Options Flow', 'Dark Pool', '13F Filings', 'Insider Trading'];
   
@@ -73,25 +78,95 @@ const InstitutionalFlow = () => {
   const fetchInstitutionalFlowData = async () => {
     setLoading(true);
     try {
-      // Try to fetch data from API
-      const response = await axios.post('/api/institutional-flow/get-data', {
-        type: tabOptions[tabValue].toLowerCase().replace(' ', '-'),
-        timeframe: timeFilter,
-        sector: sectorFilter
-      });
+      let response;
+      const tabType = tabOptions[tabValue].toLowerCase().replace(' ', '-');
       
-      if (response.data && response.data.success && Array.isArray(response.data.data)) {
-        setFlowData(response.data.data);
-      } else {
-        // If API fails, generate mock data
-        generateMockData();
+      // Use different API endpoints based on tab type
+      if (tabType === 'options-flow' || tabType === 'dark-pool') {
+        // Use institutional-flow API for options flow and dark pool data
+        response = await axios.post('/api/institutional-flow/get-data', {
+          type: tabType,
+          timeframe: timeFilter,
+          sector: sectorFilter
+        });
+        
+        // Check if the response is valid
+        if (response.data && response.data.success && Array.isArray(response.data.data)) {
+          setFlowData(response.data.data);
+          setIsRealData(response.data.isRealData === true);
+          setDataSource(response.data.isRealData ? 'Unusual Whales API' : 'mock');
+        } else {
+          throw new Error('Invalid response format');
+        }
+      } 
+      else if (tabType === '13f-filings') {
+        // Use 13F filings API
+        const startDate = getDateRange(timeFilter);
+        response = await axios.get('/api/13f-filings', {
+          params: {
+            start_date: startDate,
+            sector: sectorFilter !== 'all' ? sectorFilter : undefined
+          }
+        });
+        
+        if (response.data && response.data.success) {
+          setFlowData(response.data.data);
+          setIsRealData(response.data.isRealData === true);
+          setDataSource(response.data.isRealData ? 'SEC API' : 'mock');
+        } else {
+          throw new Error('Invalid response format');
+        }
+      }
+      else if (tabType === 'insider-trading') {
+        // Use insider trading API
+        const startDate = getDateRange(timeFilter);
+        response = await axios.get('/api/insider-trading', {
+          params: {
+            start_date: startDate
+            // Filter by sector could be implemented here if needed
+          }
+        });
+        
+        if (response.data && response.data.success) {
+          setFlowData(response.data.data);
+          setIsRealData(response.data.isRealData === true);
+          setDataSource(response.data.isRealData ? 'SEC API' : 'mock');
+        } else {
+          throw new Error('Invalid response format');
+        }
       }
     } catch (error) {
       console.error('Error fetching institutional flow data:', error);
       // Generate mock data if API request fails
       generateMockData();
+      setIsRealData(false);
+      setDataSource('mock');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Helper function to get date range based on time filter
+  const getDateRange = (filter) => {
+    const today = new Date();
+    
+    switch (filter) {
+      case 'today':
+        return today.toISOString().split('T')[0];
+      case 'yesterday':
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        return yesterday.toISOString().split('T')[0];
+      case 'this_week':
+        const week = new Date(today);
+        week.setDate(week.getDate() - 7);
+        return week.toISOString().split('T')[0];
+      case 'this_month':
+        const month = new Date(today);
+        month.setMonth(month.getMonth() - 1);
+        return month.toISOString().split('T')[0];
+      default:
+        return today.toISOString().split('T')[0];
     }
   };
 
@@ -219,9 +294,10 @@ const InstitutionalFlow = () => {
     if (!searchTerm.trim()) return flowData;
     
     return flowData.filter(item => 
-      item.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.symbol?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (item.institution && item.institution.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (item.insider_name && item.insider_name.toLowerCase().includes(searchTerm.toLowerCase()))
+      (item.insider_name && item.insider_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (item.companyName && item.companyName.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   };
 
@@ -260,13 +336,11 @@ const InstitutionalFlow = () => {
         return (
           <TableRow>
             <TableCell>Filing Date</TableCell>
-            <TableCell>Symbol</TableCell>
             <TableCell>Institution</TableCell>
-            <TableCell>Quarter</TableCell>
-            <TableCell>Direction</TableCell>
-            <TableCell align="right">Shares</TableCell>
-            <TableCell align="right">Value ($)</TableCell>
-            <TableCell>Change</TableCell>
+            <TableCell>Report Date</TableCell>
+            <TableCell>Form</TableCell>
+            <TableCell>Top Holdings</TableCell>
+            <TableCell align="right">Total Value ($)</TableCell>
             <TableCell align="center">Actions</TableCell>
           </TableRow>
         );
@@ -382,33 +456,42 @@ const InstitutionalFlow = () => {
       case 2: // 13F Filings
         return (
           <TableRow key={item.id} hover>
-            <TableCell>{safeStr(item.filing_date)}</TableCell>
-            <TableCell>{safeStr(item.symbol)}</TableCell>
-            <TableCell>{safeStr(item.institution)}</TableCell>
-            <TableCell>{safeStr(item.quarter)}</TableCell>
+            <TableCell>{safeStr(item.filedAt || item.filing_date)}</TableCell>
+            <TableCell>{safeStr(item.companyName)}</TableCell>
+            <TableCell>{safeStr(item.reportDate || item.quarter)}</TableCell>
+            <TableCell>{safeStr(item.form || '13F-HR')}</TableCell>
             <TableCell>
-              <Chip 
-                label={safeStr(item.direction).toUpperCase()} 
-                color={safeStr(item.direction) === 'buy' ? 'success' : 'error'}
-                size="small"
-                icon={safeStr(item.direction) === 'buy' ? <TrendingUp fontSize="small" /> : <TrendingDown fontSize="small" />}
-              />
+              {Array.isArray(item.holdings) && item.holdings.length > 0 ? (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {item.holdings.slice(0, 3).map((holding, idx) => (
+                    <Chip 
+                      key={idx}
+                      label={holding.name || holding} 
+                      size="small"
+                      variant="outlined"
+                    />
+                  ))}
+                  {item.holdings.length > 3 && (
+                    <Chip 
+                      label={`+${item.holdings.length - 3} more`} 
+                      size="small"
+                      variant="outlined"
+                    />
+                  )}
+                </Box>
+              ) : (
+                'No holdings data'
+              )}
             </TableCell>
-            <TableCell align="right">{safeNum(item.shares).toLocaleString()}</TableCell>
-            <TableCell align="right">${safeNum(item.value).toLocaleString()}</TableCell>
-            <TableCell>
-              <Chip 
-                label={safeStr(item.change)} 
-                color={parseFloat(safeStr(item.change)) > 0 ? 'success' : 'error'}
-                size="small"
-              />
+            <TableCell align="right">
+              {typeof item.value === 'number' 
+                ? `$${item.value.toLocaleString()}`
+                : safeStr(item.value)
+              }
             </TableCell>
             <TableCell align="center">
-              <IconButton size="small" onClick={() => toggleFavorite(safeStr(item.symbol))}>
-                {favoriteSymbols.includes(safeStr(item.symbol)) ? 
-                  <Star fontSize="small" color="warning" /> : 
-                  <StarBorder fontSize="small" />
-                }
+              <IconButton size="small" onClick={() => window.open(item.url, '_blank')}>
+                <LaunchIcon fontSize="small" />
               </IconButton>
             </TableCell>
           </TableRow>
@@ -448,7 +531,19 @@ const InstitutionalFlow = () => {
 
   return (
     <Box sx={{ p: 3, minHeight: '100vh' }}>
-      <Typography variant="h4" sx={{ mb: 3 }}>Institutional Flow</Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4">Institutional Flow</Typography>
+        <Tooltip title={isRealData ? 
+          `Real data from ${dataSource}` : 
+          "Mock data is being displayed. Add API keys to view real data."}>
+          <Chip 
+            icon={<InfoOutlined />}
+            label={isRealData ? "Real Data" : "Mock Data"} 
+            color={isRealData ? "success" : "warning"}
+            variant="outlined"
+          />
+        </Tooltip>
+      </Box>
       
       {/* Tabs Navigation */}
       <Paper sx={{ mb: 3 }}>

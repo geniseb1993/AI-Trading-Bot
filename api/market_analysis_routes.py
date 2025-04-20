@@ -8,12 +8,15 @@ from dotenv import load_dotenv
 # Import market data modules
 try:
     from api.lib.market_data import UnusualWhalesAPI
+    from api.lib.sec_api_integration import SecApiIntegration
 except ImportError:
     # Try importing without api prefix for compatibility
     try:
         from lib.market_data import UnusualWhalesAPI
+        from lib.sec_api_integration import SecApiIntegration
     except ImportError:
         UnusualWhalesAPI = None
+        SecApiIntegration = None
 
 # Load environment variables
 load_dotenv()
@@ -34,6 +37,18 @@ try:
         logger.warning("Unusual Whales API not initialized - missing API key or module not available")
 except Exception as e:
     logger.error(f"Error initializing Unusual Whales API: {str(e)}")
+
+# Initialize SEC API if available
+sec_api = None
+try:
+    api_key = os.environ.get('SEC_API_KEY')
+    if api_key and SecApiIntegration:
+        sec_api = SecApiIntegration(api_key=api_key)
+        logger.info("SEC API initialized for market analysis routes")
+    else:
+        logger.warning("SEC API not initialized - missing API key or module not available")
+except Exception as e:
+    logger.error(f"Error initializing SEC API: {str(e)}")
 
 @bp.route('/market-data/<symbol>', methods=['GET'])
 def api_get_market_data(symbol):
@@ -239,14 +254,16 @@ def get_institutional_flow():
     
     # Check if API is available
     is_real_data = False
+    data_source = "mock"
     flow_data = []
     
-    if unusual_whales_api:
+    if unusual_whales_api and unusual_whales_api.token:
         try:
             # Try to get dark pool data
-            dark_pool_data = unusual_whales_api.get_dark_pool()
+            dark_pool_data = unusual_whales_api.get_dark_pool_recent()
             if dark_pool_data and len(dark_pool_data) > 0:
                 is_real_data = True
+                data_source = "Unusual Whales API"
                 flow_data.extend(dark_pool_data)
                 logger.info(f"Retrieved {len(dark_pool_data)} dark pool entries")
             else:
@@ -256,6 +273,7 @@ def get_institutional_flow():
             options_data = unusual_whales_api.get_options_flow()
             if options_data and len(options_data) > 0:
                 is_real_data = True
+                data_source = "Unusual Whales API"
                 flow_data.extend(options_data)
                 logger.info(f"Retrieved {len(options_data)} options flow entries")
             else:
@@ -268,10 +286,13 @@ def get_institutional_flow():
     if not is_real_data or len(flow_data) == 0:
         logger.info("Using mock institutional flow data")
         flow_data = generate_mock_institutional_flow_data()
+        is_real_data = False
+        data_source = "mock"
         
     return jsonify({
         'success': True,
         'isRealData': is_real_data,
+        'source': data_source,
         'data': flow_data,
         'message': 'Institutional flow data retrieved successfully'
     })
@@ -306,30 +327,34 @@ def get_filtered_institutional_flow():
     
     # Check if API is available
     is_real_data = False
+    data_source = "mock"
     flow_data = []
     
-    if unusual_whales_api:
+    if unusual_whales_api and unusual_whales_api.token:
         try:
             # Get appropriate data based on flow type
             if flow_type.lower() == 'darkpool':
-                data_list = unusual_whales_api.get_dark_pool()
+                data_list = unusual_whales_api.get_dark_pool_recent()
                 if data_list and len(data_list) > 0:
                     is_real_data = True
+                    data_source = "Unusual Whales API"
                     flow_data = data_list
                     logger.info(f"Retrieved {len(data_list)} dark pool entries for filtering")
             elif flow_type.lower() == 'options':
                 data_list = unusual_whales_api.get_options_flow()
                 if data_list and len(data_list) > 0:
                     is_real_data = True
+                    data_source = "Unusual Whales API"
                     flow_data = data_list
                     logger.info(f"Retrieved {len(data_list)} options flow entries for filtering")
             else:
                 # If no specific type, try to get both
-                dark_pool = unusual_whales_api.get_dark_pool() or []
+                dark_pool = unusual_whales_api.get_dark_pool_recent() or []
                 options = unusual_whales_api.get_options_flow() or []
                 
                 if (len(dark_pool) > 0 or len(options) > 0):
                     is_real_data = True
+                    data_source = "Unusual Whales API"
                     flow_data = dark_pool + options
                     logger.info(f"Retrieved {len(dark_pool)} dark pool and {len(options)} options entries for filtering")
             
@@ -340,6 +365,8 @@ def get_filtered_institutional_flow():
     if not is_real_data or len(flow_data) == 0:
         logger.info("Using mock institutional flow data for filtering")
         flow_data = generate_mock_institutional_flow_data()
+        is_real_data = False
+        data_source = "mock"
     
     # Filter the data
     filtered_data = flow_data
@@ -360,8 +387,140 @@ def get_filtered_institutional_flow():
     return jsonify({
         'success': True,
         'isRealData': is_real_data,
+        'source': data_source,
         'data': filtered_data,
         'message': 'Filtered institutional flow data retrieved successfully'
+    })
+
+@bp.route('/13f-filings', methods=['GET'])
+def get_13f_filings():
+    """
+    Get 13F filings data from SEC.
+    
+    Query parameters:
+        limit: Maximum number of results to return
+        offset: Offset for pagination
+        cik: CIK number to filter by specific institution
+        start_date: Start date in YYYY-MM-DD format
+        end_date: End date in YYYY-MM-DD format
+    
+    Returns:
+        JSON response with 13F filings data
+    """
+    logger.info("Fetching 13F filings data")
+    
+    # Get query parameters
+    limit = request.args.get('limit', 20, type=int)
+    offset = request.args.get('offset', 0, type=int)
+    cik = request.args.get('cik')
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    
+    # Check if SEC API is available
+    is_real_data = False
+    data_source = "mock"
+    filings_data = []
+    
+    if sec_api and sec_api.api_key:
+        try:
+            # Fetch 13F filings data from SEC API
+            filings_data = sec_api.get_13f_filings(
+                cik=cik, 
+                limit=limit, 
+                offset=offset, 
+                start_date=start_date, 
+                end_date=end_date
+            )
+            
+            if isinstance(filings_data, list) and len(filings_data) > 0:
+                is_real_data = True
+                data_source = "SEC API"
+                logger.info(f"Retrieved {len(filings_data)} 13F filings from SEC API")
+            elif isinstance(filings_data, dict) and "error" in filings_data:
+                logger.error(f"Error from SEC API: {filings_data['error']}")
+        except Exception as e:
+            logger.error(f"Error fetching 13F filings data: {str(e)}")
+    
+    # If no data or API not available, use mock data
+    if not is_real_data or len(filings_data) == 0:
+        logger.info("Using mock 13F filings data")
+        filings_data = generate_mock_13f_filings(limit=limit)
+        is_real_data = False
+        data_source = "mock"
+        
+    return jsonify({
+        'success': True,
+        'isRealData': is_real_data,
+        'source': data_source,
+        'data': filings_data,
+        'message': '13F filings data retrieved successfully'
+    })
+
+@bp.route('/insider-trading', methods=['GET'])
+def get_insider_trading():
+    """
+    Get insider trading data from SEC.
+    
+    Query parameters:
+        symbol: Stock symbol to filter by
+        limit: Maximum number of results to return
+        offset: Offset for pagination
+        cik: CIK number to filter by specific insider
+        start_date: Start date in YYYY-MM-DD format
+        end_date: End date in YYYY-MM-DD format
+    
+    Returns:
+        JSON response with insider trading data
+    """
+    logger.info("Fetching insider trading data")
+    
+    # Get query parameters
+    symbol = request.args.get('symbol')
+    limit = request.args.get('limit', 20, type=int)
+    offset = request.args.get('offset', 0, type=int)
+    cik = request.args.get('cik')
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    
+    # Check if SEC API is available
+    is_real_data = False
+    data_source = "mock"
+    insider_data = []
+    
+    if sec_api and sec_api.api_key:
+        try:
+            # Fetch insider trading data from SEC API
+            insider_data = sec_api.get_insider_trading(
+                symbol=symbol,
+                cik=cik, 
+                limit=limit, 
+                offset=offset, 
+                start_date=start_date, 
+                end_date=end_date
+            )
+            
+            if isinstance(insider_data, list) and len(insider_data) > 0:
+                is_real_data = True
+                data_source = "SEC API"
+                logger.info(f"Retrieved {len(insider_data)} insider trading records from SEC API")
+            elif isinstance(insider_data, dict) and "error" in insider_data:
+                logger.error(f"Error from SEC API: {insider_data['error']}")
+        except Exception as e:
+            logger.error(f"Error fetching insider trading data: {str(e)}")
+    
+    # If no data or API not available, use mock data
+    if not is_real_data or len(insider_data) == 0:
+        logger.info("Using mock insider trading data")
+        insider_data = generate_mock_insider_trading(symbol=symbol, limit=limit)
+        is_real_data = False
+        data_source = "mock"
+        
+    return jsonify({
+        'success': True,
+        'isRealData': is_real_data,
+        'source': data_source,
+        'data': insider_data,
+        'message': 'Insider trading data retrieved successfully'
     })
 
 def register_routes(app):
@@ -760,4 +919,157 @@ def generate_upcoming_events(symbol):
         "date": random_future_date(),
         "type": random.choice(event_types),
         "description": f"{symbol} {random.choice(event_types).lower()} scheduled"
-    } for _ in range(num_events)] 
+    } for _ in range(num_events)]
+
+def generate_mock_13f_filings(limit=20, cik=None):
+    """Generate mock 13F filings data for testing purposes"""
+    institutions = [
+        {"name": "BlackRock Inc.", "cik": "1364742"},
+        {"name": "Vanguard Group Inc.", "cik": "102909"},
+        {"name": "State Street Corporation", "cik": "93751"},
+        {"name": "Fidelity Management & Research", "cik": "315066"},
+        {"name": "JPMorgan Chase & Co.", "cik": "19617"},
+        {"name": "Invesco Ltd.", "cik": "914208"},
+        {"name": "Capital Research Global Investors", "cik": "1736291"},
+        {"name": "Bank of America Corporation", "cik": "70858"},
+        {"name": "Goldman Sachs Group Inc.", "cik": "886982"},
+        {"name": "Morgan Stanley", "cik": "895421"}
+    ]
+    
+    symbols = ["AAPL", "MSFT", "AMZN", "GOOGL", "META", "TSLA", "NVDA", "BRK.B", "UNH", "JPM"]
+    
+    filings = []
+    end_date = datetime.now()
+    
+    for i in range(limit):
+        # Random institution
+        institution = random.choice(institutions)
+        
+        # Random filing date
+        filing_date = end_date - timedelta(days=random.randint(1, 90))
+        
+        # Random holdings for the filing
+        holdings = []
+        for _ in range(random.randint(5, 20)):
+            symbol = random.choice(symbols)
+            holdings.append({
+                "name": symbol,
+                "value": random.randint(1000000, 1000000000),
+                "shares": random.randint(10000, 10000000),
+                "percentage": round(random.uniform(0.01, 10.0), 2)
+            })
+        
+        # Create filing
+        filing = {
+            "id": str(i+1),
+            "accessionNo": f"0001{random.randint(100000, 999999)}-{random.randint(10, 99)}-{random.randint(100000, 999999)}",
+            "symbol": "",  # Not applicable for 13F (it's about the institution, not a specific stock)
+            "companyName": institution["name"],
+            "cik": institution["cik"],
+            "filedAt": filing_date.strftime("%Y-%m-%d"),
+            "reportDate": (filing_date - timedelta(days=random.randint(1, 30))).strftime("%Y-%m-%d"),
+            "form": "13F-HR",
+            "holdings": holdings,
+            "url": f"https://www.sec.gov/Archives/edgar/data/{institution['cik']}/000{random.randint(100000000, 999999999)}/form13f.html",
+            "dataSource": "mock"
+        }
+        
+        # Filter by CIK if provided
+        if cik is None or institution["cik"] == cik:
+            filings.append(filing)
+    
+    return filings
+
+def generate_mock_insider_trading(symbol=None, limit=20):
+    """Generate mock insider trading data for testing purposes"""
+    if not symbol:
+        symbols = ["AAPL", "MSFT", "AMZN", "GOOGL", "META", "TSLA", "NVDA", "BRK.B", "UNH", "JPM"]
+    else:
+        symbols = [symbol]
+    
+    # Executive positions
+    positions = ["CEO", "CFO", "CTO", "COO", "Director", "VP", "SVP", "President", "Chairman", "Board Member"]
+    
+    # Transaction types
+    transaction_types = [
+        {"code": "P", "description": "Open market or private purchase"},
+        {"code": "S", "description": "Open market or private sale"},
+        {"code": "A", "description": "Grant or award"},
+        {"code": "D", "description": "Sale back to issuer"},
+        {"code": "F", "description": "Payment of exercise price or tax liability by delivering securities"}
+    ]
+    
+    # Generate insider names
+    first_names = ["John", "Jane", "Robert", "Mary", "William", "Patricia", "James", "Jennifer", "Michael", "Linda"]
+    last_names = ["Smith", "Johnson", "Williams", "Brown", "Jones", "Miller", "Davis", "Garcia", "Rodriguez", "Wilson"]
+    
+    transactions = []
+    end_date = datetime.now()
+    
+    for i in range(limit):
+        # Random symbol if not provided
+        stock_symbol = random.choice(symbols)
+        
+        # Random company name based on symbol
+        company_names = {
+            "AAPL": "Apple Inc.",
+            "MSFT": "Microsoft Corporation",
+            "AMZN": "Amazon.com Inc.",
+            "GOOGL": "Alphabet Inc.",
+            "META": "Meta Platforms Inc.",
+            "TSLA": "Tesla Inc.",
+            "NVDA": "NVIDIA Corporation",
+            "BRK.B": "Berkshire Hathaway Inc.",
+            "UNH": "UnitedHealth Group Inc.",
+            "JPM": "JPMorgan Chase & Co."
+        }
+        company_name = company_names.get(stock_symbol, f"{stock_symbol} Inc.")
+        
+        # Random insider name
+        first_name = random.choice(first_names)
+        last_name = random.choice(last_names)
+        insider_name = f"{first_name} {last_name}"
+        
+        # Random position
+        position = random.choice(positions)
+        
+        # Random transaction details
+        transaction_type = random.choice(transaction_types)
+        is_buy = transaction_type["code"] in ["P", "A"]
+        direction = "buy" if is_buy else "sell"
+        
+        # Random dates
+        filing_date = end_date - timedelta(days=random.randint(1, 30))
+        transaction_date = filing_date - timedelta(days=random.randint(1, 5))
+        
+        # Random price and shares
+        base_prices = {
+            "AAPL": 170, "MSFT": 350, "AMZN": 180, "GOOGL": 170, 
+            "META": 480, "TSLA": 200, "NVDA": 850, "BRK.B": 350,
+            "UNH": 500, "JPM": 180
+        }
+        price = round(base_prices.get(stock_symbol, 100) * random.uniform(0.9, 1.1), 2)
+        shares = random.randint(1000, 50000)
+        value = round(price * shares, 2)
+        
+        transaction = {
+            "id": str(i+1),
+            "symbol": stock_symbol,
+            "companyName": company_name,
+            "insider_name": insider_name,
+            "position": position,
+            "transaction_date": transaction_date.strftime("%Y-%m-%d"),
+            "filing_date": filing_date.strftime("%Y-%m-%d"),
+            "transaction_type": transaction_type["code"],
+            "transaction_description": transaction_type["description"],
+            "direction": direction,
+            "shares": shares,
+            "price": price,
+            "value": value,
+            "url": f"https://www.sec.gov/Archives/edgar/data/000{random.randint(100000, 999999)}/form4.html",
+            "dataSource": "mock"
+        }
+        
+        transactions.append(transaction)
+    
+    return transactions 

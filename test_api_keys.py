@@ -45,9 +45,9 @@ def test_unusual_whales_api():
         if not api_key:
             return False, "Unusual Whales API key not found in environment variables"
         
-        # Test endpoint (adjust based on actual API endpoint)
+        # Use the correct API endpoint
         response = requests.get(
-            'https://api.unusualwhales.com/api/flow',
+            'https://api.unusualwhales.com/api/options/flow/recent',
             headers={'Authorization': f'Bearer {api_key}'},
             timeout=10
         )

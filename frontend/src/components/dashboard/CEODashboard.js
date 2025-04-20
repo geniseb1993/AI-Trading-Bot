@@ -284,7 +284,7 @@ const CEODashboard = ({ data }) => {
 
   return (
     <Box sx={{ py: 2 }}>
-      <Box sx={{ mb: 3 }}>
+    <Box sx={{ mb: 3 }}>
         <Typography variant="h5" component="h2" gutterBottom>
           CEO Command Center
         </Typography>
@@ -299,12 +299,12 @@ const CEODashboard = ({ data }) => {
           <Chip 
             label="Sample Data" 
             color="warning" 
-            size="small" 
+          size="small"
             sx={{ mb: 1 }} 
           />
         )}
       </Box>
-      
+
       <Grid container spacing={3}>
         <Grid item xs={12} md={4}>
           <Paper 
@@ -338,7 +338,7 @@ const CEODashboard = ({ data }) => {
           <Paper 
             elevation={0} 
             sx={{ 
-              height: '100%', 
+              height: '100%',
               borderRadius: 2,
               bgcolor: 'background.default',
               border: `1px solid ${theme.palette.divider}`
@@ -363,9 +363,9 @@ const renderPerformanceMetrics = (dashboardData) => {
             $
           </Box>
         </Box>
-        Performance Metrics
-      </Typography>
-      
+                Performance Metrics
+              </Typography>
+
       <Grid container spacing={3}>
         <Grid item xs={6} sm={3}>
           <Typography variant="subtitle2" color="text.secondary">
@@ -380,18 +380,18 @@ const renderPerformanceMetrics = (dashboardData) => {
             }}
           >
             {metrics.dailyPnL >= 0 ? '+' : ''}{metrics.dailyPnL}%
-          </Typography>
-        </Grid>
-        
+                  </Typography>
+                </Grid>
+                
         <Grid item xs={6} sm={3}>
           <Typography variant="subtitle2" color="text.secondary">
             Win Rate
           </Typography>
           <Typography variant="h6">
             {metrics.winRate}%
-          </Typography>
-        </Grid>
-        
+                  </Typography>
+                </Grid>
+
         <Grid item xs={6} sm={3}>
           <Typography variant="subtitle2" color="text.secondary">
             Weekly P&L
@@ -405,21 +405,21 @@ const renderPerformanceMetrics = (dashboardData) => {
             }}
           >
             {metrics.weeklyPnL >= 0 ? '+' : ''}{metrics.weeklyPnL}%
-          </Typography>
-        </Grid>
-        
+                  </Typography>
+                </Grid>
+
         <Grid item xs={6} sm={3}>
           <Typography variant="subtitle2" color="text.secondary">
             Total Trades
           </Typography>
           <Typography variant="h6">
             {metrics.totalTrades}
-          </Typography>
-        </Grid>
-      </Grid>
-      
+                  </Typography>
+                </Grid>
+              </Grid>
+
       <Grid container spacing={3} sx={{ mt: 1 }}>
-        <Grid item xs={6}>
+                <Grid item xs={6}>
           <Typography variant="subtitle2" color="text.secondary">
             Avg Win
           </Typography>
@@ -432,13 +432,13 @@ const renderPerformanceMetrics = (dashboardData) => {
             }}
           >
             +{metrics.avgWin}%
-          </Typography>
-        </Grid>
-        
-        <Grid item xs={6}>
+                  </Typography>
+                </Grid>
+
+                <Grid item xs={6}>
           <Typography variant="subtitle2" color="text.secondary">
             Avg Loss
-          </Typography>
+                  </Typography>
           <Typography 
             variant="h6" 
             sx={{ 
@@ -474,18 +474,18 @@ const renderRiskManagement = (dashboardData, settings, handleSettingChange) => {
             !
           </Box>
         </Box>
-        Risk Management
-      </Typography>
-      
+                Risk Management
+              </Typography>
+
       <Typography variant="subtitle2" color="text.secondary" gutterBottom>
         Current Exposure
-      </Typography>
+                </Typography>
       <Box 
-        sx={{ 
+                  sx={{ 
           width: '100%', 
-          height: 8, 
+                    height: 8,
           bgcolor: 'background.paper',
-          borderRadius: 1,
+                    borderRadius: 1,
           overflow: 'hidden',
           mb: 2
         }}
@@ -497,73 +497,73 @@ const renderRiskManagement = (dashboardData, settings, handleSettingChange) => {
             bgcolor: riskData.currentExposure > 70 
               ? 'error.main' 
               : riskData.currentExposure > 50 
-                ? 'warning.main' 
+                        ? 'warning.main' 
                 : 'success.main',
             transition: 'width 0.5s ease'
-          }} 
-        />
-      </Box>
-      
+                  }}
+                />
+              </Box>
+
       <Grid container spacing={2}>
-        <Grid item xs={6}>
+                <Grid item xs={6}>
           <Typography variant="subtitle2" color="text.secondary" gutterBottom>
             Market Condition
           </Typography>
-          <Chip 
+                  <Chip 
             label={riskData.marketCondition} 
             color={riskData.marketCondition === 'bearish' ? 'error' : 
                   riskData.marketCondition === 'bullish' ? 'success' : 'default'}
-            size="small"
+                    size="small"
             sx={{ textTransform: 'capitalize' }}
-          />
-        </Grid>
-        
-        <Grid item xs={6}>
+                  />
+                </Grid>
+
+                <Grid item xs={6}>
           <Typography variant="subtitle2" color="text.secondary" gutterBottom>
             Risk Level
           </Typography>
-          <Chip 
+                  <Chip 
             label={riskData.riskLevel} 
             color={riskData.riskLevel === 'high' ? 'error' : 
                   riskData.riskLevel === 'moderate' ? 'warning' : 'success'}
-            size="small"
+                    size="small"
             sx={{ textTransform: 'capitalize' }}
-          />
-        </Grid>
-      </Grid>
-      
+                  />
+                </Grid>
+              </Grid>
+
       <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 2, mb: 1 }}>
         Controls
       </Typography>
-      <Grid container spacing={1}>
+              <Grid container spacing={1}>
         <Grid item xs={6}>
-          <FormControlLabel
-            control={
-              <Switch 
+                  <FormControlLabel 
+                    control={
+                      <Switch 
                 size="small" 
                 checked={riskData.controls.autoTrading} 
                 color="primary"
-                onChange={(e) => handleSettingChange('autoTrading', e.target.checked)}
-              />
-            }
-            label="Auto Trading"
-          />
-        </Grid>
+                        onChange={(e) => handleSettingChange('autoTrading', e.target.checked)}
+                      />
+                    } 
+                    label="Auto Trading" 
+                  />
+                </Grid>
         
         <Grid item xs={6}>
-          <FormControlLabel
-            control={
-              <Switch 
+                  <FormControlLabel 
+                    control={
+                      <Switch 
                 size="small" 
                 checked={riskData.controls.odteOnly} 
                 color="primary"
-                onChange={(e) => handleSettingChange('odteOnly', e.target.checked)}
-              />
-            }
-            label="0DTE Only"
-          />
-        </Grid>
-      </Grid>
+                        onChange={(e) => handleSettingChange('odteOnly', e.target.checked)}
+                      />
+                    } 
+                    label="0DTE Only" 
+                  />
+                </Grid>
+              </Grid>
     </Box>
   );
 };
@@ -627,31 +627,31 @@ const renderTopTradeSetups = (dashboardData, handleApproveSetup, handleRejectSet
             </Box>
             
             <Box sx={{ display: 'flex', ml: 1 }}>
-              <Tooltip title="Approve">
-                <IconButton 
-                  edge="end" 
-                  size="small" 
-                  color="success"
-                  onClick={() => handleApproveSetup(setup.id)}
-                  sx={{ mr: 1 }}
-                >
-                  <ThumbUp />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Reject">
-                <IconButton 
-                  edge="end" 
-                  size="small" 
-                  color="error"
-                  onClick={() => handleRejectSetup(setup.id)}
-                >
-                  <ThumbDown />
-                </IconButton>
-              </Tooltip>
-            </Box>
+                          <Tooltip title="Approve">
+                            <IconButton 
+                              edge="end" 
+                              size="small" 
+                              color="success"
+                              onClick={() => handleApproveSetup(setup.id)}
+                              sx={{ mr: 1 }}
+                            >
+                              <ThumbUp />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Reject">
+                            <IconButton 
+                              edge="end" 
+                              size="small" 
+                              color="error"
+                              onClick={() => handleRejectSetup(setup.id)}
+                            >
+                              <ThumbDown />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
           </Paper>
         ))}
-      </Box>
+                    </Box>
     </Box>
   );
 };

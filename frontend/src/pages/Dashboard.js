@@ -75,7 +75,7 @@ const DashboardCard = ({ title, children, headerAction, isRealData = false }) =>
         }}
       >
         <DataLabelContainer type={isRealData ? 'real' : 'mock'}>
-          {children}
+        {children}
         </DataLabelContainer>
       </CardContent>
     </Card>
@@ -217,8 +217,8 @@ const Dashboard = () => {
       } catch (fallbackError) {
         console.error('Failed to load data from public folder:', fallbackError);
         // Use mock data as last resort
-        const mockData = generateMockData();
-        setDashboardData(mockData);
+      const mockData = generateMockData();
+      setDashboardData(mockData);
       }
     } finally {
       setLoading(false);
@@ -635,18 +635,18 @@ const Dashboard = () => {
         if (dualBotResponse.data && dualBotResponse.data.success) {
           console.log('Dual bot status loaded');
           const botStatus = dualBotResponse.data.status;
-          data.botStatus = [{
-            id: 'dual-bot-1',
-            name: 'Dual Bot System',
+        data.botStatus = [{
+          id: 'dual-bot-1',
+          name: 'Dual Bot System',
             status: botStatus.status || 'active',
-            lastTrade: botStatus.last_updated,
+          lastTrade: botStatus.last_updated,
             pnl24h: parseFloat(botStatus.pnl_24h || 0),
             activeStrategies: parseInt(botStatus.active_strategies || 1)
           }];
           data.botStatus.isRealData = true;
-        }
-      } catch (error) {
-        console.log('Dual-bot status API error:', error.message);
+      }
+    } catch (error) {
+      console.log('Dual-bot status API error:', error.message);
         
         // Try the bot/status endpoint from logs
         try {
@@ -696,18 +696,18 @@ const Dashboard = () => {
         console.log('Alerts API error:', error.message);
         
         // Try dual-bot/signals as fallback for alerts
-        try {
-          const signalsResponse = await axios.get(`${API_BASE_URL}/dual-bot/signals`, { timeout: 3000 });
-          if (signalsResponse.data && signalsResponse.data.success && signalsResponse.data.signals) {
-            console.log('Dual-bot signals loaded');
-            const allSignals = signalsResponse.data.signals.signals || [];
-            data.recentAlerts = allSignals.slice(0, 5).map(signal => ({
-              id: `alert-${signal.symbol}-${new Date().getTime()}`,
-              title: `${signal.type} Signal`,
-              message: `${signal.symbol} triggered a ${signal.type.toLowerCase()} signal`,
-              timestamp: new Date().toISOString(),
-              type: 'info'
-            }));
+    try {
+      const signalsResponse = await axios.get(`${API_BASE_URL}/dual-bot/signals`, { timeout: 3000 });
+      if (signalsResponse.data && signalsResponse.data.success && signalsResponse.data.signals) {
+        console.log('Dual-bot signals loaded');
+        const allSignals = signalsResponse.data.signals.signals || [];
+        data.recentAlerts = allSignals.slice(0, 5).map(signal => ({
+          id: `alert-${signal.symbol}-${new Date().getTime()}`,
+          title: `${signal.type} Signal`,
+          message: `${signal.symbol} triggered a ${signal.type.toLowerCase()} signal`,
+          timestamp: new Date().toISOString(),
+          type: 'info'
+        }));
             data.recentAlerts.isRealData = true;
           }
         } catch (error) {
@@ -797,7 +797,7 @@ const Dashboard = () => {
           axios.get('/data/dashboard/performance_history.json').then(response => {
             if (response.data && !data.performance) {
               console.log('Performance history loaded from JSON file');
-              data.performance = {
+        data.performance = {
                 history: response.data,
                 isRealData: true
               };
@@ -840,7 +840,7 @@ const Dashboard = () => {
             }
           }).catch(() => console.log('Failed to load CEO dashboard JSON'))
         ]);
-      } catch (error) {
+    } catch (error) {
         console.log('Error loading CSV/JSON files:', error.message);
       }
     }
@@ -1083,7 +1083,7 @@ const Dashboard = () => {
               >
                 <PortfolioValue portfolioData={dashboardData?.portfolio} />
               </DashboardCard>
-            </Box>
+                    </Box>
 
             <Box sx={{ flex: '2 1 0', width: '100%' }}>
               <DashboardCard 
@@ -1096,7 +1096,7 @@ const Dashboard = () => {
                 />
               </DashboardCard>
             </Box>
-          </Box>
+        </Box>
           
           {/* Row 2: Active Trades & Bot Status */}
           <Box 
@@ -1111,7 +1111,7 @@ const Dashboard = () => {
                 title="Active Trades" 
                 isRealData={dashboardData?.activeTrades?.isRealData || false}
               >
-                <ActiveTrades trades={dashboardData?.activeTrades} />
+                  <ActiveTrades trades={dashboardData?.activeTrades} />
               </DashboardCard>
             </Box>
             
@@ -1130,7 +1130,7 @@ const Dashboard = () => {
             sx={{ 
               display: 'flex',
               flexDirection: { xs: 'column', lg: 'row' },
-              gap: 3 
+              gap: 3
             }}
           >
             <Box sx={{ flex: '1 1 0', width: '100%' }}>
@@ -1151,7 +1151,7 @@ const Dashboard = () => {
               </DashboardCard>
             </Box>
           </Box>
-          
+
           {/* Row 4: CEO Dashboard */}
           <Box>
             <DashboardCard 

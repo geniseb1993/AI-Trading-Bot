@@ -100,7 +100,7 @@ const Backtest = () => {
           
           // Check if the API indicated this is real data
           if (response.data.isRealData) {
-            setDataSource('api');
+          setDataSource('api');
           } else if (response.data.source && response.data.source.includes('csv')) {
             setDataSource('api'); // Treat CSV data from API as real data
           } else {
@@ -545,23 +545,23 @@ const Backtest = () => {
               <MenuItem value="1y">Last Year</MenuItem>
             </TextField>
             
-            <Button 
-              variant="contained" 
-              color="primary" 
+        <Button 
+          variant="contained" 
+          color="primary" 
               startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <Refresh />}
-              onClick={handleRefresh}
+          onClick={handleRefresh}
               disabled={loading}
-              sx={{ fontFamily: 'Orbitron' }}
-            >
+          sx={{ fontFamily: 'Orbitron' }}
+        >
               Refresh Data
-            </Button>
+        </Button>
             
             {lastRefreshed && (
               <Typography variant="caption" sx={{ display: 'flex', alignItems: 'flex-end', ml: 2, color: 'text.secondary' }}>
                 Last updated: {lastRefreshed.toLocaleString()}
               </Typography>
             )}
-          </Box>
+      </Box>
         </Box>
 
         {/* Tabs Navigation */}
@@ -999,7 +999,7 @@ const Backtest = () => {
                 <CardHeader 
                   title="Trade Analytics" 
                   titleTypographyProps={{ 
-                    fontFamily: 'Orbitron',
+                  fontFamily: 'Orbitron',
                     fontSize: '1.1rem'
                   }} 
                   action={
@@ -1165,54 +1165,54 @@ const Backtest = () => {
                       <TableBody>
                         {backtestResults.length > 0 ? (
                           backtestResults.map((trade, index) => (
-                            <TableRow key={index} 
+                          <TableRow key={index} 
+                            sx={{ 
+                              bgcolor: trade.trade_outcome === 'win' 
+                                ? alpha(theme.palette.success.main, 0.1) 
+                                : alpha(theme.palette.error.main, 0.1) 
+                            }}
+                          >
+                            <TableCell>{trade.symbol}</TableCell>
+                            <TableCell>
+                              {trade.direction === 'long' ? 'Long' : 'Short'}
+                            </TableCell>
+                            <TableCell>{trade.entry_date}</TableCell>
+                            <TableCell>{trade.exit_date}</TableCell>
+                            <TableCell align="right">${trade.entry_price}</TableCell>
+                            <TableCell align="right">${trade.exit_price}</TableCell>
+                            <TableCell align="right">{trade.quantity}</TableCell>
+                            <TableCell align="right" 
                               sx={{ 
-                                bgcolor: trade.trade_outcome === 'win' 
-                                  ? alpha(theme.palette.success.main, 0.1) 
-                                  : alpha(theme.palette.error.main, 0.1) 
+                                color: parseFloat(trade.profit) >= 0 
+                                  ? theme.palette.success.main 
+                                  : theme.palette.error.main,
+                                fontWeight: 'bold'
                               }}
                             >
-                              <TableCell>{trade.symbol}</TableCell>
-                              <TableCell>
-                                {trade.direction === 'long' ? 'Long' : 'Short'}
-                              </TableCell>
-                              <TableCell>{trade.entry_date}</TableCell>
-                              <TableCell>{trade.exit_date}</TableCell>
-                              <TableCell align="right">${trade.entry_price}</TableCell>
-                              <TableCell align="right">${trade.exit_price}</TableCell>
-                              <TableCell align="right">{trade.quantity}</TableCell>
-                              <TableCell align="right" 
+                              ${parseFloat(trade.profit).toFixed(2)}
+                            </TableCell>
+                            <TableCell>
+                              <Box 
                                 sx={{ 
-                                  color: parseFloat(trade.profit) >= 0 
+                                  bgcolor: trade.trade_outcome === 'win' 
+                                    ? alpha(theme.palette.success.main, 0.2) 
+                                    : alpha(theme.palette.error.main, 0.2),
+                                  color: trade.trade_outcome === 'win' 
                                     ? theme.palette.success.main 
                                     : theme.palette.error.main,
+                                  py: 0.5,
+                                  px: 1,
+                                  borderRadius: 1,
+                                  display: 'inline-block',
+                                  fontSize: '0.75rem',
                                   fontWeight: 'bold'
                                 }}
                               >
-                                ${parseFloat(trade.profit).toFixed(2)}
-                              </TableCell>
-                              <TableCell>
-                                <Box 
-                                  sx={{ 
-                                    bgcolor: trade.trade_outcome === 'win' 
-                                      ? alpha(theme.palette.success.main, 0.2) 
-                                      : alpha(theme.palette.error.main, 0.2),
-                                    color: trade.trade_outcome === 'win' 
-                                      ? theme.palette.success.main 
-                                      : theme.palette.error.main,
-                                    py: 0.5,
-                                    px: 1,
-                                    borderRadius: 1,
-                                    display: 'inline-block',
-                                    fontSize: '0.75rem',
-                                    fontWeight: 'bold'
-                                  }}
-                                >
-                                  {trade.trade_outcome === 'win' ? 'WIN' : 'LOSS'}
-                                </Box>
-                              </TableCell>
-                              <TableCell>{trade.exit_reason}</TableCell>
-                            </TableRow>
+                                {trade.trade_outcome === 'win' ? 'WIN' : 'LOSS'}
+                              </Box>
+                            </TableCell>
+                            <TableCell>{trade.exit_reason}</TableCell>
+                          </TableRow>
                           ))
                         ) : (
                           <TableRow>
@@ -1303,7 +1303,7 @@ const Backtest = () => {
                           <MenuItem value="csv">CSV File Data</MenuItem>
                           <MenuItem value="sample">Sample Demo Data</MenuItem>
                         </TextField>
-                      </Box>
+                              </Box>
                       
                       <Box sx={{ mb: 4 }}>
                         <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
