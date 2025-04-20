@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 import logging
 import os
 from dotenv import load_dotenv
+import pandas as pd
 
 # Load environment variables
 load_dotenv()
@@ -24,6 +25,14 @@ logger = logging.getLogger(__name__)
 
 # Create the Flask app with CORS support
 app = Flask(__name__)
+
+# Enable CORS
+try:
+    from flask_cors import CORS
+    CORS(app)
+    logger.info("CORS enabled successfully")
+except ImportError:
+    logger.warning("flask_cors not installed, CORS will not be enabled")
 
 # Get API keys from environment variables
 UNUSUAL_WHALES_API_KEY = os.environ.get('UNUSUAL_WHALES_API_KEY')
@@ -139,15 +148,7 @@ if UNUSUAL_WHALES_API_KEY:
     except Exception as e:
         logger.error(f"Failed to initialize Unusual Whales API client: {str(e)}")
 
-# Enable CORS
-try:
-    from flask_cors import CORS
-    CORS(app)
-    logger.info("CORS enabled successfully")
-except ImportError:
-    logger.warning("flask_cors not installed, CORS will not be enabled")
-
-# Import and register blueprints for modular routes
+# Try importing the blueprint from market_analysis_routes
 try:
     # Import the blueprint from market_analysis_routes
     from api.market_analysis_routes import bp as market_analysis_bp
@@ -162,6 +163,53 @@ try:
     logger.info("Successfully registered market analysis blueprint")
 except Exception as e:
     logger.error(f"Failed to register market analysis blueprint: {str(e)}")
+
+# Import and register CEO dashboard routes
+try:
+    # Make sure current directory is in the path
+    import sys
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    
+    # Now try to import
+    from api.routes.ceo_dashboard_routes import ceo_dashboard_bp
+    app.register_blueprint(ceo_dashboard_bp)
+    logger.info("Successfully registered CEO dashboard routes in minimal server")
+except Exception as e:
+    logger.error(f"Error registering CEO dashboard routes in minimal server: {e}")
+
+# Import and register TradingView routes
+try:
+    # First try importing directly
+    try:
+        print("Importing TradingView routes for minimal server...")
+        from api.routes.tradingview_integration import tradingview_bp
+        has_tradingview = True
+    except ImportError:
+        # Try alternative path
+        print("Trying alternative path for TradingView routes...")
+        from routes.tradingview_integration import tradingview_bp
+        has_tradingview = True
+    
+    # Register the blueprint
+    if has_tradingview:
+        print("Registering TradingView blueprint in minimal server...")
+        app.register_blueprint(tradingview_bp)
+        print("✅ Successfully registered TradingView blueprint in minimal server")
+        
+        # Add a direct test route to verify registration
+        @app.route('/api/tradingview-minimal-test', methods=['GET'])
+        def tradingview_minimal_test():
+            print("TradingView minimal test route called")
+            return jsonify({
+                'success': True,
+                'message': 'TradingView minimal test route is working',
+                'timestamp': datetime.now().isoformat()
+            })
+except Exception as e:
+    print(f"❌ Error registering TradingView routes in minimal server: {e}")
+    import traceback
+    traceback.print_exc()
+    logger.error(f"Failed to register TradingView routes: {str(e)}")
 
 @app.route('/api/test', methods=['GET'])
 def test_api():
@@ -298,6 +346,116 @@ def generate_mock_institutional_flow_data(limit=20, symbols=None, flow_type=None
         flow_data.append(flow_item)
     
     return flow_data
+
+@app.route('/api/get-saved-signals', methods=['GET'])
+def get_saved_signals():
+    """Get saved buy and short signals"""
+    try:
+        # Check both the current directory and data directory
+        data_dir = os.path.join(os.getcwd(), 'data')
+        buy_file = os.path.join(data_dir, 'buy_signals.csv')
+        short_file = os.path.join(data_dir, 'short_signals.csv')
+        
+        print(f"Looking for signal files at:")
+        print(f" - Buy signals: {buy_file}")
+        print(f" - Short signals: {short_file}")
+        
+        if os.path.exists(buy_file) and os.path.exists(short_file):
+            print(f"Signal files found! Reading data...")
+            
+            # Check file sizes to ensure they're not empty
+            buy_size = os.path.getsize(buy_file)
+            short_size = os.path.getsize(short_file)
+            print(f"File sizes - Buy: {buy_size} bytes, Short: {short_size} bytes")
+            
+            if buy_size == 0 or short_size == 0:
+                print("Warning: One or both signal files are empty!")
+                return jsonify({
+                    'success': False,
+                    'error': 'Signal files exist but are empty',
+                    'buy_signals': [],
+                    'short_signals': []
+                })
+                
+            try:
+                buy_signals = pd.read_csv(buy_file)
+                short_signals = pd.read_csv(short_file)
+                
+                # Verify we have valid dataframes
+                print(f"Read {len(buy_signals)} buy signals and {len(short_signals)} short signals")
+                
+                # Convert to records format for JSON serialization
+                buy_records = buy_signals.to_dict('records')
+                short_records = short_signals.to_dict('records')
+                
+                return jsonify({
+                    'success': True,
+                    'buy_signals': buy_records,
+                    'short_signals': short_records
+                })
+            except pd.errors.EmptyDataError:
+                print("Error: CSV files contain no data")
+                return jsonify({
+                    'success': False,
+                    'error': 'CSV files contain no data',
+                    'buy_signals': [],
+                    'short_signals': []
+                })
+            except pd.errors.ParserError as e:
+                print(f"Error parsing CSV files: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Error parsing CSV files: {str(e)}',
+                    'buy_signals': [],
+                    'short_signals': []
+                })
+        else:
+            # Return mock data as fallback
+            print("Signal files not found, using mock data")
+            missing_files = []
+            if not os.path.exists(buy_file):
+                missing_files.append("buy_signals.csv")
+            if not os.path.exists(short_file):
+                missing_files.append("short_signals.csv")
+                
+            print(f"Missing files: {', '.join(missing_files)}")
+            
+            buy_signals = pd.DataFrame({
+                'date': [datetime.now().strftime('%Y-%m-%d')],
+                'symbol': ['AAPL'],
+                'signal_score': [8.5],
+                'close': [180.0],
+                'ema_9': [175.0],
+                'ema_21': [170.0],
+                'volume': [50000000]
+            })
+            short_signals = pd.DataFrame({
+                'date': [datetime.now().strftime('%Y-%m-%d')],
+                'symbol': ['TSLA'],
+                'signal_score': [-8.2],
+                'close': [220.0],
+                'ema_9': [225.0],
+                'ema_21': [230.0],
+                'volume': [60000000]
+            })
+            
+            return jsonify({
+                'success': True,
+                'buy_signals': buy_signals.to_dict('records'),
+                'short_signals': short_signals.to_dict('records'),
+                'is_mock': True,
+                'message': f"Using mock data. Missing files: {', '.join(missing_files)}"
+            })
+    except Exception as e:
+        logger.error(f"Error in get-saved-signals: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'buy_signals': [],
+            'short_signals': []
+        }), 500
 
 if __name__ == '__main__':
     try:

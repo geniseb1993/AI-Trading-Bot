@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signals API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: #121212;
+            color: #eee;
+        }
+        h1, h2 {
+            color: #4caf50;
+        }
+        button {
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        pre {
+            background-color: #1e1e1e;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            color: #e6e6e6;
+        }
+        .signal-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .signal-card {
+            background-color: #1e1e1e;
+            border-radius: 5px;
+            padding: 15px;
+            border-left: 4px solid #4caf50;
+        }
+        .signal-card.short {
+            border-left: 4px solid #f44336;
+        }
+        .symbol {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .score {
+            font-weight: bold;
+        }
+        .buy .score {
+            color: #4caf50;
+        }
+        .short .score {
+            color: #f44336;
+        }
+        .details {
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #bbb;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: rgba(76, 175, 80, 0.2);
+            border: 1px solid #4caf50;
+        }
+        .error {
+            background-color: rgba(244, 67, 54, 0.2);
+            border: 1px solid #f44336;
+        }
+    </style>
+</head>
+<body>
+    <h1>Trading Signals API Test</h1>
+    
+    <button id="fetchBtn">Fetch Signals</button>
+    <button id="fetchMockBtn">Fetch Mock Signals</button>
+    
+    <div id="status" class="status"></div>
+    
+    <div id="container">
+        <h2>Buy Signals</h2>
+        <div id="buySignals" class="signal-grid"></div>
+        
+        <h2>Short Signals</h2>
+        <div id="shortSignals" class="signal-grid"></div>
+        
+        <h2>Raw Response</h2>
+        <pre id="rawResponse"></pre>
+    </div>
+
+    <script>
+        document.getElementById('fetchBtn').addEventListener('click', () => {
+            fetchSignals('/api/get-saved-signals');
+        });
+        
+        document.getElementById('fetchMockBtn').addEventListener('click', () => {
+            fetchMockSignals();
+        });
+        
+        async function fetchSignals(url) {
+            try {
+                const statusEl = document.getElementById('status');
+                statusEl.innerHTML = 'Fetching signals...';
+                statusEl.className = 'status';
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                document.getElementById('rawResponse').textContent = JSON.stringify(data, null, 2);
+                
+                if (data.success) {
+                    statusEl.innerHTML = 'Successfully fetched signals!';
+                    statusEl.className = 'status success';
+                    
+                    renderSignals(data.buy_signals, 'buySignals', 'buy');
+                    renderSignals(data.short_signals, 'shortSignals', 'short');
+                } else {
+                    statusEl.innerHTML = `Error: ${data.error || 'Unknown error'}`;
+                    statusEl.className = 'status error';
+                }
+            } catch (error) {
+                document.getElementById('status').innerHTML = `Error: ${error.message}`;
+                document.getElementById('status').className = 'status error';
+                console.error('Error fetching signals:', error);
+            }
+        }
+        
+        function fetchMockSignals() {
+            const mockData = {
+                success: true,
+                buy_signals: [
+                    { date: '2025-04-16', symbol: 'SPY', signal_score: 8.19, close: 525.66, ema_9: 525.66, ema_21: 525.66, volume: 83249030 },
+                    { date: '2025-04-16', symbol: 'AAPL', signal_score: 7.90, close: 194.27, ema_9: 194.27, ema_21: 194.27, volume: 59669999 },
+                    { date: '2025-04-16', symbol: 'MSFT', signal_score: 8.99, close: 371.61, ema_9: 371.61, ema_21: 371.61, volume: 21946406 },
+                    { date: '2025-04-16', symbol: 'TSLA', signal_score: 8.74, close: 241.55, ema_9: 241.55, ema_21: 241.55, volume: 112255697 },
+                    { date: '2025-04-16', symbol: 'NVDA', signal_score: 9.33, close: 104.49, ema_9: 104.49, ema_21: 104.49, volume: 396238244 }
+                ],
+                short_signals: [
+                    { date: '2025-04-16', symbol: 'IBM', signal_score: -9.13, close: 238.57, ema_9: 238.57, ema_21: 238.57, volume: 4870268 },
+                    { date: '2025-04-16', symbol: 'INTC', signal_score: -9.39, close: 19.23, ema_9: 19.23, ema_21: 19.23, volume: 89311716 },
+                    { date: '2025-04-16', symbol: 'BA', signal_score: -8.64, close: 156.47, ema_9: 156.47, ema_21: 156.47, volume: 6803289 },
+                    { date: '2025-04-16', symbol: 'GE', signal_score: -9.01, close: 182.45, ema_9: 182.45, ema_21: 182.45, volume: 5128031 },
+                    { date: '2025-04-16', symbol: 'XOM', signal_score: -8.83, close: 104.19, ema_9: 104.19, ema_21: 104.19, volume: 13602717 }
+                ]
+            };
+            
+            document.getElementById('rawResponse').textContent = JSON.stringify(mockData, null, 2);
+            document.getElementById('status').innerHTML = 'Successfully fetched mock signals!';
+            document.getElementById('status').className = 'status success';
+            
+            renderSignals(mockData.buy_signals, 'buySignals', 'buy');
+            renderSignals(mockData.short_signals, 'shortSignals', 'short');
+        }
+        
+        function renderSignals(signals, containerId, type) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            
+            if (!signals || signals.length === 0) {
+                container.innerHTML = '<p>No signals found</p>';
+                return;
+            }
+            
+            signals.forEach(signal => {
+                const card = document.createElement('div');
+                card.className = `signal-card ${type}`;
+                
+                card.innerHTML = `
+                    <div class="symbol">${signal.symbol}</div>
+                    <div class="score">Score: ${signal.signal_score}</div>
+                    <div class="details">
+                        <div>Date: ${signal.date}</div>
+                        <div>Close: ${signal.close}</div>
+                        <div>EMA9: ${parseFloat(signal.ema_9).toFixed(2)}</div>
+                        <div>EMA21: ${parseFloat(signal.ema_21).toFixed(2)}</div>
+                        <div>Volume: ${signal.volume.toLocaleString()}</div>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+    </script>
+</body>
+</html> 

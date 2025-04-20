@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Box, CircularProgress, Typography, useTheme, Alert, Button, IconButton, Tooltip, alpha } from '@mui/material';
-import { Fullscreen, ZoomIn, ZoomOut } from '@mui/icons-material';
+import { Fullscreen, ZoomIn, ZoomOut, Refresh, OpenInNew } from '@mui/icons-material';
 
 const TradingViewWidget = ({ 
   symbol = 'NASDAQ:AAPL', 
@@ -11,25 +11,131 @@ const TradingViewWidget = ({
 }) => {
   const theme = useTheme();
   const containerRef = useRef(null);
+  const scriptRef = useRef(null);
+  const widgetRef = useRef(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   
   // Create a unique ID for this instance
   const uniqueId = useRef(`tv_container_${Math.random().toString(36).substring(2, 9)}`);
 
+  // Cleanup function to safely remove the widget and script
+  const cleanupWidget = () => {
+    try {
+      // Clean up widget instance if it exists
+      if (window.tvWidget) {
+        try {
+          window.tvWidget.remove();
+          window.tvWidget = null;
+        } catch (err) {
+          console.warn('Error removing TradingView widget:', err);
+        }
+      }
+      
+      // Remove script element if it exists
+      if (scriptRef.current) {
+        try {
+          document.body.removeChild(scriptRef.current);
+          scriptRef.current = null;
+        } catch (err) {
+          console.warn('Error removing script element:', err);
+        }
+      }
+      
+      // Clear container contents if it exists
+      if (containerRef.current) {
+        try {
+          containerRef.current.innerHTML = '';
+        } catch (err) {
+          console.warn('Error clearing container:', err);
+        }
+      }
+    } catch (err) {
+      console.warn('Error during cleanup:', err);
+    }
+  };
+
   // Initialize widget when component mounts
   useEffect(() => {
+    // Cleanup any existing widget first
+    cleanupWidget();
+    
+    const loadWidget = () => {
     console.log(`Initializing TradingView widget for ${symbol}, interval ${interval}`);
     setIsLoading(true);
     setError(null);
 
-    // Use TradingView's official widget API via embedded script
+      try {
+        // Get the container - use the ref directly instead of getElementById
+        if (!containerRef.current) {
+          console.error('Container ref is null');
+          setError('Chart container not available');
+          setIsLoading(false);
+          return;
+        }
+
+        // Clear existing content
+        containerRef.current.innerHTML = '';
+        
+        // Create a simple container for the widget
+        const widgetContainer = document.createElement('div');
+        widgetContainer.className = 'tradingview-widget-container';
+        widgetContainer.style.width = '100%';
+        widgetContainer.style.height = '100%';
+        
+        // Create inner div for actual widget
+        const widgetDiv = document.createElement('div');
+        widgetDiv.id = `${uniqueId.current}_inner`;
+        widgetDiv.className = 'tradingview-widget-container__widget';
+        widgetDiv.style.width = '100%';
+        widgetDiv.style.height = '100%';
+        widgetContainer.appendChild(widgetDiv);
+        
+        // Add container to DOM
+        containerRef.current.appendChild(widgetContainer);
+        
+        // Save reference to widget div
+        widgetRef.current = widgetDiv;
+        
+        // Double check to make sure parent node is available
+        if (!widgetDiv.parentNode) {
+          console.error('Widget div has no parent node');
+          setError('Widget container error');
+          setIsLoading(false);
+          return;
+        }
+        
+        // Create script element - use a different approach with Widget Constructor API
     const script = document.createElement('script');
-    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+        script.src = 'https://s3.tradingview.com/tv.js';
     script.type = 'text/javascript';
     script.async = true;
-    script.innerHTML = JSON.stringify({
+        
+        // Save script reference for cleanup
+        scriptRef.current = script;
+        
+        // When script loads, create the widget
+        script.onload = () => {
+          if (typeof window.TradingView === 'undefined') {
+            setError('TradingView library failed to load');
+            setIsLoading(false);
+            return;
+          }
+          
+          // Make sure the widget div still exists in the DOM
+          if (!document.getElementById(widgetDiv.id)) {
+            console.error('Widget div no longer in DOM');
+            setError('Widget container removed from DOM');
+            setIsLoading(false);
+            return;
+          }
+          
+          try {
+            // Create new widget with simpler, more reliable method
+            const widgetOptions = {
+              "container_id": widgetDiv.id,
       "autosize": true,
       "symbol": symbol,
       "interval": interval,
@@ -37,81 +143,119 @@ const TradingViewWidget = ({
       "theme": theme.palette.mode === 'dark' ? "dark" : "light",
       "style": "1",
       "locale": "en",
+              "toolbar_bg": theme.palette.background.paper,
       "enable_publishing": false,
-      "backgroundColor": theme.palette.background.paper,
-      "gridColor": theme.palette.divider,
-      "allow_symbol_change": true,
-      "save_image": true,
-      "calendar": false,
       "hide_top_toolbar": false,
       "hide_legend": false,
-      "toolbar_bg": theme.palette.background.paper,
-      "withdateranges": true,
-      "range": "1M",
-      "details": true,
-      "hotlist": true,
-      "calendar": true,
+              "save_image": true,
       "studies": [
         "RSI@tv-basicstudies",
-        "MACD@tv-basicstudies",
-        "MAs@tv-basicstudies"
-      ],
-      "support_host": "https://www.tradingview.com"
-    });
-    
-    // Get the container
-    const container = document.getElementById(uniqueId.current);
-    if (container) {
-      // Clear existing content
-      container.innerHTML = '';
-      
-      // Create wrapper for TradingView widget
-      const widget = document.createElement('div');
-      widget.className = 'tradingview-widget-container';
-      
-      // Create inner div for actual widget
-      const widgetDiv = document.createElement('div');
-      widgetDiv.className = 'tradingview-widget-container__widget';
-      widget.appendChild(widgetDiv);
-      
-      // Copyright div required by TradingView
-      const copyrightDiv = document.createElement('div');
-      copyrightDiv.className = 'tradingview-widget-copyright';
-      copyrightDiv.innerHTML = '<a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank"><span class="blue-text">Track all markets on TradingView</span></a>';
-      widget.appendChild(copyrightDiv);
-      
-      // Add widget to container
-      container.appendChild(widget);
-      
-      // Add script to container
-      widget.appendChild(script);
-      
-      // Set loading state to false after a delay to allow widget to initialize
-      setTimeout(() => {
-        setIsLoading(false);
-      }, 1000);
-      
-      // Save reference to clean up
-      containerRef.current = { container, widget };
-    } else {
-      console.error('Container element not found');
-      setError('Chart container not found');
+                "MACD@tv-basicstudies",
+                "StochasticRSI@tv-basicstudies"
+              ],
+              "show_popup_button": true,
+              "popup_width": "1000",
+              "popup_height": "650",
+              "withdateranges": true,
+              "details": true
+            };
+            
+            // Support for newer TradingView library API which might have different methods
+            try {
+              // Instead of declaring onChartReady in the options, we'll use events
+              window.tvWidget = new window.TradingView.widget(widgetOptions);
+              
+              // Set up a proper event listener for chart ready
+              let readyTimeout;
+              
+              // Try to detect if the library has the addEventListener method
+              if (window.tvWidget && typeof window.tvWidget.addEventListener === 'function') {
+                window.tvWidget.addEventListener('onChartReady', () => {
+                  console.log('Chart ready via addEventListener');
+                  clearTimeout(readyTimeout);
+                  setIsLoading(false);
+                });
+              } else {
+                // Use the onChartReady method if available (traditional approach)
+                console.log('Using traditional onChartReady approach');
+                
+                // Wait for the chart to be ready
+                const checkChartReady = () => {
+                  if (window.tvWidget && typeof window.tvWidget.onChartReady === 'function') {
+                    window.tvWidget.onChartReady(() => {
+                      console.log('Chart ready via onChartReady');
+                      setIsLoading(false);
+                    });
+                  } else {
+                    // Set a timeout as a fallback
+                    console.log('Using fallback for chart ready detection');
+                    setTimeout(() => {
+                      setIsLoading(false);
+                    }, 2500);
+                  }
+                };
+                
+                // Check after a small delay to allow widget to initialize
+                setTimeout(checkChartReady, 100);
+              }
+              
+              // Fallback timeout in case none of the event handlers work
+              readyTimeout = setTimeout(() => {
+                console.log('Chart ready via timeout fallback');
+                setIsLoading(false);
+              }, 3000);
+              
+              // Check for iframe load as another way to detect readiness
+              setTimeout(() => {
+                const iframe = document.querySelector(`#${widgetDiv.id} iframe`);
+                if (iframe) {
+                  iframe.addEventListener('load', () => {
+                    console.log('Chart ready via iframe load');
+                    clearTimeout(readyTimeout);
+                    setIsLoading(false);
+                  });
+                }
+              }, 300);
+              
+            } catch (err) {
+              console.error('Error setting up chart ready event:', err);
+              // Fallback to timeout approach
+              setTimeout(() => {
+                setIsLoading(false);
+              }, 2500);
+            }
+          } catch (err) {
+            console.error('Error creating TradingView widget:', err);
+            setError('Error creating chart: ' + err.message);
+            setIsLoading(false);
+          }
+        };
+        
+        // Error handling for script load failure
+        script.onerror = (err) => {
+          console.error('Error loading TradingView script:', err);
+          setError('Failed to load TradingView library');
+          setIsLoading(false);
+        };
+        
+        // Add script to document
+        document.body.appendChild(script);
+      } catch (err) {
+        console.error('Error in TradingView widget setup:', err);
+        setError(err.message || 'Error setting up chart');
       setIsLoading(false);
     }
+    };
+    
+    // Delay loading to ensure DOM is ready
+    const timerId = setTimeout(loadWidget, 1000);  // Increased delay for better DOM readiness
 
     // Cleanup function
     return () => {
-      if (containerRef.current && containerRef.current.container) {
-        try {
-          console.log('Cleaning up TradingView container');
-          containerRef.current.container.innerHTML = '';
-          containerRef.current = null;
-        } catch (err) {
-          console.error('Error during cleanup:', err);
-        }
-      }
+      clearTimeout(timerId);
+      cleanupWidget();
     };
-  }, [symbol, interval, theme.palette.mode]);
+  }, [symbol, interval, theme.palette.mode, retryCount]);
 
   // Handle opening tradingview.com in a new tab
   const openTradingViewWebsite = () => {
@@ -120,17 +264,17 @@ const TradingViewWidget = ({
   
   // Toggle fullscreen mode
   const toggleFullscreen = () => {
-    const container = document.getElementById(uniqueId.current);
+    if (!containerRef.current) return;
     
     if (!document.fullscreenElement) {
-      if (container.requestFullscreen) {
-        container.requestFullscreen();
+      if (containerRef.current.requestFullscreen) {
+        containerRef.current.requestFullscreen();
         setIsFullscreen(true);
-      } else if (container.webkitRequestFullscreen) { /* Safari */
-        container.webkitRequestFullscreen();
+      } else if (containerRef.current.webkitRequestFullscreen) { /* Safari */
+        containerRef.current.webkitRequestFullscreen();
         setIsFullscreen(true);
-      } else if (container.msRequestFullscreen) { /* IE11 */
-        container.msRequestFullscreen();
+      } else if (containerRef.current.msRequestFullscreen) { /* IE11 */
+        containerRef.current.msRequestFullscreen();
         setIsFullscreen(true);
       }
     } else {
@@ -145,6 +289,11 @@ const TradingViewWidget = ({
         setIsFullscreen(false);
       }
     }
+  };
+  
+  // Retry loading the widget
+  const handleRetry = () => {
+    setRetryCount(prev => prev + 1);
   };
   
   // Listen for fullscreen change
@@ -167,7 +316,21 @@ const TradingViewWidget = ({
   }, []);
 
   return (
-    <Box sx={{ position: 'relative', width, height }}>
+    <Box sx={{ position: 'relative', width, height, display: 'flex', flexDirection: 'column' }}>
+      {error && (
+        <Alert 
+          severity="error" 
+          sx={{ m: 1 }}
+          action={
+            <Button color="inherit" size="small" onClick={handleRetry}>
+              Retry
+            </Button>
+          }
+        >
+          {error}
+        </Alert>
+      )}
+      
       <Box sx={{ 
         position: 'absolute', 
         top: 10, 
@@ -181,51 +344,23 @@ const TradingViewWidget = ({
         boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
         backdropFilter: 'blur(4px)'
       }}>
-        <Tooltip title="Fit to View">
-          <Button
-            size="small"
-            variant="outlined"
-            color="primary"
-            onClick={() => {
-              // This attempts to call TradingView's chart method to fit content
-              // It may not work directly as the embedded widget has limitations
-              // But it provides a visual cue for the user
-              if (window.tvWidget) {
-                try {
-                  window.tvWidget.activeChart().executeActionById("timeScaleReset");
-                } catch (e) {
-                  console.log("Could not reset chart view programmatically");
-                }
-              }
-              
-              // Force widget reload as fallback to reset the view
-              const container = document.getElementById(uniqueId.current);
-              if (container) {
-                const oldHeight = container.style.height;
-                const oldWidth = container.style.width;
-                
-                // Briefly expand the container to trigger a resize
-                container.style.height = "100%";
-                container.style.width = "100%";
-                
-                // Restore original dimensions after a brief delay
-                setTimeout(() => {
-                  if (container) {
-                    container.style.height = oldHeight;
-                    container.style.width = oldWidth;
-                  }
-                }, 100);
-              }
-            }}
-            sx={{ 
-              minWidth: 'auto', 
-              fontSize: '0.75rem', 
-              height: '28px',
-              p: '4px 8px' 
-            }}
+        <Tooltip title="Reload Chart">
+          <IconButton 
+            size="small" 
+            onClick={handleRetry}
+            sx={{ color: theme.palette.primary.main }}
           >
-            Fit Chart
-          </Button>
+            <Refresh />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Open in TradingView">
+          <IconButton 
+            size="small" 
+            onClick={openTradingViewWebsite}
+            sx={{ color: theme.palette.primary.main }}
+          >
+            <OpenInNew />
+          </IconButton>
         </Tooltip>
         <Tooltip title="Fullscreen">
           <IconButton 
@@ -239,87 +374,59 @@ const TradingViewWidget = ({
       </Box>
       
       <Box
+        ref={containerRef}
         id={uniqueId.current}
         sx={{ 
           width: '100%', 
           height: '100%',
+          position: 'relative',
+          flex: 1,
           '& .tradingview-widget-copyright': {
             fontSize: '12px',
             padding: '4px 8px',
             textAlign: 'center',
             color: theme.palette.text.secondary
-          },
-          '&:fullscreen': {
-            width: '100vw',
-            height: '100vh',
-            padding: '0',
-            backgroundColor: theme.palette.background.default
           }
         }}
       />
       
-      {error && (
+      {isLoading && (
         <Box 
           sx={{ 
             position: 'absolute', 
             top: 0, 
             left: 0, 
-            width: '100%', 
-            height: '100%', 
+            right: 0, 
+            bottom: 0, 
             display: 'flex', 
-            flexDirection: 'column',
+            alignItems: 'center', 
             justifyContent: 'center', 
-            alignItems: 'center',
-            backgroundColor: theme.palette.background.paper,
-            zIndex: 5
+            backgroundColor: alpha(theme.palette.background.paper, 0.5)
           }}
         >
-          <Alert severity="error" sx={{ mb: 2, maxWidth: '90%' }}>
-            {error}
-          </Alert>
-          <Typography variant="body2" sx={{ mb: 3 }}>
-            Unable to load TradingView chart for {symbol}
-          </Typography>
-          
-          <Button
-            variant="outlined"
-            color="primary"
-            onClick={openTradingViewWebsite}
-          >
-            View on TradingView.com
-          </Button>
-          
-          <Typography variant="caption" sx={{ mt: 3, maxWidth: '80%', textAlign: 'center' }}>
-            Try disabling ad blockers or checking your network connection
-          </Typography>
+          <Box sx={{ textAlign: 'center' }}>
+            <CircularProgress size={40} />
+            <Typography sx={{ mt: 2 }}>Loading Chart...</Typography>
+          </Box>
         </Box>
       )}
       
-      {isLoading && !error && (
-        <Box 
-          sx={{ 
-            position: 'absolute', 
-            top: 0, 
-            left: 0, 
-            width: '100%', 
-            height: '100%', 
+      <Box sx={{ 
+        p: 1, 
             display: 'flex', 
-            flexDirection: 'column',
             justifyContent: 'center', 
-            alignItems: 'center',
-            backgroundColor: theme.palette.background.paper,
-            zIndex: 5
-          }}
-        >
-          <CircularProgress size={40} />
-          <Typography variant="body1" sx={{ mt: 2 }}>
-            Loading chart for {symbol}...
-          </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
-            This may take a few moments
+        borderTop: `1px solid ${theme.palette.divider}`,
+        backgroundColor: alpha(theme.palette.background.paper, 0.8)
+      }}>
+        <Typography variant="caption" color="text.secondary">
+          <a href="https://www.tradingview.com/" rel="noopener noreferrer" target="_blank" style={{
+            color: theme.palette.primary.main,
+            textDecoration: 'none'
+          }}>
+            Powered by TradingView
+          </a>
           </Typography>
         </Box>
-      )}
     </Box>
   );
 };

@@ -26,4 +26,7 @@ export { default as InstitutionalFlowTable } from './InstitutionalFlowTable';
 
 // Auth components
 export { default as VaultAuth } from './VaultAuth';
-export { default as AuthenticatedContent } from './AuthenticatedContent'; 
+export { default as AuthenticatedContent } from './AuthenticatedContent';
+
+// Data Label components
+export { default as DataLabel, DataLabelContainer } from './DataLabel'; 

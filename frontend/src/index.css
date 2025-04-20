@@ -1,9 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Orbitron:wght@400;500;600;700&display=swap');
 
 :root {
-  --primary: #0ae0ec;
-  --primary-light: #22f2ff;
-  --primary-dark: #057078;
+  --primary: #ff00ff;
+  --primary-light: #ff69ff;
+  --primary-dark: #b700b7;
   --secondary: #6e44ff;
   --secondary-light: #9c7dff;
   --secondary-dark: #4d2db7;

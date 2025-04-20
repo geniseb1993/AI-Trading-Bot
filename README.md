@@ -27,43 +27,19 @@ Follow these steps to set up and run the AI Trading Bot:
 
 ### Starting the Application
 
-We provide several ways to start the application:
-
-#### Option 1: Quick Start (Recommended for first-time users)
+We now use a unified approach to start the application:
 
 ```
-.\quick-start.bat
+python app-starter.py
 ```
 
 This will:
-- Install required packages
-- Start the API server
-- Start the React frontend
-
-#### Option 2: Full Start with API Verification
-
-```
-.\start-all.bat
-```
-
-This will:
-- Verify all API connections and environment variables
+- Verify environment variables and API connections
+- Install required packages if needed
+- Copy execution models to the appropriate directories
+- Generate trading signals with consistent scoring
 - Start the API server with real data capabilities
-- Run extensive tests of API integrations
 - Start the React frontend
-
-#### Option 3: Manual Start
-
-Start the API server:
-```
-python minimal_flask_server.py
-```
-
-In a separate terminal, start the frontend:
-```
-cd frontend
-npm start
-```
 
 ### Configuration
 

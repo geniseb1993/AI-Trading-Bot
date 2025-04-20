@@ -52,6 +52,8 @@ import { motion } from 'framer-motion';
 import PageLayout from '../components/PageLayout';
 import ContentCard from '../components/ContentCard';
 import ContentGrid from '../components/ContentGrid';
+import { DataLabelContainer } from '../components/DataLabel';
+import DataLabel from '../components/DataLabel';
 
 // Import TradingView widget
 import TradingViewWidget from '../components/TradingViewWidget';
@@ -200,9 +202,24 @@ const MarketData = () => {
             Data Controls
           </Typography>
         }
-        sx={{ 
-          padding: viewMode === 'chart' ? '8px 16px' : '12px 20px',
-          backgroundColor: alpha(theme.palette.primary.main, 0.1),
+        action={
+          <Box display="flex" alignItems="center">
+            <DataLabel type="real" tooltip="Control panel is always real" sx={{ mr: 1 }} />
+            <Button
+              variant="outlined"
+              color="primary"
+              size="small"
+              startIcon={<Refresh />}
+              onClick={handleRefresh}
+              disabled={loading}
+            >
+              Refresh
+            </Button>
+          </Box>
+        }
+        sx={{
+          p: 2,
+          backgroundColor: alpha(theme.palette.primary.main, 0.05),
           borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`
         }}
       />
@@ -841,252 +858,147 @@ const MarketData = () => {
 
   return (
     <PageLayout>
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        mb: viewMode === 'chart' ? 1 : 3,
-        mt: viewMode === 'chart' ? 0 : 1,
-      }}>
-        <Typography 
-          variant="h4" 
-          component={motion.h4}
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          sx={{ 
-            fontWeight: 'bold',
-            color: 'primary.main',
-            fontFamily: 'Orbitron',
-            display: 'flex', 
-            alignItems: 'center',
-            gap: 1,
-            fontSize: viewMode === 'chart' ? '1.5rem' : '2rem'
-          }}
-        >
-          <Assessment fontSize={viewMode === 'chart' ? 'medium' : 'large'} />
-          Market Data Explorer
-        </Typography>
-      </Box>
-      
-      <Box sx={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
-        height: viewMode === 'chart' ? 'calc(100vh - 100px)' : 'calc(100vh - 140px)',
-        px: viewMode === 'chart' ? 1 : 2
-      }}>
-        <ControlsCard />
+      <Container maxWidth="xl" sx={{ py: 3 }}>
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h4" component="h1" fontWeight="bold">
+            Market Data Analysis
+          </Typography>
+          <Typography variant="subtitle1" color="text.secondary">
+            Real-time and historical market data analysis with technical indicators
+          </Typography>
+        </Box>
         
-        {/* Render the appropriate component based on view mode */}
-        {viewMode === 'overview' && <MarketOverviewCard />}
-        {viewMode === 'chart' && (
-          <Card 
-            component={motion.div}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            sx={{
-              flexGrow: 1,
-              height: 'calc(100vh - 250px)',
-              minHeight: '600px',
-              backgroundColor: alpha(theme.palette.background.paper, 0.7),
-              backdropFilter: 'blur(10px)',
-              border: `1px solid ${alpha(theme.palette.info.main, 0.3)}`,
-              boxShadow: `0 8px 32px ${alpha(theme.palette.common.black, 0.35)}, 0 0 8px ${alpha(theme.palette.primary.main, 0.2)}`,
-              borderRadius: 2,
-              overflow: 'hidden',
-              transition: 'all 0.3s ease',
-              position: 'relative',
-              '&:hover': {
-                boxShadow: `0 8px 32px ${alpha(theme.palette.common.black, 0.4)}, 0 0 12px ${alpha(theme.palette.primary.main, 0.25)}`,
-                transform: 'translateY(-2px)'
-              }
-            }}
-          >
-            <CardHeader
-              title={
-                <Typography variant="h6" fontFamily="Orbitron" display="flex" alignItems="center" gap={1}>
-                  <ShowChart fontSize="small" />
-                  {symbol} Chart
+        <Grid container spacing={3}>
+          {/* Controls section */}
+          <Grid item xs={12}>
+            <ControlsCard />
+          </Grid>
+          
+          {/* Main content section */}
+          <Grid item xs={12}>
+            <Tabs 
+              value={viewMode} 
+              onChange={handleViewModeChange}
+              indicatorColor="primary"
+              textColor="primary"
+              variant="fullWidth"
+              aria-label="market data view modes"
+              sx={{ mb: 3 }}
+            >
+              <Tab value="overview" label="Market Overview" icon={<Assessment />} />
+              <Tab value="chart" label="Price Chart" icon={<ShowChart />} />
+              <Tab value="table" label="Data Table" icon={<TableChart />} />
+            </Tabs>
+            
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}>
+                <CircularProgress />
+              </Box>
+            ) : error ? (
+              <Paper 
+                sx={{ 
+                  p: 3, 
+                  textAlign: 'center',
+                  backgroundColor: alpha(theme.palette.error.main, 0.1),
+                  color: theme.palette.error.main
+                }}
+              >
+                <Typography variant="h6">
+                  {error}
                 </Typography>
-              }
-              action={
-                <Button
-                  variant="outlined"
-                  size="small"
-                  color="primary"
-                  onClick={() => window.open(`https://www.tradingview.com/chart/?symbol=${formatSymbolForTradingView(symbol)}`, '_blank')}
-                  startIcon={<Analytics />}
-                  sx={{ mr: 1 }}
+                <Button 
+                  variant="contained" 
+                  color="primary" 
+                  sx={{ mt: 2 }}
+                  onClick={handleRefresh}
                 >
-                  Open in TradingView
+                  Try Again
                 </Button>
-              }
-              sx={{ 
-                padding: '12px 20px',
-                backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`
-              }}
-            />
-            <CardContent sx={{ height: 'calc(100% - 80px)', p: 0 }}>
-              {loading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                  <CircularProgress />
-                </Box>
-              ) : error ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', flexDirection: 'column', p: 3 }}>
-                  <Typography variant="h6" color="error" gutterBottom>Error</Typography>
-                  <Typography variant="body1" color="error" align="center">{error}</Typography>
-                  <Button 
-                    variant="contained" 
-                    color="primary" 
-                    sx={{ mt: 2 }} 
-                    onClick={handleRefresh}
+              </Paper>
+            ) : (
+              <>
+                {viewMode === 'overview' && (
+                  <DataLabelContainer 
+                    type={isRealData ? 'real' : 'mock'}
+                    tooltip={`Data source: ${dataSource}`}
                   >
-                    Try Again
-                  </Button>
-                </Box>
-              ) : marketData.length === 0 ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', flexDirection: 'column', p: 3 }}>
-                  <Typography variant="h6" gutterBottom>No Data Available</Typography>
-                  <Typography variant="body1" align="center">No market data is available for the selected symbol and timeframe.</Typography>
-                </Box>
-              ) : (
-                <Box sx={{ height: '100%', width: '100%' }}>
-                  {/* Use TradingView chart for chart view */}
-                  <TradingViewWidget 
-                    symbol={formatSymbolForTradingView(symbol)}
-                    interval={getTradingViewInterval()}
-                    height="100%"
-                    width="100%"
-                    key={`${symbol}_${timeframe}`}
-                  />
-                </Box>
-              )}
-            </CardContent>
-          </Card>
-        )}
-        {viewMode === 'table' && (
-          <Card 
-            component={motion.div}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            sx={{
-              flexGrow: 1,
-              height: 'calc(100vh - 320px)',
-              minHeight: '500px',
-              backgroundColor: alpha(theme.palette.background.paper, 0.7),
-              backdropFilter: 'blur(10px)',
-              border: `1px solid ${alpha(theme.palette.info.main, 0.3)}`,
-              boxShadow: `0 8px 32px ${alpha(theme.palette.common.black, 0.35)}, 0 0 8px ${alpha(theme.palette.primary.main, 0.2)}`,
-              borderRadius: 2,
-              overflow: 'hidden',
-              transition: 'all 0.3s ease',
-              position: 'relative',
-              '&:hover': {
-                boxShadow: `0 8px 32px ${alpha(theme.palette.common.black, 0.4)}, 0 0 12px ${alpha(theme.palette.primary.main, 0.25)}`,
-                transform: 'translateY(-2px)'
-              }
-            }}
-          >
-            <CardHeader
-              title={
-                <Typography variant="h6" fontFamily="Orbitron" display="flex" alignItems="center" gap={1}>
-                  <TableChart fontSize="small" />
-                  {symbol} Price History
-                </Typography>
-              }
-              sx={{ 
-                padding: '12px 20px',
-                backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`
-              }}
-            />
-            <CardContent sx={{ height: 'calc(100% - 80px)', p: 0 }}>
-              {loading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                  <CircularProgress />
-                </Box>
-              ) : error ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', flexDirection: 'column', p: 3 }}>
-                  <Typography variant="h6" color="error" gutterBottom>Error</Typography>
-                  <Typography variant="body1" color="error" align="center">{error}</Typography>
-                  <Button 
-                    variant="contained" 
-                    color="primary" 
-                    sx={{ mt: 2 }} 
-                    onClick={handleRefresh}
+                    <MarketOverviewCard />
+                  </DataLabelContainer>
+                )}
+                
+                {viewMode === 'chart' && (
+                  <Box sx={{ height: '70vh', minHeight: '500px' }}>
+                    <DataLabelContainer
+                      type="real"
+                      tooltip="Real-time TradingView chart data"
+                    >
+                      <TradingViewWidget 
+                        symbol={formatSymbolForTradingView(symbol)}
+                        interval={getTradingViewInterval()}
+                        autosize
+                      />
+                    </DataLabelContainer>
+                  </Box>
+                )}
+                
+                {viewMode === 'table' && (
+                  <DataLabelContainer 
+                    type={isRealData ? 'real' : 'mock'}
+                    tooltip={`Data source: ${dataSource}`}
                   >
-                    Try Again
-                  </Button>
-                </Box>
-              ) : marketData.length === 0 ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', flexDirection: 'column', p: 3 }}>
-                  <Typography variant="h6" gutterBottom>No Data Available</Typography>
-                  <Typography variant="body1" align="center">No market data is available for the selected symbol and timeframe.</Typography>
-                </Box>
-              ) : (
-                <Box sx={{ height: '100%', width: '100%' }}>
-                  <TableContainer sx={{ maxHeight: 'calc(100vh - 220px)', overflow: 'auto' }}>
-                    <Table stickyHeader>
-                      <TableHead>
-                        <TableRow>
-                          <TableCell sx={{ fontWeight: 'bold', fontFamily: 'Orbitron', backgroundColor: alpha(theme.palette.background.paper, 0.9) }}>Date</TableCell>
-                          <TableCell align="right" sx={{ fontWeight: 'bold', fontFamily: 'Orbitron', backgroundColor: alpha(theme.palette.background.paper, 0.9) }}>Open</TableCell>
-                          <TableCell align="right" sx={{ fontWeight: 'bold', fontFamily: 'Orbitron', backgroundColor: alpha(theme.palette.background.paper, 0.9) }}>High</TableCell>
-                          <TableCell align="right" sx={{ fontWeight: 'bold', fontFamily: 'Orbitron', backgroundColor: alpha(theme.palette.background.paper, 0.9) }}>Low</TableCell>
-                          <TableCell align="right" sx={{ fontWeight: 'bold', fontFamily: 'Orbitron', backgroundColor: alpha(theme.palette.background.paper, 0.9) }}>Close</TableCell>
-                          <TableCell align="right" sx={{ fontWeight: 'bold', fontFamily: 'Orbitron', backgroundColor: alpha(theme.palette.background.paper, 0.9) }}>Volume</TableCell>
-                          <TableCell align="right" sx={{ fontWeight: 'bold', fontFamily: 'Orbitron', backgroundColor: alpha(theme.palette.background.paper, 0.9) }}>Change</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {marketData.map((row, index) => (
-                          <TableRow 
-                            key={index}
-                            sx={{ 
-                              '&:nth-of-type(odd)': { bgcolor: alpha(theme.palette.background.paper, 0.4) },
-                              '&:nth-of-type(even)': { bgcolor: alpha(theme.palette.background.paper, 0.2) },
-                              '&:hover': { 
-                                bgcolor: alpha(theme.palette.primary.main, 0.1),
-                                transition: 'background-color 0.2s ease'
-                              },
-                              transition: 'background-color 0.2s ease'
-                            }}
-                          >
-                            <TableCell component="th" scope="row" sx={{ fontFamily: 'Roboto Mono' }}>
-                              {row.date}
-                            </TableCell>
-                            <TableCell align="right" sx={{ fontFamily: 'Roboto Mono' }}>${row.open.toFixed(2)}</TableCell>
-                            <TableCell align="right" sx={{ fontFamily: 'Roboto Mono' }}>${row.high.toFixed(2)}</TableCell>
-                            <TableCell align="right" sx={{ fontFamily: 'Roboto Mono' }}>${row.low.toFixed(2)}</TableCell>
-                            <TableCell align="right" sx={{ fontFamily: 'Roboto Mono' }}>${row.close.toFixed(2)}</TableCell>
-                            <TableCell align="right" sx={{ fontFamily: 'Roboto Mono' }}>{row.volume.toLocaleString()}</TableCell>
-                            <TableCell 
-                              align="right"
-                              sx={{ 
-                                color: row.change >= 0 ? 'success.main' : 'error.main',
-                                fontWeight: 'bold',
-                                fontFamily: 'Roboto Mono',
-                                bgcolor: row.change >= 0 
-                                  ? alpha(theme.palette.success.main, 0.1) 
-                                  : alpha(theme.palette.error.main, 0.1)
-                              }}
-                            >
-                              {row.change >= 0 ? `+${row.change.toFixed(2)}%` : `${row.change.toFixed(2)}%`}
-                            </TableCell>
+                    <TableContainer 
+                      component={Paper} 
+                      sx={{ 
+                        maxHeight: '70vh',
+                        backgroundColor: alpha(theme.palette.background.paper, 0.7),
+                        backdropFilter: 'blur(10px)',
+                      }}
+                    >
+                      <Table stickyHeader size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Date</TableCell>
+                            <TableCell>Open</TableCell>
+                            <TableCell>High</TableCell>
+                            <TableCell>Low</TableCell>
+                            <TableCell>Close</TableCell>
+                            <TableCell>Volume</TableCell>
+                            <TableCell>Change %</TableCell>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </Box>
-              )}
-            </CardContent>
-          </Card>
-        )}
-      </Box>
+                        </TableHead>
+                        <TableBody>
+                          {marketData.map((bar, index) => (
+                            <TableRow key={index}>
+                              <TableCell>{new Date(bar.time || bar.datetime).toLocaleDateString()}</TableCell>
+                              <TableCell>${bar.open?.toFixed(2) || 'N/A'}</TableCell>
+                              <TableCell>${bar.high?.toFixed(2) || 'N/A'}</TableCell>
+                              <TableCell>${bar.low?.toFixed(2) || 'N/A'}</TableCell>
+                              <TableCell>${bar.close?.toFixed(2) || 'N/A'}</TableCell>
+                              <TableCell>{bar.volume?.toLocaleString() || 'N/A'}</TableCell>
+                              <TableCell
+                                sx={{
+                                  color: 
+                                    bar.close > bar.open ? theme.palette.success.main : 
+                                    bar.close < bar.open ? theme.palette.error.main : 
+                                    'inherit'
+                                }}
+                              >
+                                {bar.close && bar.open ? 
+                                  ((bar.close - bar.open) / bar.open * 100).toFixed(2) + '%' : 
+                                  'N/A'}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </DataLabelContainer>
+                )}
+              </>
+            )}
+          </Grid>
+        </Grid>
+      </Container>
     </PageLayout>
   );
 };

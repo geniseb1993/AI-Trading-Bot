@@ -43,6 +43,9 @@ import TradingBotStatus from '../components/dashboard/TradingBotStatus';
 import RecentAlerts from '../components/dashboard/RecentAlerts';
 import MarketOverview from '../components/dashboard/MarketOverview';
 
+// Import TradingViewIntegration
+import tradingViewService from '../services/TradingViewIntegration';
+
 // Define API base URL based on environment
 const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
 
@@ -114,19 +117,26 @@ const Dashboard = () => {
         if (unmountedRef.current) return false;
         
         console.log('Error connecting to API:', error.message);
-        console.log('API Error details:', error.response?.data || 'No response data');
-        setApiConnected(false);
+        console.log('Trying TradingViewIntegration fallback...');
         
-        // Set sample data for demo purposes
-        setBuySignals([
-          { symbol: 'TSLA', date: '2025-04-01', signal_score: 8.5 },
-          { symbol: 'SPY', date: '2025-04-01', signal_score: 7.2 },
-          { symbol: 'QQQ', date: '2025-03-31', signal_score: 6.8 },
-        ]);
-        setShortSignals([
-          { symbol: 'XYZ', date: '2025-04-01', signal_score: 4.2 },
-        ]);
-        return false;
+        // If API fails, use TradingViewIntegration service
+        try {
+          const signalData = await tradingViewService.getSignals();
+          
+          if (signalData && signalData.buy_signals && signalData.short_signals) {
+            console.log('Successfully loaded signals from TradingViewIntegration service');
+            setBuySignals(signalData.buy_signals.slice(0, 3));
+            setShortSignals(signalData.short_signals.slice(0, 3));
+            setApiConnected(true);
+            return true;
+          } else {
+            console.error('Failed to load signals from service');
+            return false;
+          }
+        } catch (serviceError) {
+          console.error('Error with TradingViewIntegration service:', serviceError);
+          return false;
+        }
       }
     } catch (error) {
       if (unmountedRef.current) return false;

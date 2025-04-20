@@ -4,9 +4,9 @@ const theme = createTheme({
   palette: {
     mode: 'dark',
     primary: {
-      main: '#0ae0ec',
-      light: '#22f2ff',
-      dark: '#057078',
+      main: '#ff00ff',
+      light: '#ff69ff',
+      dark: '#b700b7',
     },
     secondary: {
       main: '#6e44ff',
@@ -71,7 +71,7 @@ const theme = createTheme({
           transition: 'all 0.3s ease',
           '&:hover': {
             transform: 'translateY(-5px)',
-            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.7), 0 0 10px #057078',
+            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.7), 0 0 10px #ff00ff',
           },
         },
       },
@@ -87,7 +87,7 @@ const theme = createTheme({
           overflow: 'hidden',
           transition: 'all 0.3s ease',
           '&:hover': {
-            boxShadow: '0 0 15px #0ae0ec',
+            boxShadow: '0 0 15px #ff00ff',
           },
           '&:active': {
             transform: 'scale(0.98)',

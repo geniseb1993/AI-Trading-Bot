@@ -17,6 +17,8 @@ import BotManagement from './pages/BotManagement';
 import Debug from './pages/Debug';
 import { Button } from '@mui/material';
 import NotificationContext from './contexts/NotificationContext';
+import DualBotDashboard from './components/dashboard/DualBotDashboard';
+import { SmartToyIcon } from '@mui/icons-material';
 
 function App() {
   const { addNotification, sendVoiceNotification } = useContext(NotificationContext) || {};
@@ -71,6 +73,7 @@ function App() {
         <Route path="/bot-management" element={<BotManagement />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/debug" element={<Debug />} />
+        <Route path="/dual-bot" element={<DualBotDashboard />} />
       </Routes>
       
       <Button 

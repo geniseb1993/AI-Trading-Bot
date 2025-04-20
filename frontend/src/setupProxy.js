@@ -1,94 +1,130 @@
 const { createProxyMiddleware } = require('http-proxy-middleware');
+const fs = require('fs');
+const path = require('path');
+
+// Enable this to log all API requests
+const ENABLE_DEBUG_LOGGING = true;
+
+// Log function that writes to file and console
+const logApiRequest = (req, res, message) => {
+  if (!ENABLE_DEBUG_LOGGING) return;
+  
+  const timestamp = new Date().toISOString();
+  const logEntry = `[${timestamp}] ${message}\n  URL: ${req.url}\n  Method: ${req.method}\n`;
+  
+  console.log(logEntry);
+  
+  try {
+    const logDir = path.join(__dirname, '..', 'logs');
+    if (!fs.existsSync(logDir)) {
+      fs.mkdirSync(logDir, { recursive: true });
+    }
+    
+    fs.appendFileSync(path.join(logDir, 'api-requests.log'), logEntry);
+  } catch (err) {
+    console.error('Error writing to log file:', err);
+  }
+};
+
+// API request logger middleware
+const requestLogger = (req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    logApiRequest(req, res, 'API Request');
+    
+    // Capture the original end method
+    const originalEnd = res.end;
+    
+    // Override end method to log response
+    res.end = function (chunk, encoding) {
+      // Get response data
+      let responseBody = '';
+      if (chunk) {
+        responseBody = chunk.toString('utf8');
+        if (responseBody && responseBody.length > 1000) {
+          responseBody = responseBody.substring(0, 1000) + '... [truncated]';
+        }
+      }
+      
+      if (ENABLE_DEBUG_LOGGING) {
+        const logEntry = `[${new Date().toISOString()}] API Response\n  URL: ${req.url}\n  Status: ${res.statusCode}\n  Body: ${responseBody}\n\n`;
+        console.log(logEntry);
+        
+        try {
+          const logDir = path.join(__dirname, '..', 'logs');
+          fs.appendFileSync(path.join(logDir, 'api-responses.log'), logEntry);
+        } catch (err) {
+          console.error('Error writing response to log file:', err);
+        }
+      }
+      
+      // Call the original end method
+      return originalEnd.call(this, chunk, encoding);
+    };
+  }
+  next();
+};
 
 module.exports = function(app) {
-  console.log('Setting up proxy middleware...');
+  // Add request logger middleware
+  app.use(requestLogger);
   
-  // Function to check if the backend server is running
-  const checkBackendStatus = async () => {
-    try {
-      const response = await fetch('http://localhost:5000/api/test', { 
-        timeout: 5000,
-        signal: AbortSignal.timeout(5000)
-      });
-      if (response.ok) {
-        console.log('✅ Backend server is accessible');
-        return true;
-      } else {
-        console.error('❌ Backend server responded with status:', response.status);
-        return false;
+  // Special handling for signal-related endpoints
+  app.use(
+    '/api/get-saved-signals',
+    createProxyMiddleware({
+      target: 'http://localhost:5000',
+      changeOrigin: true,
+      onProxyReq: (proxyReq, req, res) => {
+        logApiRequest(req, res, '🔄 Signals API Request');
+      },
+      onProxyRes: (proxyRes, req, res) => {
+        logApiRequest(req, res, `✅ Signals API Response (${proxyRes.statusCode})`);
+        
+        // Debug response headers
+        if (ENABLE_DEBUG_LOGGING) {
+          console.log('Response headers:', proxyRes.headers);
+        }
+      },
+      onError: (err, req, res) => {
+        console.error('Proxy error:', err);
+        logApiRequest(req, res, `❌ Signals API Error: ${err.message}`);
+        
+        // Return a meaningful error response
+        res.writeHead(500, {
+          'Content-Type': 'application/json',
+        });
+        res.end(JSON.stringify({ 
+          success: false, 
+          error: 'Proxy error: Could not connect to the API server'
+        }));
       }
-    } catch (error) {
-      console.error('❌ Backend server is not accessible:', error.message);
-      return false;
-    }
-  };
+    })
+  );
   
-  // Try to check backend status
-  checkBackendStatus().then(isRunning => {
-    if (!isRunning) {
-      console.error('');
-      console.error('⚠️ BACKEND SERVER IS NOT RUNNING OR NOT ACCESSIBLE ⚠️');
-      console.error('');
-      console.error('Please start the Flask backend server using one of these methods:');
-      console.error('1. Run the run-server.bat file (RECOMMENDED)');
-      console.error('2. Run the start-all.bat file');
-      console.error('3. Open a command prompt and run: python minimal_flask_server.py');
-      console.error('');
-      console.error('Fallback data will be used for all API requests.');
-      console.error('');
-    }
-  });
-  
-  // Create a proxy for API requests
+  // Main API proxy
   app.use(
     '/api',
     createProxyMiddleware({
       target: 'http://localhost:5000',
       changeOrigin: true,
-      secure: false,
-      timeout: 5000,
-      proxyTimeout: 5000,
-      // For troubleshooting
       onProxyReq: (proxyReq, req, res) => {
-        console.log(`Proxying request to: ${req.method} ${req.originalUrl}`);
-      },
-      onProxyRes: (proxyRes, req, res) => {
-        console.log(`Proxy response: ${req.method} ${req.originalUrl}, status: ${proxyRes.statusCode}`);
+        logApiRequest(req, res, 'Proxying API Request');
       },
       onError: (err, req, res) => {
-        console.error(`Proxy error: ${err.message}`);
+        console.error('Proxy error:', err);
+        logApiRequest(req, res, `Error: ${err.message}`);
         
-        if (!res.headersSent) {
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          
-          // Generate appropriate fallback data based on the endpoint
-          let responseData = { 
-            success: true, 
-            message: 'Using fallback data - API server is unavailable'
-          };
-          
-          // Handle market signals endpoint
-          if (req.url.includes('/market/ai_signals/')) {
-            const symbol = req.url.split('/').pop();
-            responseData.data = generateMockSignalData(symbol);
-          } 
-          // Handle market data endpoint
-          else if (req.url.includes('/market-data/')) {
-            const symbol = req.url.split('/').pop().split('?')[0];
-            responseData.data = {
-              symbol: symbol,
-              timestamp: new Date().toISOString(),
-              bars: generateMockBars(symbol, 30)
-            };
-          }
-          
-          res.end(JSON.stringify(responseData));
-        }
+        // Return a meaningful error response
+        res.writeHead(500, {
+          'Content-Type': 'application/json',
+        });
+        res.end(JSON.stringify({ 
+          success: false, 
+          error: 'Could not connect to the API server'
+        }));
       }
     })
   );
-  
-  console.log('Proxy middleware configured successfully');
 };
 
 // Generate mock signal data for a symbol

@@ -7,6 +7,8 @@ import random
 import logging
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+import traceback
+import time
 
 # Load environment variables
 load_dotenv()
@@ -21,6 +23,20 @@ logger = logging.getLogger(__name__)
 # Create Flask app first
 app = Flask(__name__)
 CORS(app)
+
+# Import and register CEO dashboard routes directly
+try:
+    # Make sure current directory is in the path
+    import sys
+    import os
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    
+    # Now try to import
+    from api.routes.ceo_dashboard_routes import ceo_dashboard_bp
+    app.register_blueprint(ceo_dashboard_bp)
+    logger.info("Successfully registered CEO dashboard routes")
+except Exception as e:
+    logger.error(f"Error registering CEO dashboard routes: {e}")
 
 # Add market data integration
 from lib.market_data import MarketDataSourceManager
@@ -43,6 +59,27 @@ from risk_management_routes import register_routes as register_risk_management_r
 
 # Import market analysis routes
 from market_analysis_routes import register_routes as register_market_analysis_routes
+
+# Import TradingView routes directly
+try:
+    print("Importing TradingView routes...")
+    # Try the direct import path first
+    from api.routes.tradingview_integration import tradingview_bp, register_tradingview_routes
+    print("Successfully imported TradingView routes from api.routes")
+    HAS_TRADINGVIEW = True
+except ImportError:
+    try:
+        print("Trying alternative import path for TradingView routes...")
+        # Try without the api prefix
+        from routes.tradingview_integration import tradingview_bp, register_tradingview_routes
+        print("Successfully imported TradingView routes from routes")
+        HAS_TRADINGVIEW = True
+    except ImportError as e:
+        print(f"Failed to import TradingView routes: {e}")
+        traceback.print_exc()
+        tradingview_bp = None
+        register_tradingview_routes = None
+        HAS_TRADINGVIEW = False
 
 # Import autonomous bot routes
 try:
@@ -75,36 +112,85 @@ except Exception as e:
             return jsonify({
                 'success': True,
                 'ranked_signals': [],
-                'message': 'AI Signal Ranking module is being initialized'
-            })
-        
-        @ai_bp.route('/market-insights', methods=['POST'])
-        def get_market_insights():
-            return jsonify({
-                'success': True,
-                'insights': {
-                    'market_summary': 'AI market analysis is being prepared',
-                    'key_insights': []
-                },
-                'message': 'GPT insights module is being initialized'
             })
         
         app.register_blueprint(ai_bp)
-        logger.info("Successfully registered fallback AI signal ranking routes")
-    except Exception as fallback_error:
-        logger.error(f"Error registering fallback AI signal ranking routes: {fallback_error}")
-        logger.error("AI signal ranking features will be disabled")
+        logger.info("Registered fallback AI signal ranking routes")
+    except Exception as e:
+        logger.error(f"Failed to create fallback AI signal ranking routes: {e}")
+
+# Import bot management routes
+try:
+    from routes.bot_management import register_routes as register_bot_management_routes
+except ImportError:
+    try:
+        # Try with api prefix
+        from api.routes.bot_management import register_routes as register_bot_management_routes
+    except ImportError as e:
+        logger.error(f"Error importing bot_management: {e}")
+        register_bot_management_routes = None
+
+# Import AI activity log routes
+try:
+    from routes.ai_activity_log import register_routes as register_ai_activity_log_routes
+except ImportError:
+    try:
+        # Try with api prefix
+        from api.routes.ai_activity_log import register_routes as register_ai_activity_log_routes
+    except ImportError as e:
+        logger.error(f"Error importing ai_activity_log: {e}")
+        register_ai_activity_log_routes = None
+
+# Import and register dual bot routes
+try:
+    from api.routes.dual_bot_routes import dual_bot_bp
+    app.register_blueprint(dual_bot_bp)
+    logger.info("Successfully registered dual bot routes")
+except Exception as e:
+    logger.error(f"Error registering dual bot routes: {e}")
+    try:
+        # Try alternative import path
+        from routes.dual_bot_routes import dual_bot_bp
+        app.register_blueprint(dual_bot_bp)
+        logger.info("Successfully registered dual bot routes from alternative path")
+    except Exception as e:
+        logger.error(f"Failed to register dual bot routes from alternative path: {e}")
+        try:
+            # Try with just the filename
+            from dual_bot_routes import dual_bot_bp
+            app.register_blueprint(dual_bot_bp)
+            logger.info("Successfully registered dual bot routes using filename only")
+        except Exception as e:
+            logger.error(f"Failed to register dual bot routes using all known paths: {e}")
+
+# Import and register signals API routes for frontend compatibility
+try:
+    from routes.signals_api import signals_api_bp
+    app.register_blueprint(signals_api_bp)
+    logger.info("Successfully registered signals API routes")
+except Exception as e:
+    logger.error(f"Error registering signals API routes: {e}")
+    try:
+        # Try alternative import path
+        from api.routes.signals_api import signals_api_bp
+        app.register_blueprint(signals_api_bp)
+        logger.info("Successfully registered signals API routes from alternative path")
+    except Exception as e:
+        logger.error(f"Failed to register signals API routes from alternative path: {e}")
 
 # Test route to verify server is running
 @app.route('/api/test', methods=['GET'])
 def test_api():
     """Simple test endpoint to verify the Flask server is running"""
-    app_env = os.environ.get('APP_ENV', 'development')
+    app_env = os.environ.get('APP_ENV', 'production')
     return jsonify({
         'success': True,
-        'message': 'Flask API server is running correctly',
+        'message': 'Enhanced Flask server is running',
         'timestamp': datetime.now().isoformat(),
-        'environment': app_env
+        'environment': app_env,
+        'version': 'enhanced-1.0',
+        'alpaca_api': True,
+        'unusual_whales_api': True
     })
 
 # Initialize market data manager
@@ -171,29 +257,57 @@ except Exception as e:
 
 # Register market analysis routes
 try:
+    print(f"Registering market analysis routes")
     register_market_analysis_routes(app)
-    logger.info("Successfully registered market analysis routes")
+    print(f"✅ Market Analysis routes registered")
 except Exception as e:
-    logger.error(f"Error registering market analysis routes: {e}")
+    print(f"⚠️ Failed to register market analysis routes: {e}")
+    traceback.print_exc()
 
-# Register autonomous bot routes
-try:
-    register_autonomous_bot_routes(app)
-    logger.info("Successfully registered autonomous bot routes")
-except Exception as e:
-    logger.error(f"Error registering autonomous bot routes: {e}")
+# Direct registration of TradingView routes
+if HAS_TRADINGVIEW:
+    print("Has TradingView routes, attempting to register...")
+    if tradingview_bp:
+        try:
+            print("Registering TradingView blueprint...")
+            app.register_blueprint(tradingview_bp)
+            print("✅ Successfully registered TradingView blueprint")
+            
+            # Add a direct test route
+            @app.route('/api/tradingview-direct-test', methods=['GET'])
+            def tradingview_direct_test():
+                print("Direct TradingView test route called")
+                return jsonify({
+                    'success': True,
+                    'message': 'Direct TradingView test route works',
+                    'timestamp': datetime.now().isoformat()
+                })
+                
+        except Exception as e:
+            print(f"❌ Error registering TradingView blueprint: {e}")
+            traceback.print_exc()
+    elif register_tradingview_routes:
+        try:
+            print("Attempting to register TradingView routes via function...")
+            register_tradingview_routes(app)
+            print("✅ Successfully registered TradingView routes via function")
+        except Exception as e:
+            print(f"❌ Error registering TradingView routes via function: {e}")
+            traceback.print_exc()
+    else:
+        print("⚠️ WARNING: TradingView integration components not available")
+else:
+    print("⚠️ WARNING: TradingView integration is not available")
+
+# Register bot management routes
+if register_bot_management_routes:
+    try:
+        register_bot_management_routes(app)
+        logger.info("Successfully registered bot management routes")
+    except Exception as e:
+        logger.error(f"Error registering bot management routes: {e}")
 
 # Register AI activity log routes
-try:
-    from ai_activity_log_routes import register_routes as register_ai_activity_log_routes
-except ImportError:
-    try:
-        # Try with api prefix
-        from api.ai_activity_log_routes import register_routes as register_ai_activity_log_routes
-    except ImportError as e:
-        logger.error(f"Error importing ai_activity_log_routes: {e}")
-        register_ai_activity_log_routes = None
-
 if register_ai_activity_log_routes:
     try:
         register_ai_activity_log_routes(app)
@@ -201,6 +315,30 @@ if register_ai_activity_log_routes:
     except Exception as e:
         logger.error(f"Error registering AI activity log routes: {e}")
         logger.error("AI activity logging features will be disabled")
+
+# Register autonomous bot routes
+try:
+    print(f"Registering autonomous bot routes")
+    register_autonomous_bot_routes(app)
+    print(f"✅ Autonomous bot routes registered")
+except Exception as e:
+    print(f"⚠️ Failed to register autonomous bot routes: {e}")
+    traceback.print_exc()
+
+# Register CEO dashboard routes
+try:
+    from api.routes.ceo_dashboard_routes import register_routes as register_ceo_dashboard_routes
+    register_ceo_dashboard_routes(app)
+    logger.info("Successfully registered CEO dashboard routes")
+except Exception as e:
+    logger.error(f"Error registering CEO dashboard routes: {e}")
+    try:
+        # Try alternative import path
+        from routes.ceo_dashboard_routes import register_routes as register_ceo_dashboard_routes
+        register_ceo_dashboard_routes(app)
+        logger.info("Successfully registered CEO dashboard routes from alternative path")
+    except Exception as e:
+        logger.error(f"Failed to register CEO dashboard routes from all known paths: {e}")
 
 # Try to import modules, but fall back to mock implementations if they fail
 try:
@@ -348,60 +486,67 @@ def api_run_backtest():
 def api_get_saved_signals():
     """Get saved buy and short signals"""
     try:
-        # Try multiple possible locations for the CSV files
-        possible_paths = [
-            # Current directory
-            ("buy_signals.csv", "short_signals.csv"),
-            # Root project directory
-            (os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "buy_signals.csv"),
-             os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "short_signals.csv")),
-            # Data directory
-            (os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "buy_signals.csv"),
-             os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "short_signals.csv"))
-        ]
+        # Check for signals in the data directory
+        data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')
+        buy_file = os.path.join(data_dir, 'buy_signals.csv')
+        short_file = os.path.join(data_dir, 'short_signals.csv')
         
-        buy_signals = None
-        short_signals = None
+        logger.info(f"Looking for signal files at: {buy_file} and {short_file}")
         
-        # Try each possible path
-        for buy_path, short_path in possible_paths:
-            logger.info(f"Trying to load signals from: {buy_path} and {short_path}")
+        if os.path.exists(buy_file) and os.path.exists(short_file):
+            logger.info(f"Found signal files. Loading data...")
+            buy_signals = pd.read_csv(buy_file)
+            short_signals = pd.read_csv(short_file)
             
-            if os.path.exists(buy_path) and os.path.exists(short_path):
-                logger.info(f"Found signal files at: {buy_path} and {short_path}")
-                try:
-                    buy_signals = pd.read_csv(buy_path)
-                    short_signals = pd.read_csv(short_path)
-                    logger.info(f"Successfully loaded {len(buy_signals)} buy signals and {len(short_signals)} short signals")
-                    break
-                except Exception as e:
-                    logger.error(f"Error reading CSV files at {buy_path} and {short_path}: {str(e)}")
-                    continue
-        
-        # If all paths failed, use mock data
-        if buy_signals is None or short_signals is None:
-            logger.warning("Could not load signals from any location, using mock data")
-            # Return mock data as fallback
+            logger.info(f"Loaded {len(buy_signals)} buy signals and {len(short_signals)} short signals")
+            
+            return jsonify({
+                'success': True,
+                'buy_signals': buy_signals.to_dict('records'),
+                'short_signals': short_signals.to_dict('records')
+            })
+        else:
+            # Generate mock data if files don't exist
+            logger.warning(f"Signal files not found at {buy_file} and {short_file}, generating mock data")
+            
+            # Create sample mock data
             buy_signals = pd.DataFrame({
-                'date': [datetime.now().strftime('%Y-%m-%d')],
-                'symbol': ['AAPL'],
-                'price': [180.0],
-                'signal_type': ['buy'],
-                'confidence': [0.85]
+                'date': [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(3)],
+                'symbol': ['SPY', 'AAPL', 'MSFT'],
+                'signal_score': [8.5, 7.6, 9.2],
+                'close': [450.0, 180.0, 350.0],
+                'ema_9': [445.0, 175.0, 345.0],
+                'ema_21': [440.0, 170.0, 340.0],
+                'volume': [50000000, 80000000, 30000000]
             })
+            
             short_signals = pd.DataFrame({
-                'date': [datetime.now().strftime('%Y-%m-%d')],
-                'symbol': ['TSLA'],
-                'price': [220.0],
-                'signal_type': ['short'],
-                'confidence': [0.78]
+                'date': [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(2)],
+                'symbol': ['TSLA', 'NFLX'],
+                'signal_score': [-7.2, -8.5],
+                'close': [220.0, 550.0],
+                'ema_9': [225.0, 560.0],
+                'ema_21': [230.0, 570.0],
+                'volume': [60000000, 20000000]
             })
-        
-        return jsonify({
-            'success': True,
-            'buy_signals': buy_signals.to_dict('records'),
-            'short_signals': short_signals.to_dict('records')
-        })
+            
+            # Create the data directory if it doesn't exist
+            os.makedirs(data_dir, exist_ok=True)
+            
+            # Save the mock data files for future use
+            try:
+                buy_signals.to_csv(buy_file, index=False)
+                short_signals.to_csv(short_file, index=False)
+                logger.info(f"Created mock signal files at {buy_file} and {short_file}")
+            except Exception as save_error:
+                logger.warning(f"Could not save mock data to files: {save_error}")
+            
+            return jsonify({
+                'success': True,
+                'buy_signals': buy_signals.to_dict('records'),
+                'short_signals': short_signals.to_dict('records'),
+                'is_mock': True
+            })
     except Exception as e:
         logger.error(f"Error in get-saved-signals: {str(e)}")
         return jsonify({
@@ -417,6 +562,8 @@ def api_get_backtest_results():
         possible_paths = [
             # Current directory
             "backtest_results.csv",
+            # Within API directory
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "backtest_results.csv"),
             # Root project directory
             os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "backtest_results.csv"),
             # Data directory
@@ -424,6 +571,11 @@ def api_get_backtest_results():
         ]
         
         backtest_results = None
+        source = None
+        
+        # Check if we should use a recent timestamp to consider data fresh
+        force_update = request.args.get('force_update', 'false').lower() == 'true'
+        csv_max_age_hours = 24  # Consider data stale after 24 hours
         
         # Try each possible path
         for path in possible_paths:
@@ -431,31 +583,79 @@ def api_get_backtest_results():
             
             if os.path.exists(path):
                 logger.info(f"Found backtest results file at: {path}")
+                
+                # Check file age
+                file_time = os.path.getmtime(path)
+                file_age_hours = (time.time() - file_time) / 3600
+                
+                if force_update or file_age_hours > csv_max_age_hours:
+                    logger.info(f"File is {file_age_hours:.1f} hours old. Generating fresh data...")
+                    # Call our update function to refresh data
+                    try:
+                        # Import our update script
+                        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                        from update_backtest_data import update_backtest_data
+                        
+                        # Run the update
+                        update_success = update_backtest_data()
+                        if update_success:
+                            logger.info("Successfully updated backtest data")
+                        else:
+                            logger.warning("Failed to update backtest data, using existing file")
+                    except Exception as update_error:
+                        logger.error(f"Error updating backtest data: {str(update_error)}")
+                
                 try:
                     backtest_results = pd.read_csv(path)
+                    source = path
                     logger.info(f"Successfully loaded {len(backtest_results)} backtest results")
                     break
                 except Exception as e:
                     logger.error(f"Error reading CSV file at {path}: {str(e)}")
                     continue
         
-        # If all paths failed, use mock data
+        # If no file found, try to generate it on-the-fly
         if backtest_results is None:
-            logger.warning("Could not load backtest results from any location, using mock data")
-            # Return mock data as fallback
-            backtest_results = pd.DataFrame({
-                'date': [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(5)],
-                'symbol': ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA'],
-                'entry_price': [180.0, 310.0, 140.0, 130.0, 220.0],
-                'exit_price': [185.0, 315.0, 145.0, 128.0, 225.0],
-                'profit': [5.0, 5.0, 5.0, -2.0, 5.0],
-                'profit_percent': [2.8, 1.6, 3.6, -1.5, 2.3],
-                'trade_outcome': ['win', 'win', 'win', 'loss', 'win']
-            })
+            logger.warning("Could not load backtest results from any location, attempting to generate data")
+            try:
+                # Import our update script
+                sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                from update_backtest_data import update_backtest_data
+                
+                # Run the update
+                update_success = update_backtest_data()
+                if update_success:
+                    # Try to load the newly generated file
+                    for path in possible_paths:
+                        if os.path.exists(path):
+                            try:
+                                backtest_results = pd.read_csv(path)
+                                source = "newly_generated"
+                                logger.info(f"Successfully loaded newly generated data with {len(backtest_results)} records")
+                                break
+                            except Exception:
+                                continue
+            except Exception as e:
+                logger.error(f"Failed to generate backtest data: {str(e)}")
+        
+        # If we still don't have data, fall back to generated mock data
+        if backtest_results is None:
+            logger.warning("All attempts to get real data failed, using mock data as fallback")
+            
+            # Create fallback data
+            from run_pipeline import run_backtest
+            backtest_results = run_backtest(pd.DataFrame(), pd.DataFrame())
+            source = "fallback"
+        
+        # Add isRealData flag based on the source
+        is_real_data = source != "fallback" and source != "generated" and source is not None
         
         return jsonify({
             'success': True,
-            'backtest_results': backtest_results.to_dict('records')
+            'backtest_results': backtest_results.to_dict('records'),
+            'isRealData': is_real_data,
+            'source': source if source else "generated",
+            'timestamp': datetime.now().isoformat()
         })
     except Exception as e:
         logger.error(f"Error in get-backtest-results: {str(e)}")
@@ -1413,23 +1613,39 @@ def api_get_market_ai_signals(symbol):
             'error': str(e)
         }), 500
 
-# Main entry point
-if __name__ == '__main__':
+@app.route('/api/generate-signals', methods=['POST'])
+def api_generate_signals():
+    """Generate new trading signals - redirects to the dual bot endpoint"""
     try:
-        print("Starting Flask API server...")
-        print(f"API endpoints available at http://localhost:5000")
-        print("Press Ctrl+C to shut down the server")
-        print("Available test endpoint: http://localhost:5000/api/test")
+        # Import the dual bot's generate_signals function
+        from api.routes.dual_bot_routes import generate_signals
         
-        print("DEBUG INFO: Python version:", sys.version)
-        print("DEBUG INFO: Flask version:", getattr(Flask, '__version__', 'unknown'))
-        print("DEBUG INFO: Current directory:", os.getcwd())
-        print("DEBUG INFO: PATH:", os.environ.get('PATH', ''))
-        
-        # Run the Flask application with debug mode
-        app.run(host='0.0.0.0', port=5000, debug=True)
+        # Call the function directly
+        logger.info("Redirecting legacy /api/generate-signals to dual bot implementation")
+        return generate_signals()
+            
     except Exception as e:
-        print(f"CRITICAL ERROR starting Flask server: {str(e)}")
+        logger.error(f"Error in generate-signals: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# After all routes are registered at the end of file
+if __name__ == '__main__':
+    # Print all registered routes for debugging
+    print("\n=== REGISTERED ROUTES ===")
+    for rule in app.url_map.iter_rules():
+        print(f"Route: {rule.endpoint} -> {rule.rule}")
+    print("=========================\n")
+    
+    try:
+        port = int(os.environ.get('PORT', 5000))
+        print("Starting Flask server...")
+        print(f"Server running at: http://localhost:{port}")
+        print(f"Test endpoint: http://localhost:{port}/api/test")
+        app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False, threaded=True)
+    except Exception as e:
+        print(f"Error starting Flask server: {str(e)}")
         import traceback
         traceback.print_exc()
-        sys.exit(1) 
