@@ -48,7 +48,7 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 
 // Define API base URL based on environment
-const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
 
 // Generate mock data for fallback
 const generateMockData = () => {
@@ -155,32 +155,27 @@ const CEODashboard = ({ data }) => {
     setError(null);
 
     try {
-      console.log('Fetching CEO dashboard data from:', `${API_BASE_URL}/ceo-dashboard`);
-      
-      // Try multiple endpoints to handle different API configurations
-      let dashboardResponse;
+      // Simplify API call logic - try only the correct endpoint with proper error handling
+      console.log('Fetching CEO dashboard data');
       
       try {
-        // First try /api/ceo-dashboard endpoint
-        dashboardResponse = await axios.get(`${API_BASE_URL}/ceo-dashboard`, { timeout: 5000 });
-      } catch (error) {
-        console.log('First attempt failed, trying alternative endpoint');
-        try {
-          // Then try with /ceo-dashboard
-          dashboardResponse = await axios.get(`/ceo-dashboard`, { timeout: 5000 });
-        } catch (secondError) {
-          console.log('All API attempts failed, using mock data');
-          throw new Error('All API endpoints failed');
+        const dashboardResponse = await axios.get(`${API_BASE_URL}/api/ceo-dashboard`, { 
+          timeout: 8000 // Increased timeout
+        });
+        
+        if (dashboardResponse.data && dashboardResponse.data.success) {
+          console.log('CEO dashboard data received:', dashboardResponse.data);
+          setDashboardData(dashboardResponse.data);
+          return; // Exit if successful
         }
+      } catch (error) {
+        console.log('API call failed:', error.message);
+        // Continue to fallback
       }
       
-      if (dashboardResponse.data && dashboardResponse.data.success) {
-        console.log('CEO dashboard data received:', dashboardResponse.data);
-        setDashboardData(dashboardResponse.data);
-      } else {
-        console.log('API response was not successful, using mock data');
-        setDashboardData(generateMockData());
-      }
+      // If we reach here, use mock data
+      console.log('Using mock dashboard data');
+      setDashboardData(generateMockData());
     } catch (error) {
       console.error('Error fetching CEO dashboard data:', error);
       setError('Could not load CEO dashboard data. Using sample data instead.');
@@ -193,13 +188,19 @@ const CEODashboard = ({ data }) => {
   const fetchSettings = async () => {
     try {
       // Try to fetch settings from API
-      const settingsResponse = await axios.get(`${API_BASE_URL}/ceo-settings`, { timeout: 3000 });
+      console.log('Fetching CEO settings');
+      const settingsResponse = await axios.get(`${API_BASE_URL}/api/ceo-settings`, { 
+        timeout: 8000 // Increased timeout
+      });
       
       if (settingsResponse.data && settingsResponse.data.success) {
+        console.log('Settings received successfully');
         setSettings(settingsResponse.data.settings);
+      } else {
+        console.log('Invalid settings response format, using defaults');
       }
     } catch (error) {
-      console.error('Error fetching CEO settings:', error);
+      console.error('Error fetching CEO settings:', error.message);
       // Keep using default settings
     }
   };

@@ -429,3 +429,25 @@ Stage 2 focused on building a powerful trade execution model that analyzes marke
 
 ## Detailed Modifications
 For a complete list of all modifications and improvements, see [UpLiftTeck_Modifications.md](UpLiftTeck_Modifications.md).
+
+## Dual Bot Dashboard
+
+The AI Trading Bot now includes a Dual Bot Dashboard that leverages both DeepSeek and ChatGPT for intelligent trading decisions. The dashboard provides a visual interface to:
+
+- View real-time bot status and market data
+- Generate trade recommendations using DeepSeek AI
+- Assess trade risks using ChatGPT
+- Monitor positions and performance
+
+To start the Dual Bot Dashboard:
+
+1. Windows: Run `start-dual-bot.bat`
+2. macOS/Linux: Run `./start-dual-bot.sh`
+
+Or start components individually:
+- API Server: `python dual_bot_api_server.py`
+- Frontend: `cd frontend && npm start`
+
+Then access the dashboard at: http://localhost:3000/dual-bot
+
+For detailed information and troubleshooting, see the [Dual Bot Dashboard README](DUAL_BOT_DASHBOARD_README.md).

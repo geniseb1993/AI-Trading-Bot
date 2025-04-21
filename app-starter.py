@@ -322,66 +322,53 @@ def generate_signals():
         return False
 
 def start_flask_server():
-    """Start the Flask API server"""
+    """Start the Flask API server with robust error handling"""
     logger.info("Starting Flask API server...")
     
-    # First check if server is already running
     try:
-        response = requests.get("http://localhost:5000/api/test", timeout=2)
-        if response.status_code == 200:
-            logger.info("Flask API server is already running")
-            return True
-    except requests.RequestException:
-        logger.info("No existing Flask API server detected")
-    
-    # Choose the correct server file
-    server_file = "minimal_flask_server.py"
-    if os.path.exists(os.path.join("api", "app.py")):
-        server_file = os.path.join("api", "app.py")
-        logger.info(f"Using main app.py server: {server_file}")
-    else:
-        logger.info(f"Using minimal server: {server_file}")
-    
-    # Start the server
-    try:
-        # Prepare environment variables
-        env = os.environ.copy()
-        env["APP_ENV"] = "production"
+        # First check if the API is already running
+        try:
+            response = requests.get("http://localhost:5000/api/health")
+            if response.status_code == 200:
+                logger.info("API server is already running")
+                return True
+        except requests.exceptions.ConnectionError:
+            # API is not running, continue with startup
+            pass
         
-        # Use subprocess to run in the background
+        # On Windows, use start command to open a new command window
         if platform.system() == "Windows":
-            # Use subprocess.Popen for Windows
-            process = subprocess.Popen(
-                [sys.executable, server_file],
-                env=env,
-                creationflags=subprocess.CREATE_NEW_CONSOLE
+            subprocess.Popen(
+                ["start", "API Server", "/min", "cmd", "/c", f"{sys.executable}", "run_api.py"], 
+                shell=True,
+                cwd=os.path.dirname(os.path.abspath(__file__))
             )
+        # On Unix-like systems, use nohup to run in the background
         else:
-            # Use nohup for Linux/Mac
-            cmd = f"nohup {sys.executable} {server_file} > server.log 2>&1 &"
-            subprocess.Popen(cmd, shell=True, env=env)
+            subprocess.Popen(
+                ["nohup", sys.executable, "run_api.py", "&"], 
+                stdout=open("api.log", "w"),
+                stderr=subprocess.STDOUT,
+                preexec_fn=os.setpgrp,
+                cwd=os.path.dirname(os.path.abspath(__file__))
+            )
         
-        logger.info("Flask API server started in background")
-        
-        # Wait for server to start
+        # Wait for the API to start (with timeout)
         max_retries = 10
         for i in range(max_retries):
             try:
-                logger.info(f"Checking if server is up (attempt {i+1}/{max_retries})...")
-                response = requests.get("http://localhost:5000/api/test", timeout=2)
+                time.sleep(2)  # Give the server time to start
+                response = requests.get("http://localhost:5000/api/health")
                 if response.status_code == 200:
-                    logger.info("Flask API server is up and running!")
+                    logger.info("API server started successfully")
                     return True
-            except requests.RequestException:
-                pass
-            
-            time.sleep(3)
+            except requests.exceptions.ConnectionError:
+                logger.info(f"Waiting for API server to start (attempt {i+1}/{max_retries})...")
         
-        logger.warning("Could not confirm Flask API server is running after retries")
+        logger.warning("API server might not have started properly")
         return False
-    
     except Exception as e:
-        logger.error(f"Error starting Flask API server: {e}")
+        logger.error(f"Failed to start API server: {e}")
         return False
 
 def start_react_app():
@@ -495,59 +482,112 @@ def clean_orphaned_processes():
     
     return True
 
+def start_dual_bot_api():
+    """Start the Dual Bot API server"""
+    logger.info("Starting Dual Bot API server...")
+    
+    try:
+        # First check if the API is already running
+        try:
+            response = requests.get("http://localhost:5001/api/health")
+            if response.status_code == 200:
+                logger.info("Dual Bot API server is already running")
+                return True
+        except requests.exceptions.ConnectionError:
+            # API is not running, continue with startup
+            pass
+        
+        # On Windows, use start command to open a new command window
+        if platform.system() == "Windows":
+            subprocess.Popen(
+                ["start", "Dual Bot API", "/min", "cmd", "/c", f"{sys.executable}", "dual_bot/run_api.py"], 
+                shell=True,
+                cwd=os.path.dirname(os.path.abspath(__file__))
+            )
+        # On Unix-like systems, use nohup to run in the background
+        else:
+            subprocess.Popen(
+                ["nohup", sys.executable, "dual_bot/run_api.py", "&"], 
+                stdout=open("dual_bot_api.log", "w"),
+                stderr=subprocess.STDOUT,
+                preexec_fn=os.setpgrp,
+                cwd=os.path.dirname(os.path.abspath(__file__))
+            )
+        
+        # Wait for the API to start (with timeout)
+        max_retries = 10
+        for i in range(max_retries):
+            try:
+                time.sleep(2)  # Give the server time to start
+                response = requests.get("http://localhost:5001/api/health")
+                if response.status_code == 200:
+                    logger.info("Dual Bot API server started successfully")
+                    return True
+            except requests.exceptions.ConnectionError:
+                logger.info(f"Waiting for Dual Bot API server to start (attempt {i+1}/{max_retries})...")
+        
+        logger.warning("Dual Bot API server might not have started properly")
+        return False
+    except Exception as e:
+        logger.error(f"Failed to start Dual Bot API server: {e}")
+        return False
+
 def main():
-    """Main function to start the application"""
-    logger.info("=" * 50)
-    logger.info("Starting AI Trading Bot V2.0...")
-    logger.info("=" * 50)
-    
-    success = True
-    
-    # Clean orphaned processes
-    clean_orphaned_processes()
-    
-    # Check environment
-    if not check_environment():
-        logger.warning("Environment check failed. Continuing with limited functionality.")
-        success = False
-    
-    # Update Python path
-    if not update_python_path():
-        logger.warning("Failed to update Python path. Continuing anyway.")
-    
-    # Copy execution model
-    if not copy_execution_model():
-        logger.warning("Failed to copy execution model. Continuing anyway.")
-    
-    # Generate signals
-    if not generate_signals():
-        logger.warning("Failed to generate signals. Continuing with existing or mock signals.")
-        success = False
-    
-    # Start Flask API server
-    if not start_flask_server():
-        logger.error("Failed to start Flask API server.")
-        success = False
-    
-    # Start React frontend
-    if not start_react_app():
-        logger.error("Failed to start React frontend.")
-        success = False
-    
-    if success:
-        logger.info("=" * 50)
+    """Main entry point for the application"""
+    try:
+        logger.info("Starting AI Trading Bot V2.0...")
+        
+        # Step 1: Check environment
+        if not check_environment():
+            logger.error("Environment check failed")
+            return False
+        
+        # Step 2: Update Python path
+        if not update_python_path():
+            logger.error("Failed to update Python path")
+            return False
+        
+        # Step 3: Generate signals
+        try:
+            generate_signals()
+        except Exception as e:
+            logger.error(f"Signal generation failed: {e}")
+            # Continue despite signal generation failure
+        
+        # Step 4: Copy execution model if necessary
+        try:
+            copy_execution_model()
+        except Exception as e:
+            logger.error(f"Failed to copy execution model: {e}")
+            # Continue despite failure here
+        
+        # Step 5: Clean any orphaned processes
+        try:
+            clean_orphaned_processes()
+        except Exception as e:
+            logger.error(f"Failed to clean orphaned processes: {e}")
+            # Continue despite failure here
+        
+        # Step 6: Start Flask API server
+        if not start_flask_server():
+            logger.warning("Flask API server startup might have issues")
+            # Continue anyway
+        
+        # Step 7: Start Dual Bot API server
+        if not start_dual_bot_api():
+            logger.warning("Dual Bot API server startup might have issues")
+            # Continue anyway
+        
+        # Step 8: Start React app
+        if not start_react_app():
+            logger.error("Failed to start React app")
+            return False
+        
         logger.info("AI Trading Bot V2.0 started successfully!")
-        logger.info("=" * 50)
-        logger.info("Access the application at:")
-        logger.info("- Frontend: http://localhost:3000")
-        logger.info("- Backend API: http://localhost:5000")
-    else:
-        logger.warning("=" * 50)
-        logger.warning("AI Trading Bot V2.0 started with some issues.")
-        logger.warning("Check logs for details.")
-        logger.warning("=" * 50)
-    
-    return success
+        return True
+    except Exception as e:
+        logger.error(f"Error starting application: {e}")
+        return False
 
 if __name__ == "__main__":
     main() 

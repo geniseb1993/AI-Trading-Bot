@@ -35,8 +35,8 @@ def main():
         app = create_app()
         
         # Run the server
-        logger.info("Starting API server...")
-        app.run(host='0.0.0.0', port=5000, debug=True)
+        logger.info("Starting API server on port 5001...")
+        app.run(host='0.0.0.0', port=5001, debug=True)
         
     except Exception as e:
         logger.error(f"Error starting API server: {str(e)}")

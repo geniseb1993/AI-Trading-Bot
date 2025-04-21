@@ -1,54 +1,44 @@
 import requests
 import json
-from datetime import datetime
-import time
-import traceback
+import sys
 
-def test_endpoint(endpoint, method='GET', data=None, timeout=10):
-    """Test an API endpoint and print the response"""
-    base_url = 'http://localhost:5000/api/dual-bot'
-    url = f'{base_url}/{endpoint}'
+def test_endpoints():
+    BASE_URL = "http://localhost:5001/api"
     
-    print(f"\n🔄 Testing {method} {url}")
-    start_time = time.time()
-    try:
-        if method == 'GET':
-            response = requests.get(url, timeout=timeout)
-        else:
-            response = requests.post(url, json=data, timeout=timeout)
+    endpoints = [
+        "/cors-test",
+        "/dual-bot/status",
+        "/dual-bot/signals",
+        "/config"
+    ]
+    
+    print("\n=== Testing Dual Bot API Endpoints ===\n")
+    
+    for endpoint in endpoints:
+        try:
+            print(f"Testing {endpoint}...")
+            response = requests.get(f"{BASE_URL}{endpoint}")
+            
+            if response.status_code == 200:
+                print(f"✅ SUCCESS - Status code: {response.status_code}")
+                data = response.json()
+                
+                # Print just a summary of the response to keep output clean
+                if isinstance(data, dict):
+                    keys = list(data.keys())
+                    print(f"Response contains keys: {keys}")
+                else:
+                    print(f"Response type: {type(data)}")
+            else:
+                print(f"❌ FAILED - Status code: {response.status_code}")
+                print(f"Response: {response.text}")
+                
+        except Exception as e:
+            print(f"❌ ERROR - {endpoint}: {str(e)}")
         
-        elapsed = time.time() - start_time
-        print(f"Status Code: {response.status_code} (took {elapsed:.2f}s)")
-        if response.status_code == 200:
-            print("Response:")
-            print(json.dumps(response.json(), indent=2))
-        else:
-            print(f"Error: {response.text}")
-    except requests.exceptions.ConnectionError as e:
-        print(f"Connection Error: {str(e)}")
-        print("Make sure the Flask server is running and accessible")
-    except requests.exceptions.Timeout as e:
-        print(f"Timeout Error after {timeout}s: {str(e)}")
-    except Exception as e:
-        print(f"Error: {str(e)}")
-        print(traceback.format_exc())
-
-def main():
-    print("🤖 Testing Dual Bot API Endpoints")
-    print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print("")  # Add empty line between endpoint tests
     
-    # Wait a bit for server to fully start
-    print("Waiting 2 seconds for server to initialize...")
-    time.sleep(2)
-    
-    # Test status endpoint
-    test_endpoint('status')
-    
-    # Test signals endpoint
-    test_endpoint('signals')
-    
-    # Test generate-signals endpoint
-    test_endpoint('generate-signals', method='POST')
+    print("=== All tests completed ===")
 
 if __name__ == "__main__":
-    main() 
+    test_endpoints() 

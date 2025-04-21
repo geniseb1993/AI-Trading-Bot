@@ -368,18 +368,79 @@ const Dashboard = () => {
     // Get bot status if missing
     if (!formattedData.botStatus) {
       try {
-        const botResponse = await axios.get(`${API_BASE_URL}/dual-bot/status`, { timeout: 3000 });
-        if (botResponse.data && botResponse.data.success) {
-          const botStatus = botResponse.data.status;
+        // Try the main bot status endpoint first
+        const botResponse = await axios.get(`${API_BASE_URL}/api/bot/status`, { timeout: 5000 });
+        
+        if (botResponse.data) {
+          console.log('Bot status data loaded successfully');
+          const bots = [];
+          
+          // Process Autonomous Bot
+          if (botResponse.data.autonomous_bot) {
+            bots.push({
+              id: 'autonomous-bot',
+              name: 'Autonomous Trading Bot',
+              status: botResponse.data.autonomous_bot.status ? 'active' : 'paused',
+              lastTrade: botResponse.data.autonomous_bot.last_update,
+              activeStrategies: botResponse.data.autonomous_bot.active_trades?.length || 0,
+              pnl24h: 2.1, // Mock PnL since the API doesn't provide this yet
+              isRealData: true
+            });
+          }
+          
+          // Process RSI Bot
+          if (botResponse.data.rsi_bot) {
+            bots.push({
+              id: 'rsi-bot',
+              name: 'RSI Strategy Bot',
+              status: botResponse.data.rsi_bot.status ? 'active' : 'paused',
+              lastTrade: botResponse.data.rsi_bot.last_update,
+              activeStrategies: botResponse.data.rsi_bot.active_signals?.length || 0,
+              pnl24h: 1.5, // Mock PnL since the API doesn't provide this yet
+              isRealData: true
+            });
+          }
+          
+          // Process Dual Bot
+          if (botResponse.data.dual_bot) {
+            bots.push({
+              id: 'dual-bot',
+              name: 'Dual Bot System',
+              status: botResponse.data.dual_bot.status ? 'active' : 'paused',
+              lastTrade: botResponse.data.dual_bot.last_update,
+              activeStrategies: botResponse.data.dual_bot.active_positions?.length || 0,
+              pnl24h: 3.2, // Mock PnL since the API doesn't provide this yet
+              isRealData: true
+            });
+          }
+          
+          if (bots.length > 0) {
+            formattedData.botStatus = bots;
+            formattedData.botStatus.isRealData = true;
+            console.log('Successfully loaded bot status for all bots');
+            // Skip the other bot status endpoints
+            return;
+          }
+        }
+      } catch (error) {
+        console.log('Main bot status API error:', error.message);
+      }
+      
+      // If we're here, try the dual-bot status endpoint as fallback
+      try {
+        const dualBotResponse = await axios.get(`${API_BASE_URL}/api/dual-bot/status`, { timeout: 3000 });
+        if (dualBotResponse.data && dualBotResponse.data.success) {
+          console.log('Dual bot status loaded');
+          const botStatus = dualBotResponse.data.status;
           formattedData.botStatus = [{
             id: 'dual-bot-1',
             name: 'Dual Bot System',
-            status: 'active',
+            status: botStatus.status || 'active',
             lastTrade: botStatus.last_updated,
-            pnl24h: 1.2, // Mock PnL since the API doesn't provide this yet
-            activeStrategies: 1
+            pnl24h: parseFloat(botStatus.pnl_24h || 0),
+            activeStrategies: parseInt(botStatus.active_strategies || 1)
           }];
-          formattedData.botStatus.isRealData = true; // Mark as real data
+          formattedData.botStatus.isRealData = true;
         }
       } catch (error) {
         console.log('Dual-bot status API error:', error.message);
@@ -389,7 +450,7 @@ const Dashboard = () => {
     // Get trading signals and convert to active trades if missing
     if (!formattedData.activeTrades) {
       try {
-        const signalsResponse = await axios.get(`${API_BASE_URL}/dual-bot/signals`, { timeout: 3000 });
+        const signalsResponse = await axios.get(`${API_BASE_URL}/api/dual-bot/signals`, { timeout: 3000 });
         if (signalsResponse.data && signalsResponse.data.success && signalsResponse.data.signals) {
           const allSignals = signalsResponse.data.signals.signals || [];
           formattedData.activeTrades = allSignals.map(signal => {
@@ -415,7 +476,7 @@ const Dashboard = () => {
     // Get alerts from signals if missing
     if (!formattedData.recentAlerts) {
       try {
-        const signalsResponse = await axios.get(`${API_BASE_URL}/dual-bot/signals`, { timeout: 3000 });
+        const signalsResponse = await axios.get(`${API_BASE_URL}/api/dual-bot/signals`, { timeout: 3000 });
         if (signalsResponse.data && signalsResponse.data.success && signalsResponse.data.signals) {
           const allSignals = signalsResponse.data.signals.signals || [];
           formattedData.recentAlerts = allSignals.slice(0, 5).map(signal => ({
@@ -467,7 +528,7 @@ const Dashboard = () => {
     
     // Try to fetch all dashboard data at once first (this endpoint exists according to logs)
     try {
-      const dashboardResponse = await axios.get(`${API_BASE_URL}/dashboard`, { timeout: 5000 });
+      const dashboardResponse = await axios.get(`${API_BASE_URL}/api/dashboard`, { timeout: 5000 });
       if (dashboardResponse.data && dashboardResponse.data.success) {
         console.log('Dashboard data loaded successfully');
         
@@ -534,7 +595,7 @@ const Dashboard = () => {
     // Fetch active trades if not already loaded
     if (!data.activeTrades) {
       try {
-        const activeTradesResponse = await axios.get(`${API_BASE_URL}/active-trades`, { timeout: 3000 });
+        const activeTradesResponse = await axios.get(`${API_BASE_URL}/api/active-trades`, { timeout: 3000 });
         if (activeTradesResponse.data) {
           console.log('Active trades loaded successfully');
           data.activeTrades = Array.isArray(activeTradesResponse.data) 
@@ -556,7 +617,7 @@ const Dashboard = () => {
         
         // Try broker/positions as fallback (from the logs)
         try {
-          const positionsResponse = await axios.get(`${API_BASE_URL}/broker/positions`, { timeout: 3000 });
+          const positionsResponse = await axios.get(`${API_BASE_URL}/api/broker/positions`, { timeout: 3000 });
           if (positionsResponse.data && positionsResponse.data.positions) {
             console.log('Positions loaded from broker API');
             data.activeTrades = positionsResponse.data.positions.map(position => ({
@@ -580,7 +641,7 @@ const Dashboard = () => {
     // Fetch market overview if not already loaded
     if (!data.marketOverview) {
       try {
-        const marketOverviewResponse = await axios.get(`${API_BASE_URL}/market-overview`, { timeout: 3000 });
+        const marketOverviewResponse = await axios.get(`${API_BASE_URL}/api/market-overview`, { timeout: 3000 });
         if (marketOverviewResponse.data) {
           console.log('Market overview loaded successfully');
           data.marketOverview = marketOverviewResponse.data;
@@ -594,7 +655,7 @@ const Dashboard = () => {
     // Fetch performance history
     if (!data.performance) {
       try {
-        const performanceResponse = await axios.get(`${API_BASE_URL}/portfolio-performance`, { timeout: 3000 });
+        const performanceResponse = await axios.get(`${API_BASE_URL}/api/portfolio-performance`, { timeout: 3000 });
         if (performanceResponse.data) {
           console.log('Portfolio performance loaded successfully');
           const performanceData = Array.isArray(performanceResponse.data) 
@@ -616,7 +677,7 @@ const Dashboard = () => {
     
     // Try CEODashboard data if it exists
     try {
-      const ceoResponse = await axios.get(`${API_BASE_URL}/ceo-dashboard`, { timeout: 3000 });
+      const ceoResponse = await axios.get(`${API_BASE_URL}/api/ceo-dashboard`, { timeout: 3000 });
       if (ceoResponse.data && ceoResponse.data.success) {
         console.log('CEO Dashboard data loaded');
         // Store CEO dashboard data for later use
@@ -627,56 +688,10 @@ const Dashboard = () => {
       console.log('CEO Dashboard API error:', error.message);
     }
     
-    // Fetch bot status data
-    if (!data.botStatus) {
-      try {
-        // From the logs, we see dual-bot/status endpoint
-        const dualBotResponse = await axios.get(`${API_BASE_URL}/dual-bot/status`, { timeout: 3000 });
-        if (dualBotResponse.data && dualBotResponse.data.success) {
-          console.log('Dual bot status loaded');
-          const botStatus = dualBotResponse.data.status;
-        data.botStatus = [{
-          id: 'dual-bot-1',
-          name: 'Dual Bot System',
-            status: botStatus.status || 'active',
-          lastTrade: botStatus.last_updated,
-            pnl24h: parseFloat(botStatus.pnl_24h || 0),
-            activeStrategies: parseInt(botStatus.active_strategies || 1)
-          }];
-          data.botStatus.isRealData = true;
-      }
-    } catch (error) {
-      console.log('Dual-bot status API error:', error.message);
-        
-        // Try the bot/status endpoint from logs
-        try {
-          const botResponse = await axios.get(`${API_BASE_URL}/bot/status`, { timeout: 3000 });
-          if (botResponse.data && botResponse.data.success) {
-            console.log('Bot status loaded');
-            const botStatus = botResponse.data.status || botResponse.data;
-            // Check if it's an array or single object
-            const botsArray = Array.isArray(botStatus) ? botStatus : [botStatus];
-            
-            data.botStatus = botsArray.map(bot => ({
-              id: bot.id || `bot-${Math.random().toString(36).substring(2, 9)}`,
-              name: bot.name || 'Trading Bot',
-              status: bot.status || 'active',
-              lastTrade: bot.last_trade || bot.lastTrade || new Date().toISOString(),
-              pnl24h: parseFloat(bot.pnl_24h || bot.pnl24h || 0),
-              activeStrategies: parseInt(bot.active_strategies || bot.activeStrategies || 1)
-            }));
-            data.botStatus.isRealData = true;
-          }
-        } catch (error) {
-          console.log('Bot status API error:', error.message);
-        }
-      }
-    }
-    
     // Fetch recent alerts
     if (!data.recentAlerts) {
       try {
-        const alertsResponse = await axios.get(`${API_BASE_URL}/alerts`, { timeout: 3000 });
+        const alertsResponse = await axios.get(`${API_BASE_URL}/api/alerts`, { timeout: 3000 });
         if (alertsResponse.data) {
           console.log('Alerts loaded successfully');
           const alertsData = Array.isArray(alertsResponse.data) 
@@ -697,7 +712,7 @@ const Dashboard = () => {
         
         // Try dual-bot/signals as fallback for alerts
     try {
-      const signalsResponse = await axios.get(`${API_BASE_URL}/dual-bot/signals`, { timeout: 3000 });
+      const signalsResponse = await axios.get(`${API_BASE_URL}/api/dual-bot/signals`, { timeout: 3000 });
       if (signalsResponse.data && signalsResponse.data.success && signalsResponse.data.signals) {
         console.log('Dual-bot signals loaded');
         const allSignals = signalsResponse.data.signals.signals || [];
@@ -718,7 +733,7 @@ const Dashboard = () => {
     
     // Try to get and use backtest results directly
     try {
-      const backrestResultsResponse = await axios.get(`${API_BASE_URL}/run-backtest`, { 
+      const backrestResultsResponse = await axios.get(`${API_BASE_URL}/api/run-backtest`, { 
         method: 'POST',
         timeout: 4000,
         data: {}  // Empty data to trigger a response

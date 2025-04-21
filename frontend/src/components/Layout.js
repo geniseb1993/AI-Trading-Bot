@@ -145,6 +145,7 @@ const Layout = ({ children }) => {
     { name: 'Trade Setups', path: '/trade-setups', icon: <ShowChartIcon /> },
     { name: 'Risk Management', path: '/risk-management', icon: <SecurityIcon /> },
     { name: 'Bot Management', path: '/bot-management', icon: <SmartToyIcon /> },
+    { name: 'Dual Bot', path: '/dual-bot', icon: <SmartToyIcon /> },
     { name: 'Settings', path: '/settings', icon: <SettingsIcon /> },
     { name: 'Debug', path: '/debug', icon: <BugReportIcon /> },
   ];

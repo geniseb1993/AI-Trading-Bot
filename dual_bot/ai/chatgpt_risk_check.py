@@ -1,16 +1,17 @@
 """
 ChatGPT Risk Manager module for the Dual Bot trading system.
-Provides risk assessment functionality using OpenAI's ChatGPT API.
+Provides risk assessment functionality using OpenAI's ChatGPT API via OpenRouter.
 """
 
 import os
 import json
 import logging
+import time
 import openai
 from typing import Dict, Any, Optional
 
 class ChatGPTRiskManager:
-    """Manages risk assessment using ChatGPT API."""
+    """Manages risk assessment using ChatGPT API via OpenRouter."""
     
     def __init__(self, config: Dict[str, Any]):
         """
@@ -23,12 +24,26 @@ class ChatGPTRiskManager:
         self.config = config.get('chatgpt', {})
         self.risk_config = self.config.get('risk_manager', {})
         
-        # Set up OpenAI client
-        api_key = os.getenv('OPENAI_API_KEY') or self.config.get('api_key')
+        # Set up OpenAI client with OpenRouter
+        api_key = os.getenv('OPENROUTER_API_KEY') or self.config.get('openrouter_api_key')
         if not api_key:
-            raise ValueError("OpenAI API key not found in environment or config")
-        
-        openai.api_key = api_key
+            self.logger.warning("OpenRouter API key not found. Falling back to direct OpenAI key if available.")
+            api_key = os.getenv('OPENAI_API_KEY') or self.config.get('api_key')
+            if not api_key:
+                raise ValueError("Neither OpenRouter nor OpenAI API key found in environment or config")
+            
+            # Initialize standard OpenAI client
+            self.logger.info("Using direct OpenAI connection")
+            self.client = openai.OpenAI(api_key=api_key)
+            self.using_openrouter = False
+        else:
+            # Initialize OpenAI client with OpenRouter configuration
+            self.logger.info("Using OpenRouter for OpenAI model access")
+            self.client = openai.OpenAI(
+                base_url="https://openrouter.ai/api/v1",
+                api_key=api_key
+            )
+            self.using_openrouter = True
         
         # Load risk manager settings
         self.confidence_threshold = self.risk_config.get('confidence_threshold', 0.7)
@@ -36,6 +51,12 @@ class ChatGPTRiskManager:
         self.temperature = self.risk_config.get('temperature', 0.3)
         self.retry_attempts = self.risk_config.get('retry_attempts', 3)
         self.retry_delay_seconds = self.risk_config.get('retry_delay_seconds', 1)
+        
+        # Set the model name based on whether we're using OpenRouter or direct OpenAI
+        self.model = self.config.get('model', 'gpt-4-turbo')
+        if self.using_openrouter and not self.model.startswith('openai/'):
+            self.model = f"openai/{self.model}"
+            self.logger.info(f"Using model via OpenRouter: {self.model}")
         
     def assess_risk(self, trade_recommendation: Dict[str, Any], market_context: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -55,15 +76,26 @@ class ChatGPTRiskManager:
             # Make API call with retries
             for attempt in range(self.retry_attempts):
                 try:
-                    response = openai.ChatCompletion.create(
-                        model=self.config.get('model', 'gpt-4-turbo-preview'),
-                        messages=[
+                    # Prepare the API call parameters
+                    params = {
+                        "model": self.model,
+                        "messages": [
                             {"role": "system", "content": "You are a professional risk analyst for a trading system. Analyze the trade recommendation and provide a structured risk assessment."},
                             {"role": "user", "content": prompt}
                         ],
-                        max_tokens=self.max_tokens,
-                        temperature=self.temperature
-                    )
+                        "max_tokens": self.max_tokens,
+                        "temperature": self.temperature
+                    }
+                    
+                    # Add OpenRouter-specific parameters if using OpenRouter
+                    if self.using_openrouter:
+                        params["extra_headers"] = {
+                            "HTTP-Referer": "https://ai-trading-bot.com",
+                            "X-Title": "AI Trading Bot"
+                        }
+                    
+                    # Use the client to create chat completions
+                    response = self.client.chat.completions.create(**params)
                     
                     # Parse the response
                     assessment = self._parse_response(response.choices[0].message.content)
@@ -73,6 +105,18 @@ class ChatGPTRiskManager:
                     assessment['symbol'] = trade_recommendation.get('symbol')
                     
                     return assessment
+                    
+                except openai.RateLimitError as e:
+                    self.logger.warning(f"Rate limit exceeded: {str(e)}")
+                    if attempt == self.retry_attempts - 1:
+                        raise
+                    time.sleep(self.retry_delay_seconds * (attempt + 1))  # Exponential backoff
+                
+                except openai.APIError as e:
+                    self.logger.warning(f"API error: {str(e)}")
+                    if attempt == self.retry_attempts - 1:
+                        raise
+                    time.sleep(self.retry_delay_seconds)
                     
                 except Exception as e:
                     if attempt == self.retry_attempts - 1:

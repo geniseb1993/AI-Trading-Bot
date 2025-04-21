@@ -1,0 +1,90 @@
+{
+  "performance": {
+    "dailyPnL": 3.75,
+    "weeklyPnL": 8.2,
+    "monthlyPnL": 12.5,
+    "winRate": 68,
+    "totalTrades": 32,
+    "avgWin": 5.4,
+    "avgLoss": -2.1,
+    "biggestWin": 15.8,
+    "biggestLoss": -5.2
+  },
+  "tradeSetups": [
+    {
+      "id": "setup_1",
+      "symbol": "SPY",
+      "type": "CALL",
+      "strategy": "0DTE Momentum",
+      "price": 475.25,
+      "confidence": 0.85,
+      "recommendation": "BUY SPY CALL @ 475.25",
+      "expiration": "0DTE",
+      "timestamp": "2025-04-21T10:15:00Z"
+    },
+    {
+      "id": "setup_2",
+      "symbol": "TSLA",
+      "type": "PUT",
+      "strategy": "Pre-Market Gap & Go",
+      "price": 187.50,
+      "confidence": 0.78,
+      "recommendation": "BUY TSLA PUT @ 187.50",
+      "expiration": "1DTE",
+      "timestamp": "2025-04-21T09:45:00Z"
+    },
+    {
+      "id": "setup_3",
+      "symbol": "NVDA",
+      "type": "CALL",
+      "strategy": "Support/Resistance Break",
+      "price": 925.75,
+      "confidence": 0.92,
+      "recommendation": "BUY NVDA CALL @ 925.75",
+      "expiration": "3DTE",
+      "timestamp": "2025-04-21T08:30:00Z"
+    }
+  ],
+  "systemHealth": {
+    "components": {
+      "dataFetcher": {
+        "status": "operational",
+        "latency": 95
+      },
+      "signalGenerator": {
+        "status": "operational",
+        "latency": 420
+      },
+      "riskManager": {
+        "status": "operational",
+        "latency": 85
+      },
+      "executionEngine": {
+        "status": "operational",
+        "latency": 210
+      }
+    },
+    "lastUpdated": "2025-04-21T16:05:00Z"
+  },
+  "riskStatus": {
+    "currentExposure": 35,
+    "maxExposure": 80,
+    "dailyPnLRisk": 12.5,
+    "marketCondition": "Bullish",
+    "volatilityLevel": "Moderate",
+    "riskLevel": "Moderate",
+    "warningMessage": null
+  },
+  "settings": {
+    "riskTolerancePct": 5,
+    "maxPositionSizePct": 10,
+    "enableAutomatedTrading": true,
+    "enableNotifications": true,
+    "enableDualBot": true,
+    "enableAiRiskManager": true,
+    "maxDailyLossPct": 3,
+    "preferredTimeframes": ["0DTE", "1DTE", "3DTE"],
+    "maxConcurrentPositions": 5
+  },
+  "timestamp": "2025-04-21T16:11:00Z"
+} 

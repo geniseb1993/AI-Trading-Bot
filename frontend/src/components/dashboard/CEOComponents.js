@@ -43,7 +43,7 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 
 // Define API base URL based on environment
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
 
 /**
  * Hook for fetching CEO dashboard data
@@ -71,7 +71,7 @@ export const useCEODashboardData = () => {
 
     try {
       // Fetch CEO dashboard data
-      const dashboardResponse = await axios.get(`${API_BASE_URL}/ceo-dashboard`);
+      const dashboardResponse = await axios.get(`${API_BASE_URL}/api/ceo-dashboard`);
       
       if (dashboardResponse.data && dashboardResponse.data.success) {
         setDashboardData(dashboardResponse.data);

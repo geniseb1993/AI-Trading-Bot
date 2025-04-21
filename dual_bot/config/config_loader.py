@@ -11,8 +11,9 @@ from .config_validator import validate_config
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Initialize logger
-logging.basicConfig(level=logging.INFO)
+# Set up logging first
+logging.basicConfig(level=logging.INFO, 
+                   format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 def load_config(simulation_mode=False):
@@ -25,13 +26,22 @@ def load_config(simulation_mode=False):
     Returns:
         Dictionary containing configuration settings
     """
-    # Load environment variables from .env file
-    env_path = Path(__file__).parent.parent / ".env"
-    if env_path.exists():
-        load_dotenv(dotenv_path=env_path)
-        logger.info(f"Loaded environment variables from {env_path}")
-    else:
-        logger.warning(f"Environment file not found at {env_path}")
+    # Try to load environment variables from .env file, first from dual_bot/.env and then from project root
+    env_paths = [
+        Path(__file__).parent.parent / ".env",  # dual_bot/.env
+        Path(__file__).parent.parent.parent / ".env"  # project root .env
+    ]
+    
+    env_loaded = False
+    for env_path in env_paths:
+        if env_path.exists():
+            load_dotenv(dotenv_path=env_path)
+            logger.info(f"Loaded environment variables from {env_path}")
+            env_loaded = True
+            break
+    
+    if not env_loaded:
+        logger.warning(f"Environment file not found in expected locations")
     
     config_path = Path(__file__).parent / "config.json"
     

@@ -5,6 +5,11 @@ const path = require('path');
 // Enable this to log all API requests
 const ENABLE_DEBUG_LOGGING = true;
 
+// Configuration
+const API_HOST = 'localhost';
+const API_PORT = 5000;
+const API_URL = `http://${API_HOST}:${API_PORT}`;
+
 // Log function that writes to file and console
 const logApiRequest = (req, res, message) => {
   if (!ENABLE_DEBUG_LOGGING) return;
@@ -68,66 +73,116 @@ module.exports = function(app) {
   // Add request logger middleware
   app.use(requestLogger);
   
-  // Special handling for signal-related endpoints
-  app.use(
-    '/api/get-saved-signals',
-    createProxyMiddleware({
-      target: 'http://localhost:5000',
-      changeOrigin: true,
-      onProxyReq: (proxyReq, req, res) => {
-        logApiRequest(req, res, '🔄 Signals API Request');
-      },
-      onProxyRes: (proxyRes, req, res) => {
-        logApiRequest(req, res, `✅ Signals API Response (${proxyRes.statusCode})`);
-        
-        // Debug response headers
-        if (ENABLE_DEBUG_LOGGING) {
-          console.log('Response headers:', proxyRes.headers);
+  // Health check middleware - verify API connection
+  app.use('/api/health-check', (req, res) => {
+    // Create a basic HTTP request to check if API is running
+    const http = require('http');
+    const apiReq = http.request({
+      host: API_HOST,
+      port: API_PORT,
+      path: '/api/health',
+      method: 'GET',
+      timeout: 2000
+    }, (apiRes) => {
+      let data = '';
+      apiRes.on('data', (chunk) => {
+        data += chunk;
+      });
+      apiRes.on('end', () => {
+        try {
+          const response = JSON.parse(data);
+          res.json({
+            status: 'connected',
+            api_status: response.status,
+            api_url: API_URL
+          });
+        } catch (e) {
+          res.status(500).json({
+            status: 'error',
+            message: 'Invalid response from API',
+            error: e.message
+          });
         }
-      },
-      onError: (err, req, res) => {
-        console.error('Proxy error:', err);
-        logApiRequest(req, res, `❌ Signals API Error: ${err.message}`);
-        
-        // Return a meaningful error response
-        res.writeHead(500, {
-          'Content-Type': 'application/json',
-        });
-        res.end(JSON.stringify({ 
-          success: false, 
-          error: 'Proxy error: Could not connect to the API server'
-        }));
-      }
-    })
-  );
+      });
+    });
+    
+    apiReq.on('error', (e) => {
+      console.error('API Health Check Error:', e.message);
+      res.status(503).json({
+        status: 'disconnected',
+        message: 'Cannot connect to API server',
+        error: e.message,
+        api_url: API_URL
+      });
+    });
+    
+    apiReq.on('timeout', () => {
+      apiReq.abort();
+      res.status(504).json({
+        status: 'timeout',
+        message: 'API server connection timeout',
+        api_url: API_URL
+      });
+    });
+    
+    apiReq.end();
+  });
   
-  // Main API proxy
-  app.use(
-    '/api',
-    createProxyMiddleware({
-      target: 'http://localhost:5000',
-      changeOrigin: true,
-      onProxyReq: (proxyReq, req, res) => {
-        logApiRequest(req, res, 'Proxying API Request');
-      },
-      onError: (err, req, res) => {
-        console.error('Proxy error:', err);
-        logApiRequest(req, res, `Error: ${err.message}`);
-        
-        // Return a meaningful error response
-        res.writeHead(500, {
-          'Content-Type': 'application/json',
-        });
-        res.end(JSON.stringify({ 
-          success: false, 
-          error: 'Could not connect to the API server'
-        }));
+  // Main API proxy configuration
+  const proxyOptions = {
+    target: API_URL,
+    changeOrigin: true,
+    pathRewrite: { '^/api': '/api' },
+    secure: false,
+    logLevel: 'debug',
+    onProxyReq: (proxyReq, req, res) => {
+      // Add any custom headers if needed
+      proxyReq.setHeader('X-Forwarded-Proto', 'http');
+      
+      // Log the proxy request
+      logApiRequest(req, res, '🔄 Proxying API Request');
+    },
+    onProxyRes: (proxyRes, req, res) => {
+      // Log successful proxy response
+      logApiRequest(req, res, `✅ API Response (${proxyRes.statusCode})`);
+    },
+    onError: (err, req, res) => {
+      console.error('Proxy Error:', err);
+      logApiRequest(req, res, `❌ API Error: ${err.message}`);
+      
+      // Send a more detailed error response
+      res.writeHead(502, {
+        'Content-Type': 'application/json',
+      });
+      
+      let errorMessage = 'Could not connect to the API server';
+      let errorDetail = err.message;
+      
+      // More specific error messages based on the error
+      if (err.code === 'ECONNREFUSED') {
+        errorMessage = 'API server is not running or refusing connections';
+        errorDetail = `Connection refused to ${API_URL}. Please ensure the API server is running.`;
+      } else if (err.code === 'ETIMEDOUT') {
+        errorMessage = 'Connection to API server timed out';
+      } else if (err.code === 'ENOTFOUND') {
+        errorMessage = 'Could not resolve API server hostname';
       }
-    })
-  );
+      
+      res.end(JSON.stringify({ 
+        success: false, 
+        status: 'error',
+        message: errorMessage,
+        error: errorDetail,
+        api_url: API_URL
+      }));
+    }
+  };
+  
+  // Apply the proxy middleware to all /api routes
+  app.use('/api', createProxyMiddleware(proxyOptions));
 };
 
-// Generate mock signal data for a symbol
+// Generate mock signal data for a symbol if needed for fallbacks
 function generateMockSignalData(symbol) {
   return {
     symbol: symbol,

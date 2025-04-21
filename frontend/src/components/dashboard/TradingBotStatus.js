@@ -8,15 +8,20 @@ import {
   Chip, 
   IconButton, 
   Tooltip,
-  Switch,
-  useTheme
+  CircularProgress,
+  Alert,
+  useTheme,
+  Button
 } from '@mui/material';
 import { 
   PlayArrow, 
   Pause, 
   Settings, 
   TrendingUp, 
-  TrendingDown 
+  TrendingDown,
+  Refresh,
+  Error as ErrorIcon,
+  Info
 } from '@mui/icons-material';
 
 /**
@@ -24,9 +29,19 @@ import {
  * 
  * @param {Object} props
  * @param {Array} props.bots - Array of trading bot objects
+ * @param {boolean} props.loading - Whether the bot data is loading
+ * @param {string} props.error - Error message if any
+ * @param {Function} props.onRefresh - Function to refresh bot data
+ * @param {Function} props.onBotAction - Function to handle bot actions (start/stop)
  * @returns {JSX.Element}
  */
-const TradingBotStatus = ({ bots }) => {
+const TradingBotStatus = ({ 
+  bots, 
+  loading = false, 
+  error = null,
+  onRefresh = () => {}, 
+  onBotAction = () => {} 
+}) => {
   const theme = useTheme();
   
   // Ensure bots is always an array
@@ -54,38 +69,107 @@ const TradingBotStatus = ({ bots }) => {
     // Default to empty array
     return [];
   }, [bots]);
+
+  // If loading, show loading spinner
+  if (loading) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: 'column',
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100%',
+        width: '100%',
+        gap: 2
+      }}>
+        <CircularProgress />
+        <Typography>Loading bot status...</Typography>
+      </Box>
+    );
+  }
+  
+  // If error, show error message with refresh button
+  if (error) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: 'column',
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100%',
+        width: '100%',
+        p: 2
+      }}>
+        <Alert 
+          severity="error" 
+          icon={<ErrorIcon />}
+          action={
+            <IconButton
+              color="inherit"
+              size="small"
+              onClick={onRefresh}
+            >
+              <Refresh />
+            </IconButton>
+          }
+          sx={{ width: '100%', mb: 2 }}
+        >
+          {error}
+        </Alert>
+      </Box>
+    );
+  }
   
   if (!processedBots || processedBots.length === 0) {
     return (
       <Box sx={{ 
         display: 'flex', 
+        flexDirection: 'column',
         justifyContent: 'center', 
         alignItems: 'center', 
         height: '100%',
-        width: '100%'
+        width: '100%',
+        gap: 2
       }}>
-        <Typography>No trading bots</Typography>
+        <Typography>No trading bots available</Typography>
+        <Button 
+          variant="outlined" 
+          startIcon={<Refresh />} 
+          onClick={onRefresh}
+          size="small"
+        >
+          Refresh
+        </Button>
       </Box>
     );
   }
 
   // Format datetime
   const formatTime = (dateString) => {
-    if (!dateString) return 'N/A';
+    if (!dateString) return 'Never';
     
     try {
       const date = new Date(dateString);
-      if (isNaN(date.getTime())) return 'Invalid date';
+      // If date is invalid, throw an error
+      if (isNaN(date.getTime())) {
+        throw new Error('Invalid date');
+      }
       
-      return date.toLocaleString(undefined, {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (e) {
-      console.error("Error formatting date:", e);
-      return 'Date error';
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMins = Math.round(diffMs / 60000);
+      
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins} min ago`;
+      
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours} hours ago`;
+      
+      const diffDays = Math.floor(diffHours / 24);
+      return `${diffDays} days ago`;
+    } catch (err) {
+      console.error(`Error formatting date (${dateString}):`, err);
+      return 'Invalid date';
     }
   };
 
@@ -97,6 +181,20 @@ const TradingBotStatus = ({ bots }) => {
       flexDirection: 'column',
       overflow: 'hidden'
     }}>
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        p: 1
+      }}>
+        <Typography variant="h6">Trading Bots</Typography>
+        <Tooltip title="Refresh status">
+          <IconButton onClick={onRefresh} size="small">
+            <Refresh fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </Box>
+      
       <List sx={{ 
         width: '100%', 
         height: '100%',
@@ -136,16 +234,38 @@ const TradingBotStatus = ({ bots }) => {
                     {bot.name || 'Unnamed Bot'}
                   </Typography>
                   <Chip 
-                    label={bot.status || 'unknown'}
-                    color={bot.status === 'active' ? 'success' : 'default'}
+                    label={bot.status === 'active' ? 'Active' : 'Paused'}
+                    color={bot.status === 'active' ? 'success' : 'warning'}
                     size="small"
                   />
+                  {bot.isRealData === false && (
+                    <Chip 
+                      label="Demo"
+                      color="warning"
+                      size="small"
+                      sx={{ ml: 1 }}
+                    />
+                  )}
                 </Box>
                 
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Tooltip title={bot.status === 'active' ? 'Pause Bot' : 'Start Bot'}>
-                    <IconButton size="small" color={bot.status === 'active' ? 'warning' : 'success'}>
-                      {bot.status === 'active' ? <Pause fontSize="small" /> : <PlayArrow fontSize="small" />}
+                  <Tooltip 
+                    title={bot.status === 'active' ? "Stop Bot" : "Start Bot"}
+                    arrow
+                  >
+                    <IconButton 
+                      color={bot.status === 'active' ? 'error' : 'success'} 
+                      onClick={() => {
+                        // Add more detailed logging to understand the bot status
+                        console.log(`TradingBotStatus: Clicking button for bot with ID=${bot.id}`);
+                        console.log(`TradingBotStatus: Current bot status=${bot.status}, will trigger ${bot.status === 'active' ? 'stop' : 'start'} action`);
+                        console.log(`TradingBotStatus: Full bot data:`, bot);
+                        
+                        onBotAction(bot.id, bot.status === 'active' ? 'stop' : 'start');
+                      }}
+                      disabled={loading}
+                    >
+                      {bot.status === 'active' ? <Pause /> : <PlayArrow />}
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Bot Settings">

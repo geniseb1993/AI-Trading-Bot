@@ -16,13 +16,31 @@ load_dotenv()
 # Set up logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(os.path.join('data', 'logs', f'api_{datetime.now().strftime("%Y%m%d")}.log')),
+        logging.StreamHandler()
+    ]
 )
 logger = logging.getLogger(__name__)
 
 # Create Flask app first
 app = Flask(__name__)
 CORS(app)
+
+# Import and register bot routes directly
+try:
+    from api.routes.bot_routes import bot_routes
+    app.register_blueprint(bot_routes, url_prefix='/api/bot')
+    logger.info("Successfully registered bot routes")
+except Exception as e:
+    try:
+        # Try alternative import path
+        from routes.bot_routes import bot_routes
+        app.register_blueprint(bot_routes, url_prefix='/api/bot')
+        logger.info("Successfully registered bot routes from alternative path")
+    except Exception as e:
+        logger.error(f"Error registering bot routes: {e}")
 
 # Import and register CEO dashboard routes directly
 try:

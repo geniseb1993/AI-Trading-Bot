@@ -39,6 +39,7 @@ import {
   Area,
   AreaChart
 } from 'recharts';
+import apiService from '../services/apiService';
 
 // Import components
 import PageLayout from '../components/PageLayout';
@@ -129,83 +130,139 @@ const BotManagement = () => {
   const fetchBotData = async () => {
     setLoading(true);
     setError(null);
-    let isRealData = false;
     
     try {
-      const response = await axios.get('/api/bot/status');
+      console.log('Fetching bot status data...');
+      const response = await apiService.getBotStatus({
+        maxRetries: 3, // Increase retries
+        useCache: false
+      });
       
-      if (response.data && response.data.success) {
-        // If the API returns a proper bot object, use it
-        const botStatus = response.data.status || {};
-        const bots = [
-          {
-            id: 'bot-1',
-            name: 'Autonomous Trading Bot',
-            status: botStatus.active ? 'active' : 'paused',
-            lastTrade: botStatus.last_action || new Date().toISOString(),
-            activeStrategies: botStatus.trading_pairs?.length || 0,
-            pnl24h: botStatus.performance?.profit_loss || 0,
-            isRealData: true
-          }
-        ];
-        isRealData = true;
-        setBotData(bots);
-      } else {
-        // Fall back to mock data if needed
-        const mockBots = [
-          {
-            id: 'bot-1',
-            name: 'Autonomous Trading Bot',
-            status: 'active',
-            lastTrade: new Date().toISOString(),
-            pnl24h: 2.4,
-            activeStrategies: 3,
-            isRealData: false
+      console.log('Bot status API response:', response);
+      
+      if (response.data) {
+        // Process the API response that contains three bots
+        const bots = [];
+        
+        // Debug status values from API response
+        console.log('Bot status values from API:', {
+          autonomous: {
+            rawStatus: response.data.autonomous_bot?.status,
+            typeOfStatus: typeof response.data.autonomous_bot?.status
           },
-          {
-            id: 'bot-2',
-            name: 'RSI Strategy Bot',
-            status: 'paused',
-            lastTrade: new Date(Date.now() - 86400000).toISOString(),
-            pnl24h: 0,
-            activeStrategies: 0,
-            isRealData: false
+          rsi: {
+            rawStatus: response.data.rsi_bot?.status,
+            typeOfStatus: typeof response.data.rsi_bot?.status
+          },
+          dual: {
+            rawStatus: response.data.dual_bot?.status,
+            typeOfStatus: typeof response.data.dual_bot?.status
           }
-        ];
-        setBotData(mockBots);
+        });
+        
+        // Process Autonomous Bot
+        if (response.data.autonomous_bot) {
+          const isActive = response.data.autonomous_bot.status === true || 
+                           response.data.autonomous_bot.status === "active";
+          console.log(`Processing autonomous bot: raw status=${response.data.autonomous_bot.status}, isActive=${isActive}`);
+          
+          bots.push({
+            id: 'autonomous-bot',
+            name: 'Autonomous Trading Bot',
+            status: isActive ? 'active' : 'paused',
+            lastTrade: response.data.autonomous_bot.last_update || new Date().toISOString(),
+            activeStrategies: response.data.autonomous_bot.active_trades?.length || 0,
+            pnl24h: response.data.autonomous_bot.pnl_24h || 0, // Use API PnL if available
+            isRealData: true
+          });
+        }
+        
+        // Process RSI Bot
+        if (response.data.rsi_bot) {
+          const isActive = response.data.rsi_bot.status === true || 
+                           response.data.rsi_bot.status === "active";
+          console.log(`Processing RSI bot: raw status=${response.data.rsi_bot.status}, isActive=${isActive}`);
+          
+          bots.push({
+            id: 'rsi-bot',
+            name: 'RSI Strategy Bot',
+            status: isActive ? 'active' : 'paused',
+            lastTrade: response.data.rsi_bot.last_update || new Date().toISOString(),
+            activeStrategies: response.data.rsi_bot.active_signals?.length || 0,
+            pnl24h: response.data.rsi_bot.pnl_24h || 0, // Use API PnL if available
+            isRealData: true
+          });
+        }
+        
+        // Process Dual Bot
+        if (response.data.dual_bot) {
+          const isActive = response.data.dual_bot.status === true || 
+                           response.data.dual_bot.status === "active";
+          console.log(`Processing dual bot: raw status=${response.data.dual_bot.status}, isActive=${isActive}`);
+          
+          bots.push({
+            id: 'dual-bot',
+            name: 'Dual Bot System',
+            status: isActive ? 'active' : 'paused',
+            lastTrade: response.data.dual_bot.last_update || new Date().toISOString(),
+            activeStrategies: response.data.dual_bot.active_positions?.length || 0,
+            pnl24h: response.data.dual_bot.pnl_24h || 0, // Use API PnL if available
+            isRealData: true
+          });
+        }
+        
+        if (bots.length > 0) {
+          console.log('Successfully loaded bot data:', bots);
+          setBotData(bots);
+        } else {
+          console.log('No bot data found in API response, using mock data');
+          useMockBotData();
+        }
+      } else {
+        console.log('Invalid API response structure, using mock data');
+        useMockBotData();
       }
     } catch (err) {
-      console.error('Error fetching bot data:', err);
-      // Don't show error message for 404 errors since we just created the API
-      if (err.response && err.response.status !== 404) {
-        setError('Could not load trading bot data. Please try again.');
-      }
-      
-      // Fall back to mock data
-      const mockBots = [
-        {
-          id: 'bot-1',
-          name: 'Autonomous Trading Bot',
-          status: 'active',
-          lastTrade: new Date().toISOString(),
-          pnl24h: 2.4,
-          activeStrategies: 3,
-          isRealData: false
-        },
-        {
-          id: 'bot-2',
-          name: 'RSI Strategy Bot',
-          status: 'paused',
-          lastTrade: new Date(Date.now() - 86400000).toISOString(),
-          pnl24h: 0,
-          activeStrategies: 0,
-          isRealData: false
-        }
-      ];
-      setBotData(mockBots);
+      console.error('Error fetching bot data:', err.message);
+      setError(`Failed to load bot data: ${err.message}`);
+      useMockBotData();
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper function to set mock bot data
+  const useMockBotData = () => {
+    const mockBots = [
+      {
+        id: 'autonomous-bot',
+        name: 'Autonomous Trading Bot (Demo)',
+        status: 'paused',
+        lastTrade: new Date().toISOString(),
+        pnl24h: 0,
+        activeStrategies: 0,
+        isRealData: false
+      },
+      {
+        id: 'rsi-bot',
+        name: 'RSI Strategy Bot (Demo)',
+        status: 'paused',
+        lastTrade: new Date().toISOString(),
+        pnl24h: 0,
+        activeStrategies: 0,
+        isRealData: false
+      },
+      {
+        id: 'dual-bot',
+        name: 'Dual Bot System (Demo)',
+        status: 'paused',
+        lastTrade: new Date().toISOString(),
+        pnl24h: 0,
+        activeStrategies: 0,
+        isRealData: false
+      }
+    ];
+    setBotData(mockBots);
   };
 
   // Fetch trading history
@@ -214,7 +271,7 @@ const BotManagement = () => {
     let isRealData = false;
     
     try {
-      const response = await axios.get('/api/bot/trading-history');
+      const response = await apiService.getTradingHistory();
       
       if (response.data && response.data.success && Array.isArray(response.data.trades)) {
         const historyData = response.data.trades;
@@ -314,9 +371,7 @@ const BotManagement = () => {
     let isRealData = false;
 
     try {
-      const response = await axios.get('/api/bot/performance', {
-        params: { days: 30 }
-      });
+      const response = await apiService.getPerformanceData({ days: 30 });
       
       if (response.data && response.data.success) {
         const performanceData = response.data.data || {};
@@ -373,14 +428,32 @@ const BotManagement = () => {
   };
 
   // Start a bot
-  const startBot = async () => {
+  const startBot = async (botId) => {
     try {
-      const response = await axios.post('/api/bot/start');
+      // Extract the bot type from the ID (e.g., 'autonomous' from 'autonomous-bot')
+      // Handle both formats: full ID ('autonomous-bot') or just type ('autonomous')
+      const botType = botId.includes('-') ? botId.split('-')[0] : botId;
+      
+      console.log(`Trying to start bot: ID=${botId}, Type=${botType}`);
+      
+      const response = await apiService.startBot(botType);
+      
       if (response.data && response.data.success) {
+        // Directly update the botData state to show the change immediately
+        setBotData(currentBots => 
+          currentBots.map(bot => 
+            bot.id === botId || bot.id === `${botType}-bot` 
+              ? { ...bot, status: 'active', lastTrade: new Date().toISOString() } 
+              : bot
+          )
+        );
+        
+        // Then fetch fresh data from API to ensure consistency
         fetchBotData();
+        
         showNotification(
           'Bot Started', 
-          'The Autonomous Trading Bot has been successfully started and is now running.', 
+          `The ${botType} bot has been successfully started and is now running.`, 
           'success'
         );
         
@@ -392,72 +465,92 @@ const BotManagement = () => {
             'info'
           );
         }, 5000);
-        
-        setTimeout(() => {
-          showNotification(
-            'Signal Generated', 
-            'MSFT showing strong buy signal with 8.7 score',
-            'info'
-          );
-        }, 10000);
       } else {
         setError('Failed to start bot: ' + (response.data.message || 'Unknown error'));
         showNotification(
           'Bot Start Failed', 
-          'Failed to start the trading bot: ' + (response.data.message || 'Unknown error'),
+          `Failed to start the ${botType} bot: ` + (response.data.message || 'Unknown error'),
           'error'
         );
       }
     } catch (err) {
       console.error('Error starting bot:', err);
-      setError('Could not start the trading bot. Please try again.');
+      setError(`Could not start the trading bot: ${err.message}`);
       showNotification(
         'Bot Start Failed', 
-        'Could not start the trading bot. Please try again.',
+        `Could not start the trading bot: ${err.message}`,
         'error'
       );
     }
   };
 
   // Stop a bot
-  const stopBot = async () => {
+  const stopBot = async (botId) => {
     try {
-      const response = await axios.post('/api/bot/stop');
+      // Extract the bot type from the ID (e.g., 'autonomous' from 'autonomous-bot')
+      // Handle both formats: full ID ('autonomous-bot') or just type ('autonomous')
+      const botType = botId.includes('-') ? botId.split('-')[0] : botId;
+      
+      console.log(`Trying to stop bot: ID=${botId}, Type=${botType}`);
+      
+      const response = await apiService.stopBot(botType);
+      
       if (response.data && response.data.success) {
+        // Directly update the botData state to show the change immediately
+        setBotData(currentBots => 
+          currentBots.map(bot => 
+            bot.id === botId || bot.id === `${botType}-bot`
+              ? { ...bot, status: 'paused', lastTrade: new Date().toISOString() } 
+              : bot
+          )
+        );
+        
+        // Then fetch fresh data from API to ensure consistency
         fetchBotData();
+        
         showNotification(
           'Bot Stopped', 
-          'The Autonomous Trading Bot has been stopped.',
+          `The ${botType} bot has been stopped.`,
           'warning'
         );
       } else {
         setError('Failed to stop bot: ' + (response.data.message || 'Unknown error'));
         showNotification(
           'Bot Stop Failed', 
-          'Failed to stop the trading bot: ' + (response.data.message || 'Unknown error'),
+          `Failed to stop the ${botType} bot: ` + (response.data.message || 'Unknown error'),
           'error'
         );
       }
     } catch (err) {
       console.error('Error stopping bot:', err);
-      setError('Could not stop the trading bot. Please try again.');
+      setError(`Could not stop the trading bot: ${err.message}`);
       showNotification(
         'Bot Stop Failed', 
-        'Could not stop the trading bot. Please try again.',
+        `Could not stop the trading bot: ${err.message}`,
         'error'
       );
     }
   };
 
   // Run a trading cycle
-  const runTradingCycle = async () => {
+  const runTradingCycle = async (botId) => {
     try {
-      const response = await axios.post('/api/bot/run-cycle');
+      // Extract the bot type from the ID (e.g., 'autonomous' from 'autonomous-bot')
+      // Handle both formats: full ID ('autonomous-bot') or just type ('autonomous')
+      const botType = botId.includes('-') ? botId.split('-')[0] : botId;
+      
+      console.log(`Trying to run trading cycle for bot: ID=${botId}, Type=${botType}`);
+      
+      const response = await apiService.runTradingCycle(botType);
+      
       if (response.data && response.data.success) {
+        // No need to update status directly as running a cycle doesn't change the bot's active/paused state
+        // Just fetch fresh data to update metrics, etc.
         fetchBotData();
+        
         showNotification(
           'Trading Cycle Executed', 
-          'A trading cycle has been executed successfully.',
+          `A trading cycle for the ${botType} bot has been executed successfully.`,
           'success'
         );
         
@@ -491,16 +584,16 @@ const BotManagement = () => {
         setError('Failed to run trading cycle: ' + (response.data.message || 'Unknown error'));
         showNotification(
           'Trading Cycle Failed', 
-          'Failed to run trading cycle: ' + (response.data.message || 'Unknown error'),
+          `Failed to run trading cycle for the ${botType} bot: ` + (response.data.message || 'Unknown error'),
           'error'
         );
       }
     } catch (err) {
       console.error('Error running trading cycle:', err);
-      setError('Could not run the trading cycle. Please try again.');
+      setError(`Could not run the trading cycle: ${err.message}`);
       showNotification(
         'Trading Cycle Failed', 
-        'Could not run the trading cycle. Please try again.',
+        `Could not run the trading cycle: ${err.message}`,
         'error'
       );
     }
@@ -570,9 +663,9 @@ const BotManagement = () => {
                 transition={{ duration: 0.3 }}
               >
                 <DataLabelContainer 
-                  type={bot.isRealData ? 'real' : 'mock'}
-                  tooltip={bot.isRealData ? "Real bot data from API" : "Sample bot data for demonstration"}
-              >
+                  type="real"
+                  tooltip="Real bot data from API"
+                >
                 <ContentCard>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -585,7 +678,7 @@ const BotManagement = () => {
                           variant="outlined" 
                           size="small" 
                           color="warning"
-                          onClick={stopBot}
+                          onClick={() => stopBot(bot.id)}
                         >
                           Stop Bot
                         </Button>
@@ -594,7 +687,7 @@ const BotManagement = () => {
                           variant="contained" 
                           size="small" 
                           color="success"
-                          onClick={startBot}
+                          onClick={() => startBot(bot.id)}
                         >
                           Start Bot
                         </Button>
@@ -602,14 +695,27 @@ const BotManagement = () => {
                     </Box>
                   </Box>
                   
-                  <TradingBotStatus botData={bot} />
+                  <TradingBotStatus 
+                    bots={botData} 
+                    loading={loading}
+                    error={error}
+                    onRefresh={fetchBotData}
+                    onBotAction={(botId, action) => {
+                      console.log(`TradingBotStatus action: ${action} for bot ${botId}`);
+                      if (action === 'start') {
+                        startBot(botId);
+                      } else if (action === 'stop') {
+                        stopBot(botId);
+                      }
+                    }}
+                  />
                   
                   <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between' }}>
                     <Button 
                       variant="outlined" 
                       size="small"
                       startIcon={<History />}
-                      onClick={runTradingCycle}
+                      onClick={() => runTradingCycle(bot.id)}
                     >
                       Run Trading Cycle
                     </Button>
