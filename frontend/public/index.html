@@ -61,6 +61,56 @@
         opacity: 0.2;
       }
     </style>
+    
+    <!-- Port 5000 interceptor script -->
+    <script>
+      // Intercept and fix any network requests to port 5000
+      (function() {
+        // Save original fetch
+        const originalFetch = window.fetch;
+        
+        // Override fetch to intercept port 5000 requests
+        window.fetch = function(resource, options) {
+          // Check if resource is a string (URL) and contains port 5000
+          if (typeof resource === 'string' && 
+              (resource.includes(':5000/') || resource.includes('localhost:5000'))) {
+            console.log('Intercepted fetch to port 5000, redirecting to port 5001:', resource);
+            
+            // Replace port 5000 with port 5001
+            const modifiedResource = resource.replace(/:5000\//g, ':5001/').replace(/localhost:5000/g, 'localhost:5001');
+            console.log('Redirected to:', modifiedResource);
+            
+            // Call original fetch with modified URL
+            return originalFetch(modifiedResource, options);
+          }
+          
+          // Original behavior for other requests
+          return originalFetch(resource, options);
+        };
+        
+        // Also intercept XMLHttpRequest
+        const originalXHROpen = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function(method, url, async, user, password) {
+          // Check if URL contains port 5000
+          if (typeof url === 'string' && 
+              (url.includes(':5000/') || url.includes('localhost:5000'))) {
+            console.log('Intercepted XHR to port 5000, redirecting to port 5001:', url);
+            
+            // Replace port 5000 with port 5001
+            const modifiedUrl = url.replace(/:5000\//g, ':5001/').replace(/localhost:5000/g, 'localhost:5001');
+            console.log('Redirected to:', modifiedUrl);
+            
+            // Call original open with modified URL
+            return originalXHROpen.call(this, method, modifiedUrl, async, user, password);
+          }
+          
+          // Original behavior for other requests
+          return originalXHROpen.call(this, method, url, async, user, password);
+        };
+        
+        console.log('Port 5000 request interceptor initialized');
+      })();
+    </script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

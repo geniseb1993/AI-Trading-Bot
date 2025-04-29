@@ -808,7 +808,61 @@ def index():
         ]
     })
 
+@app.route('/api/tradingview/market/analysis', methods=['GET', 'OPTIONS'])
+def tradingview_market_analysis():
+    """Return market analysis data for TradingView integration"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'success'})
+        response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        return response
+        
+    # Generate mock market analysis data
+    market_analysis = {
+        "timestamp": datetime.datetime.now().isoformat(),
+        "major_indices": [
+            {"symbol": "SPY", "name": "S&P 500 ETF", "price": 450.23, "change": 0.42},
+            {"symbol": "QQQ", "name": "Nasdaq 100 ETF", "price": 380.56, "change": 0.76},
+            {"symbol": "DIA", "name": "Dow Jones Industrial ETF", "price": 345.12, "change": 0.18},
+            {"symbol": "IWM", "name": "Russell 2000 ETF", "price": 189.75, "change": -0.24}
+        ],
+        "sector_performance": [
+            {"symbol": "XLK", "name": "Technology", "price": 150.35, "change": 1.23, "change_1m": 4.5, "change_ytd": 15.7},
+            {"symbol": "XLF", "name": "Financial", "price": 38.42, "change": 0.31, "change_1m": 1.2, "change_ytd": 8.3},
+            {"symbol": "XLE", "name": "Energy", "price": 72.65, "change": -0.82, "change_1m": -2.1, "change_ytd": -5.4},
+            {"symbol": "XLV", "name": "Healthcare", "price": 128.91, "change": 0.45, "change_1m": 2.7, "change_ytd": 6.1},
+            {"symbol": "XLP", "name": "Consumer Staples", "price": 68.73, "change": 0.12, "change_1m": 0.8, "change_ytd": 3.2},
+            {"symbol": "XLY", "name": "Consumer Discretionary", "price": 157.52, "change": 0.87, "change_1m": 3.4, "change_ytd": 12.5}
+        ],
+        "market_breadth": {
+            "advance_decline_ratio": 1.45,
+            "percent_above_sma_200": 62.3,
+            "percent_above_sma_50": 57.8,
+            "new_highs": 65,
+            "new_lows": 28
+        },
+        "economic_indicators": {
+            "vix": 18.65,
+            "treasury_10y": 4.352,
+            "treasury_2y": 4.826
+        },
+        "market_sentiment": {
+            "fear_greed_index": 62.5,
+            "sentiment": "Greed",
+            "overall_market_trend": "Bullish",
+            "strongest_sector": "Technology",
+            "weakest_sector": "Energy"
+        }
+    }
+    
+    return jsonify({
+        "success": True,
+        "analysis": market_analysis,
+        "source": "minimal_flask_server",
+        "isRealData": False
+    })
+
 if __name__ == '__main__':
-    print("Starting minimal Flask API server on http://localhost:5000")
+    print("Starting minimal Flask API server on http://localhost:5001")
     print("Press Ctrl+C to stop the server")
-    app.run(host='0.0.0.0', port=5000, debug=True) 
+    app.run(host='0.0.0.0', port=5001, debug=True) 

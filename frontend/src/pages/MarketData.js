@@ -59,12 +59,6 @@ import DataLabel from '../components/DataLabel';
 import TradingViewWidget from '../components/TradingViewWidget';
 
 // Define API base URL based on environment
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
-=======
-=======
->>>>>>> Stashed changes
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
 // TradingView API URL with fallbacks to multiple potential ports
@@ -79,10 +73,6 @@ const safeToFixed = (value, digits = 2) => {
   if (value === null || value === undefined) return 'N/A';
   return typeof value === 'number' ? value.toFixed(digits) : String(value);
 };
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
 const MarketData = () => {
   const theme = useTheme();
@@ -143,25 +133,11 @@ const MarketData = () => {
     setLoading(true);
     setError(null);
     
+    // Ensure we're using port 5001, never 5000
+    const apiUrl = `http://localhost:5001/api/market-data/${symbol}?timeframe=${timeframe}&days=${days}`;
+    console.log(`Fetching market data from: ${apiUrl}`);
+    
     try {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-      const response = await axios.get(`${API_BASE_URL}/api/market-data/${symbol}?timeframe=${timeframe}&days=${days}`);
-      if (response.data && response.data.success) {
-        console.log('Received market data:', response.data);
-        setMarketData(response.data.bars || []);
-        setMarketOverview(response.data.market_overview || {
-          stats: {},
-          technical_indicators: {},
-          market_sentiment: {},
-          sector_performance: [],
-          upcoming_events: []
-=======
-=======
->>>>>>> Stashed changes
-      const apiUrl = `${API_BASE_URL}/api/market-data/${symbol}?timeframe=${timeframe}&days=${days}`;
-      console.log(`Fetching market data from: ${apiUrl}`);
-      
       const response = await axios.get(apiUrl, {
         timeout: 10000,  // 10 second timeout
         headers: {
@@ -258,59 +234,15 @@ const MarketData = () => {
           },
           sector_performance: overview.sector_performance || [],
           upcoming_events: overview.upcoming_events || []
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         });
         setIsRealData(response.data.isRealData === true);
         setDataSource(response.data.source || 'unknown');
       } else {
-        // If API returns unsuccessful but responds, show error
-        const errorMessage = response.data?.message || 'Failed to fetch market data';
-        console.error(errorMessage);
-        setError(errorMessage);
-        setMarketData([]); // Clear any existing data
+        throw new Error('Invalid response format');
       }
     } catch (error) {
-<<<<<<< Updated upstream
-      console.error('Failed to fetch from API:', error);
-      setError('Failed to connect to market data service. Please try again later.');
-=======
       console.error('Failed to fetch market data:', error);
-      
-      let errorMessage;
-      if (error.code === 'ERR_NETWORK') {
-        errorMessage = `Network error: API server may not be running on ${API_BASE_URL}. Please start the server.`;
-      } else if (error.code === 'ECONNABORTED') {
-        errorMessage = 'Request timed out. The server may be too busy or not responding.';
-      } else if (error.response) {
-        // The request was made and the server responded with a status code
-        // that falls out of the range of 2xx
-        errorMessage = `Server error: ${error.response.status} - ${error.response.data?.error || 'Unknown error'}`;
-      } else if (error.request) {
-        // The request was made but no response was received
-        errorMessage = 'No response from server. Please check if the server is running.';
-      } else {
-        // Something happened in setting up the request that triggered an Error
-        errorMessage = error.message || 'Unknown error';
-      }
-      
-      setError(`Failed to fetch market data: ${errorMessage}`);
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-      setMarketData([]); // Clear any existing data
-      
-      // Set default market overview on error
-      setMarketOverview({
-        stats: {},
-        technical_indicators: {},
-        market_sentiment: {},
-        sector_performance: [],
-        upcoming_events: []
-      });
+      setError(`Failed to load market data: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -382,7 +314,29 @@ const MarketData = () => {
             break; // Exit the loop once we get data
           }
         } catch (error) {
-          console.log(`API at ${baseUrl} not available:`, error.message);
+          // If we get a 405 METHOD NOT ALLOWED error, try POST instead
+          if (error.response && error.response.status === 405) {
+            try {
+              console.log(`GET method not allowed for ${apiUrl}, trying POST instead`);
+              const postResponse = await axios.post(apiUrl, {}, {
+                timeout: 3000,
+                headers: {
+                  'Accept': 'application/json',
+                  'Content-Type': 'application/json'
+                }
+              });
+              
+              if (postResponse.data && postResponse.data.success) {
+                analysisData = postResponse.data.analysis || {};
+                console.log('Market analysis POST response from ' + baseUrl + ':', analysisData);
+                break; // Exit the loop once we get data
+              }
+            } catch (postError) {
+              console.log(`POST request to ${baseUrl} failed:`, postError.message);
+            }
+          } else {
+            console.log(`API at ${baseUrl} not available:`, error.message);
+          }
           apiError = error;
           // Continue to next URL
         }

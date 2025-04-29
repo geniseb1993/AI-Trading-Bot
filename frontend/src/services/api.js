@@ -19,11 +19,62 @@ const api = axios.create({
   timeout: 30000 // 30 seconds timeout
 });
 
+// Request interceptor to fix port 5000 issue
+api.interceptors.request.use(
+  config => {
+    // Check if the URL contains port 5000 and replace it with 5001
+    if (config.url && (config.url.includes(':5000/') || config.url.includes('localhost:5000'))) {
+      console.log('Intercepted request to port 5000, redirecting to port 5001');
+      
+      // Fix the URL by replacing port 5000 with 5001
+      if (config.url.includes(':5000/')) {
+        config.url = config.url.replace(':5000/', ':5001/');
+      } else {
+        config.url = config.url.replace('localhost:5000', 'localhost:5001');
+      }
+      
+      // Also fix baseURL if needed
+      if (config.baseURL && config.baseURL.includes(':5000/')) {
+        config.baseURL = config.baseURL.replace(':5000/', ':5001/');
+      }
+      
+      console.log('Redirected to:', config.url);
+    }
+    
+    return config;
+  },
+  error => {
+    return Promise.reject(error);
+  }
+);
+
 // Response interceptor for handling common errors
 api.interceptors.response.use(
   response => response,
   error => {
     console.error('API Error:', error);
+    return Promise.reject(error);
+  }
+);
+
+// Also patch global axios to handle direct axios calls
+axios.interceptors.request.use(
+  config => {
+    // Check if the URL contains port 5000 and replace it with 5001
+    if (config.url && (config.url.includes(':5000/') || config.url.includes('localhost:5000'))) {
+      console.log('Global interceptor: Redirecting request from port 5000 to 5001');
+      
+      // Fix the URL by replacing port 5000 with 5001
+      if (config.url.includes(':5000/')) {
+        config.url = config.url.replace(':5000/', ':5001/');
+      } else {
+        config.url = config.url.replace('localhost:5000', 'localhost:5001');
+      }
+    }
+    
+    return config;
+  },
+  error => {
     return Promise.reject(error);
   }
 );

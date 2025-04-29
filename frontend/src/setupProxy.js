@@ -33,6 +33,7 @@ const mainApiRoutes = [
   '/api/configuration/update-api-configs',
   '/api/configuration/test-connection',
   '/api/market-data/',
+  '/api/market-data',
   '/api/tradingview/',
   '/api/options-data/',
   '/api/institutional-flow',
@@ -156,6 +157,13 @@ const createRouterMiddleware = () => {
       return botManagementProxy(req, res, next);
     }
     
+    // Specific check for market-data endpoints - always route to main API
+    if (req.url.includes('/market-data')) {
+      console.log(`[Router] Market data request routed to Main API Server: ${req.url}`);
+      req.headers.host = `${MAIN_API_HOST}:${MAIN_API_PORT}`;
+      return mainApiProxy(req, res, next);
+    }
+    
     // Route main API requests explicitly to the main API server
     if (shouldRouteToMainApi(req.url)) {
       console.log(`[Router] Explicitly routing to Main API Server: ${req.url}`);
@@ -176,6 +184,30 @@ module.exports = function(app) {
   
   // Add CORS headers middleware
   app.use(addHeaders);
+  
+  // Add specific handling for :5000 port requests to redirect them to 5001
+  // This intercepts requests directly to port 5000 and redirects them
+  app.use('/api', (req, res, next) => {
+    // Check if the original request URL contains port 5000
+    const originalUrl = req.originalUrl || req.url;
+    const port5000Regex = /:5000\//;
+    
+    if (port5000Regex.test(originalUrl)) {
+      console.log(`[Redirect] Intercepted request to port 5000: ${originalUrl}`);
+      // Redirect to main API server on port 5001
+      const redirectUrl = originalUrl.replace(':5000/', `:${MAIN_API_PORT}/`);
+      console.log(`[Redirect] Redirecting to: ${redirectUrl}`);
+      
+      // Set headers for the main API server
+      req.headers.host = `${MAIN_API_HOST}:${MAIN_API_PORT}`;
+      
+      // Use main API proxy
+      return mainApiProxy(req, res, next);
+    }
+    
+    // Continue with normal routing if not a :5000 request
+    next();
+  });
   
   // Health check middleware - verify both API connections
   app.use('/api/health-check', (req, res) => {
