@@ -215,7 +215,7 @@ def test_assess_risk():
     try:
         endpoint = f"{API_BASE_URL}/assess-risk"
         logger.info(f"Testing assess-risk endpoint: {endpoint}")
-        
+    
         # Test payload
         payload = {
             "recommendation": {
@@ -240,7 +240,7 @@ def test_assess_risk():
         
         data = response.json()
         logger.info(f"Assess risk endpoint response: {format_json(data)}")
-        
+    
         # Verify risk assessment data
         assert response.status_code == 200
         assert 'success' in data

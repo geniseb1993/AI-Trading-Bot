@@ -44,12 +44,12 @@ root.render(
   <React.StrictMode>
     <NotificationProvider>
       <DataProvider>
-        <Router>
-          <ThemeProvider theme={theme}>
-            <CssBaseline />
-            <App />
-          </ThemeProvider>
-        </Router>
+      <Router>
+        <ThemeProvider theme={theme}>
+          <CssBaseline />
+          <App />
+        </ThemeProvider>
+      </Router>
       </DataProvider>
     </NotificationProvider>
   </React.StrictMode>

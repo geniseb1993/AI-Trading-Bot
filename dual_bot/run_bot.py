@@ -22,6 +22,7 @@ from dual_bot.ai.deepseek_scanner import DeepSeekScanner
 from dual_bot.chatgpt_risk_check import ChatGPTRiskManager
 from dual_bot.auto_closer import AutoCloser
 from dual_bot.data_fetcher import DataFetcher
+from dual_bot.notification_utils import NotificationUtility
 
 # Set up logging
 def setup_logging(config):
@@ -59,6 +60,7 @@ class DualBot:
         self.scanner = DeepSeekScanner(config)
         self.risk_manager = ChatGPTRiskManager(config)
         self.auto_closer = AutoCloser(config)
+        self.notification_util = NotificationUtility(config)
         
         # Initialize state
         self.active_positions = []
@@ -128,7 +130,13 @@ class DualBot:
                 self.logger.info(f"Added position: {position}")
                 
                 # Send notification
-                self._send_notification(f"New trade: {recommendation['symbol']} {recommendation['direction']} at {recommendation['entry_price']}")
+                self.notification_util.send_trade_notification(
+                    symbol=recommendation["symbol"],
+                    action=recommendation["direction"],
+                    price=recommendation["entry_price"],
+                    quantity=position["quantity"],
+                    priority="medium"
+                )
             else:
                 self.logger.info(f"Trade rejected for {recommendation['symbol']}: {risk_assessment['reason']}")
         except Exception as e:
@@ -217,7 +225,13 @@ class DualBot:
                     self.trade_history.append(position)
                     
                     # Send notification
-                    self._send_notification(f"Closed position: {position['symbol']} at {position['current_price']}")
+                    self.notification_util.send_trade_notification(
+                        symbol=position["symbol"],
+                        action=f"CLOSED ({position['side']})",
+                        price=position["current_price"],
+                        quantity=position["quantity"],
+                        priority="high"
+                    )
             
             self.last_risk_check_time = datetime.now()
         except Exception as e:
@@ -240,9 +254,24 @@ class DualBot:
     
     def _send_notification(self, message):
         """Send a notification."""
-        # This is a simplified implementation
-        # In a real system, you would send notifications through your configured channels
-        self.logger.info(f"Notification: {message}")
+        try:
+            # Send notification using the notification utility
+            success = self.notification_util.send_notification(
+                message=message,
+                priority="medium",
+                title="Dual Bot Alert"
+            )
+            
+            # Log the notification status
+            if success:
+                self.logger.info(f"Notification sent: {message}")
+            else:
+                self.logger.warning(f"Failed to send notification: {message}")
+                
+            return success
+        except Exception as e:
+            self.logger.error(f"Error sending notification: {e}")
+            return False
     
     def run(self):
         """Run the Dual Bot."""

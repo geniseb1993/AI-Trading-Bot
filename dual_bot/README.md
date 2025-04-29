@@ -10,6 +10,7 @@ A modular, semi-automated trading system designed for high-performance scalping 
 - **CEO Dashboard**: Your "command center"
 - **Auto-Closer**: Locks in profits/stops (Alpaca)
 - **ChatGPT Risk Manager**: Provides risk assessments for trade recommendations
+- **Multi-Channel Notifications**: Get alerts via Discord and Telegram
 
 ## System Architecture
 
@@ -30,6 +31,12 @@ flowchart TB
     subgraph Execution
         F -->|"Approve/Reject"| H[Schwab Manual Entry]
         G -->|"Close at Target/Stop"| I[Alpaca]
+        G -->|"Trade Alerts"| J[Notification System]
+    end
+
+    subgraph Notifications
+        J -->|"Trade & System Alerts"| K[Discord]
+        J -->|"Trade & System Alerts"| L[Telegram]
     end
 ```
 
@@ -44,6 +51,11 @@ flowchart TB
 2. Install the required dependencies:
    ```
    pip install -r dual_bot/requirements.txt
+   ```
+
+   Or for notification-specific packages only:
+   ```
+   dual_bot/install_notification_packages.bat
    ```
 
 3. Set up the configuration:
@@ -61,6 +73,8 @@ The Dual Bot requires several API keys to function properly:
 - **DeepSeek**: For trade recommendations
 - **OpenAI**: For risk management
 - **Alpaca**: For automated trade execution
+- **Discord**: For Discord notifications (webhook URL)
+- **Telegram**: For Telegram notifications (bot token and chat ID)
 
 You can configure these API keys using the setup script:
 
@@ -84,6 +98,14 @@ To test the functionality of the Dual Bot:
 
 ```
 python dual_bot/test_bot.py
+```
+
+### Testing Notifications
+
+To test the notification system:
+
+```
+python dual_bot/test_notifications.py
 ```
 
 ### CEO Ritual (5 min/day)
@@ -111,6 +133,41 @@ The Auto-Closer automatically closes trades at predefined targets or stops. It m
 ### Data Fetcher
 
 The Data Fetcher retrieves market data, options data, and news data from various sources, including Polygon.io, Unusual Whales, and News API.
+
+### Notification Utility
+
+The Notification Utility sends alerts and notifications through multiple channels:
+
+- **Discord**: Sends richly formatted trade and system alerts to Discord channels via webhooks
+- **Telegram**: Sends trade and system alerts to Telegram chats using the Telegram Bot API
+
+Notifications are sent for important events such as:
+- New trade recommendations
+- Trade executions
+- Position closings (targets hit or stops triggered)
+- System alerts and errors
+
+## Notification Setup
+
+### Discord Setup
+
+1. Create a Discord server or use an existing one
+2. Create a webhook in the desired channel:
+   - Right-click on the channel → Edit Channel → Integrations → Webhooks
+   - Create a new webhook and copy the webhook URL
+3. During configuration, enter the webhook URL when prompted
+
+### Telegram Setup
+
+1. Create a Telegram bot using BotFather:
+   - Open Telegram and search for @BotFather
+   - Start a chat and send `/newbot`
+   - Follow the instructions to create a bot
+   - Copy the bot token provided by BotFather
+2. Get your chat ID:
+   - Open Telegram and search for @userinfobot
+   - Start a chat and it will provide your chat ID
+3. During configuration, enter the bot token and chat ID when prompted
 
 ## Logging
 
