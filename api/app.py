@@ -1,14 +1,16 @@
-from flask import Flask, jsonify, request, redirect
+from flask import Flask, jsonify, request, render_template, redirect, url_for, abort, send_file, Response
 from flask_cors import CORS
 import pandas as pd
 import sys
 import os
 import random
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 import traceback
 import time
+import json
+import csv
 
 # Load environment variables
 load_dotenv()
@@ -26,7 +28,18 @@ logger = logging.getLogger(__name__)
 
 # Create Flask app first
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={
+    r"/*": {
+        "origins": [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:3001",
+            "http://127.0.0.1:3001"
+        ],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization", "Accept", "X-Requested-With", "X-API-Key"]
+    }
+})
 
 # Import and register bot routes directly
 try:
@@ -56,6 +69,20 @@ try:
 except Exception as e:
     logger.error(f"Error registering CEO dashboard routes: {e}")
 
+# Import and register dashboard routes
+try:
+    from api.routes.dashboard_routes import dashboard_bp
+    app.register_blueprint(dashboard_bp, url_prefix='/api')
+    logger.info("Successfully registered dashboard routes")
+except Exception as e:
+    try:
+        # Try alternative import path
+        from routes.dashboard_routes import dashboard_bp
+        app.register_blueprint(dashboard_bp, url_prefix='/api')
+        logger.info("Successfully registered dashboard routes from alternative path")
+    except Exception as e:
+        logger.error(f"Error registering dashboard routes: {e}")
+
 # Add market data integration
 from lib.market_data import MarketDataSourceManager
 from lib.market_data_config import load_market_data_config, save_market_data_config
@@ -64,7 +91,18 @@ from lib.market_data_config import load_market_data_config, save_market_data_con
 from execution_model_routes import register_routes as register_execution_model_routes
 
 # Import broker integration routes
-from broker_integration.broker_routes import register_routes as register_broker_routes
+try:
+    # Comment out this registration since we'll use the other one
+    # from api.routes.broker_routes import broker_routes
+    # app.register_blueprint(broker_routes, url_prefix='/api')
+    # logger.info("Broker routes registered successfully")
+    
+    # Keep only the broker_integration routes
+    from api.broker_integration.broker_routes import register_routes as register_broker_integration_routes
+    register_broker_integration_routes(app)
+    logger.info("Broker integration routes registered successfully")
+except Exception as e:
+    logger.error(f"Failed to register broker routes: {str(e)}")
 
 # Import auto trader routes
 from broker_integration.auto_trade_routes import register_routes as register_auto_trade_routes
@@ -244,13 +282,6 @@ try:
     logger.info("Successfully registered execution model routes")
 except Exception as e:
     logger.error(f"Error registering execution model routes: {e}")
-
-# Register broker integration routes
-try:
-    register_broker_routes(app)
-    logger.info("Successfully registered broker integration routes")
-except Exception as e:
-    logger.error(f"Error registering broker integration routes: {e}")
 
 # Register auto trader routes
 try:
@@ -1093,8 +1124,8 @@ def api_get_market_data():
                     price = 100 + (i % 10)
                     time = datetime.now() - timedelta(minutes=i)
                     mock_data.append({
+                        'date': time.isoformat(),
                         'symbol': symbol,
-                        'timestamp': time.isoformat(),
                         'open': price,
                         'high': price + 1,
                         'low': price - 1,
@@ -1575,17 +1606,18 @@ def generate_mock_bars(symbol, days):
     
     return bars
 
-@app.route('/api/market/ai_signals/<symbol>', methods=['GET'])
+@app.route('/api/market/ai_signals/<symbol>', methods=['GET', 'OPTIONS'])
 def api_get_market_ai_signals(symbol):
     """
     Get AI-generated signals for a specific symbol.
-    
     Args:
         symbol: Stock symbol to get signals for
-        
     Returns:
         JSON response with AI signals data
     """
+    if request.method == 'OPTIONS':
+        # CORS preflight
+        return ('', 204)
     try:
         # Generate mock AI signal data for demo purposes
         mock_signals = {
@@ -1618,12 +1650,10 @@ def api_get_market_ai_signals(symbol):
             'risk_level': random.choice(['low', 'medium', 'high']),
             'opportunity_score': round(random.uniform(1, 10), 1)
         }
-        
         return jsonify({
             'success': True,
             'data': mock_signals
         })
-        
     except Exception as e:
         logger.error(f"Error generating AI signals for {symbol}: {str(e)}")
         return jsonify({
@@ -1649,6 +1679,222 @@ def api_generate_signals():
             'error': str(e)
         }), 500
 
+<<<<<<< Updated upstream
+=======
+# Import market data routes
+try:
+    from api.routes.market_data_routes import market_data_bp
+    app.register_blueprint(market_data_bp)
+    logger.info("Market data routes registered successfully")
+except Exception as e:
+    logger.error(f"Failed to register market data routes: {str(e)}")
+    # Fallback with a simple market data endpoint
+    @app.route('/api/market-data/<symbol>', methods=['GET'])
+    def fallback_market_data(symbol):
+        """Fallback market data endpoint"""
+        try:
+            # Get query parameters
+            timeframe = request.args.get('timeframe', '1d')
+            days = int(request.args.get('days', 30))
+            
+            # Generate mock bars
+            bars = []
+            today = datetime.now()
+            
+            # Use base price depending on symbol
+            base_prices = {
+                'SPY': 450.0,
+                'QQQ': 350.0,
+                'AAPL': 180.0,
+                'MSFT': 350.0,
+                'TSLA': 200.0,
+                'NVDA': 850.0,
+                'GOOGL': 170.0,
+                'META': 450.0,
+                'AMZN': 180.0
+            }
+            last_price = base_prices.get(symbol, 100.0) + random.randint(-10, 10)
+            
+            for i in range(days):
+                date = today - timedelta(days=days-i-1)
+                
+                # Generate random price movement
+                change = (random.random() - 0.48) * 5  # Slightly biased upward
+                open_price = last_price
+                close_price = open_price + change
+                high_price = max(open_price, close_price) + random.random() * 2
+                low_price = min(open_price, close_price) - random.random() * 2
+                volume = int(random.random() * 10000000) + 1000000
+                
+                bars.append({
+                    'date': date.strftime('%Y-%m-%d'),
+                    'symbol': symbol,
+                    'open': round(open_price, 2),
+                    'high': round(high_price, 2),
+                    'low': round(low_price, 2),
+                    'close': round(close_price, 2),
+                    'volume': volume,
+                    'change': round(((close_price - open_price) / open_price) * 100, 2)
+                })
+                
+                last_price = close_price
+            
+            logger.info(f"Fallback market data endpoint used for {symbol}")
+            return jsonify({
+                'success': True,
+                'symbol': symbol,
+                'timeframe': timeframe,
+                'days': days,
+                'source': 'mock',
+                'bars': bars
+            })
+        except Exception as e:
+            logger.error(f"Error in fallback market data endpoint: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
+
+# Add a redirection for old broker routes
+@app.route('/api/broker/<path:subpath>', methods=['GET', 'POST', 'PUT', 'DELETE'])
+def redirect_old_broker_routes(subpath):
+    """Redirect old broker routes to new broker integration routes"""
+    # Build the new URL from the request
+    new_url = f"/api/broker/{subpath}"
+    
+    # Log the redirection
+    logger.info(f"Redirecting broker request from old to new route: {request.path} -> {new_url}")
+    
+    # Redirect to the new URL, preserving method and data
+    return redirect(new_url, code=308)  # 308 is Permanent Redirect that preserves the method
+
+# Add redirection for broker routes with a trailing slash
+@app.route('/api/broker/', methods=['GET', 'POST', 'PUT', 'DELETE'])
+def redirect_old_broker_root():
+    """Redirect the old broker root route to the new broker integration root route"""
+    new_url = "/api/broker/info"
+    logger.info(f"Redirecting broker request from old root to new route: {request.path} -> {new_url}")
+    return redirect(new_url, code=308)
+
+# Start bot endpoint
+@app.route('/api/bot/start/<bot_type>', methods=['POST', 'OPTIONS'])
+def start_bot_endpoint(bot_type):
+    """Start a specific bot"""
+    logger.info(f"Start bot endpoint called for {bot_type}")
+    
+    if request.method == 'OPTIONS':
+        return ('', 204)  # Handle CORS preflight
+        
+    try:
+        # Get the normalized bot type (remove -bot suffix if present)
+        normalized_bot_type = bot_type.replace('-bot', '')
+        
+        # First try to import and use the actual bot module
+        try:
+            from api.routes.bot_routes import bot_status
+            
+            # Update the bot status
+            bot_key = f"{normalized_bot_type}_bot"
+            if bot_key in bot_status or normalized_bot_type in ['autonomous', 'rsi', 'dual']:
+                if bot_key not in bot_status:
+                    # Initialize if not exists
+                    bot_status[bot_key] = {
+                        'status': False,
+                        'running_since': None,
+                        'last_update': None
+                    }
+                
+                # Set status to active
+                bot_status[bot_key]['status'] = True
+                bot_status[bot_key]['running_since'] = datetime.now().isoformat()
+                bot_status[bot_key]['last_update'] = datetime.now().isoformat()
+                
+                logger.info(f"Set {bot_key} status to active")
+            else:
+                logger.warning(f"Unknown bot type: {bot_type}")
+                return jsonify({
+                    'success': False,
+                    'error': f"Unknown bot type: {bot_type}"
+                }), 400
+                
+        except Exception as e:
+            logger.error(f"Error using bot_routes module: {str(e)}")
+            # Fallback to simpler implementation
+            
+        # Return success response
+        return jsonify({
+            'success': True,
+            'message': f"{normalized_bot_type} bot started successfully",
+            'status': "active"
+        })
+        
+    except Exception as e:
+        logger.error(f"Error starting bot {bot_type}: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# Stop bot endpoint
+@app.route('/api/bot/stop/<bot_type>', methods=['POST', 'OPTIONS'])
+def stop_bot_endpoint(bot_type):
+    """Stop a specific bot"""
+    logger.info(f"Stop bot endpoint called for {bot_type}")
+    
+    if request.method == 'OPTIONS':
+        return ('', 204)  # Handle CORS preflight
+        
+    try:
+        # Get the normalized bot type (remove -bot suffix if present)
+        normalized_bot_type = bot_type.replace('-bot', '')
+        
+        # First try to import and use the actual bot module
+        try:
+            from api.routes.bot_routes import bot_status
+            
+            # Update the bot status
+            bot_key = f"{normalized_bot_type}_bot"
+            if bot_key in bot_status or normalized_bot_type in ['autonomous', 'rsi', 'dual']:
+                if bot_key not in bot_status:
+                    # Initialize if not exists
+                    bot_status[bot_key] = {
+                        'status': False,
+                        'running_since': None,
+                        'last_update': None
+                    }
+                
+                # Set status to inactive
+                bot_status[bot_key]['status'] = False
+                bot_status[bot_key]['running_since'] = None
+                bot_status[bot_key]['last_update'] = datetime.now().isoformat()
+                
+                logger.info(f"Set {bot_key} status to inactive")
+            else:
+                logger.warning(f"Unknown bot type: {bot_type}")
+                return jsonify({
+                    'success': False,
+                    'error': f"Unknown bot type: {bot_type}"
+                }), 400
+                
+        except Exception as e:
+            logger.error(f"Error using bot_routes module: {str(e)}")
+            # Fallback to simpler implementation
+            
+        # Return success response
+        return jsonify({
+            'success': True,
+            'message': f"{normalized_bot_type} bot stopped successfully",
+            'status': "inactive"
+        })
+        
+    except Exception as e:
+        logger.error(f"Error stopping bot {bot_type}: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+>>>>>>> Stashed changes
 # After all routes are registered at the end of file
 if __name__ == '__main__':
     # Print all registered routes for debugging
@@ -1667,3 +1913,69 @@ if __name__ == '__main__':
         print(f"Error starting Flask server: {str(e)}")
         import traceback
         traceback.print_exc()
+
+# After all routes are registered at the end of file
+# Add these aliases for frontend compatibility
+@app.route('/api/status', methods=['GET', 'OPTIONS'])
+def api_status_alias():
+    """Alias for /api/status -> /api/bot/status for frontend compatibility"""
+    logger.info("Status alias endpoint called, redirecting to /api/bot/status")
+    if request.method == 'OPTIONS':
+        return ('', 204)  # Handle CORS preflight
+    try:
+        # Import the Bot routes module
+        from api.routes.bot_routes import get_bot_status
+        # Call the function directly
+        return get_bot_status()
+    except Exception as e:
+        logger.error(f"Error in status alias: {str(e)}")
+        # Return mock bot status on error
+        return jsonify({
+            "success": True,
+            "status": {
+                "autonomous_bot": {
+                    "status": "inactive",
+                    "last_update": datetime.now().isoformat()
+                },
+                "rsi_bot": {
+                    "status": "inactive",
+                    "last_update": datetime.now().isoformat()
+                },
+                "dual_bot": {
+                    "status": "inactive",
+                    "last_update": datetime.now().isoformat()
+                }
+            }
+        })
+
+@app.route('/api/dual-bot/status', methods=['GET', 'OPTIONS'])
+def api_dual_bot_status_alias():
+    """Alias for /api/dual-bot/status -> /api/bot/status for frontend compatibility"""
+    logger.info("Dual bot status alias endpoint called, redirecting to /api/bot/status")
+    if request.method == 'OPTIONS':
+        return ('', 204)  # Handle CORS preflight
+    try:
+        # Import the Bot routes module
+        from api.routes.bot_routes import get_bot_status
+        # Call the function directly
+        return get_bot_status()
+    except Exception as e:
+        logger.error(f"Error in dual-bot status alias: {str(e)}")
+        # Return mock bot status on error
+        return jsonify({
+            "success": True,
+            "status": {
+                "autonomous_bot": {
+                    "status": "inactive",
+                    "last_update": datetime.now().isoformat()
+                },
+                "rsi_bot": {
+                    "status": "inactive",
+                    "last_update": datetime.now().isoformat()
+                },
+                "dual_bot": {
+                    "status": "inactive",
+                    "last_update": datetime.now().isoformat()
+                }
+            }
+        })

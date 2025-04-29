@@ -1,5 +1,11 @@
 {
   "source": "api",
   "isRealData": true,
+<<<<<<< Updated upstream
   "timestamp": 1745104143.029573
+=======
+  "updated": "2025-04-26T15:35:00",
+  "source": "alpaca",
+  "updatedBy": "manual_update"
+>>>>>>> Stashed changes
 }

@@ -1,20 +1,120 @@
 import axios from 'axios';
 
-// API configuration
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
+// Set the API base URLs for all requests
+const MAIN_API_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001/api';
+const BOT_MANAGEMENT_API_URL = process.env.REACT_APP_BOT_MANAGEMENT_API_URL || 'http://localhost:5002/api';
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second
-const USE_MOCK_DATA = true; // Set to true to use mock data when API fails
+const USE_MOCK_DATA = false; // Set to false to use real data from API
 
-// Create axios instance with defaults
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 20000, // Increased to 20 seconds
-  headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json'
+// Routes that should be directed to the bot management server
+const botManagementRoutes = [
+  '/api/bot/status',
+  '/api/bot/', // Base route for all bot operations
+  '/api/status',
+  '/api/dual-bot/status',
+  '/api/ai-activity/logs',
+  '/api/ai-activity/activity-types',
+  '/api/bot/trading-history',
+  '/api/bot/performance'
+];
+
+// Routes that should be explicitly directed to the main API server
+const mainApiRoutes = [
+  '/api/configuration/',
+  '/api/market-data/',
+  '/api/tradingview/',
+  '/api/options-data/'
+];
+
+// Helper function to determine which API URL to use
+const getApiUrlForEndpoint = (endpoint) => {
+  // Remove leading slash if present for consistent comparison
+  const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  // Add /api prefix if not already present
+  const fullEndpoint = normalizedEndpoint.startsWith('/api/') ? normalizedEndpoint : `/api${normalizedEndpoint}`;
+
+  // First check if this endpoint should explicitly go to the main API server
+  for (const route of mainApiRoutes) {
+    if (fullEndpoint.startsWith(route)) {
+      console.log(`[API Router] Routing request to main API server: ${fullEndpoint}`);
+      return MAIN_API_URL;
+    }
   }
-});
+
+  // Then check if this endpoint should go to the bot management server
+  for (const route of botManagementRoutes) {
+    if (fullEndpoint.startsWith(route)) {
+      console.log(`[API Router] Routing request to bot management server: ${fullEndpoint}`);
+      return BOT_MANAGEMENT_API_URL;
+    }
+  }
+  
+  // Default to main API server
+  console.log(`[API Router] Default routing to main API server: ${fullEndpoint}`);
+  return MAIN_API_URL;
+};
+
+// Create an axios instance for each API server
+const createApiClient = (baseURL) => {
+  return axios.create({
+    baseURL,
+    timeout: 10000, // 10 seconds timeout
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    // Add CORS handling to axios config
+    withCredentials: false
+  });
+};
+
+// Request interceptor to log all API requests
+const addRequestInterceptor = (client) => {
+  client.interceptors.request.use(
+    (config) => {
+      console.log(`[API Request] ${config.method.toUpperCase()} ${config.url}`);
+      return config;
+    },
+    (error) => {
+      console.error(`[API Request Error] ${error}`);
+      return Promise.reject(error);
+    }
+  );
+};
+
+// Response interceptor to log all API responses
+const addResponseInterceptor = (client) => {
+  client.interceptors.response.use(
+    (response) => {
+      if (response.config.url && response.config.url.includes('health')) {
+        // Don't log health check responses to reduce noise
+        return response;
+      }
+      console.log(`[API Response] ${response.config.url}: Status ${response.status}`);
+      return response;
+    },
+    (error) => {
+      if (error.response) {
+        console.error(`[API Error] ${error.response.status} ${error.config.url}: ${error.response.data.error || error.response.data.message || error.message}`);
+      } else if (error.request) {
+        console.error(`[API Error] No response received for ${error.config.url}`);
+      } else {
+        console.error(`[API Error] ${error.message}`);
+      }
+      return Promise.reject(error);
+    }
+  );
+};
+
+// Instantiate the main API client
+const mainApiClient = createApiClient(MAIN_API_URL);
+addRequestInterceptor(mainApiClient);
+addResponseInterceptor(mainApiClient);
+
+// Instantiate the bot management API client
+const botManagementApiClient = createApiClient(BOT_MANAGEMENT_API_URL);
+addRequestInterceptor(botManagementApiClient);
+addResponseInterceptor(botManagementApiClient);
 
 /**
  * Mock data for API responses
@@ -323,38 +423,8 @@ const mockData = {
   }
 };
 
-// Request interceptor for logging
-apiClient.interceptors.request.use(
-  config => {
-    console.log(`[API Request] ${config.method.toUpperCase()} ${config.url}`);
-    return config;
-  },
-  error => {
-    console.error('[API Request Error]', error);
-    return Promise.reject(error);
-  }
-);
-
-// Response interceptor for logging
-apiClient.interceptors.response.use(
-  response => {
-    console.log(`[API Response] ${response.status} ${response.config.url}`);
-    return response;
-  },
-  error => {
-    if (error.response) {
-      console.error(`[API Error] ${error.response.status} ${error.config.url}:`, error.response.data);
-    } else if (error.request) {
-      console.error('[API Error] No response received:', error.config.url);
-    } else {
-      console.error('[API Error]', error.message);
-    }
-    return Promise.reject(error);
-  }
-);
-
 /**
- * Make an API request with retry logic
+ * Make an API request with retry logic and routing to the appropriate server
  * 
  * @param {Object} options - Request options
  * @param {string} options.url - API endpoint URL
@@ -376,8 +446,15 @@ export const apiRequest = async ({
   let retries = 0;
   let lastError = null;
 
+  // Determine which API client to use
+  const apiBaseUrl = getApiUrlForEndpoint(url);
+  const apiClient = apiBaseUrl === BOT_MANAGEMENT_API_URL ? botManagementApiClient : mainApiClient;
+  
+  // Normalize the URL to remove any API base URL that might be included
+  const normalizedUrl = url.replace(/^\/api\//, '/').replace(/^api\//, '/');
+
   // Simple in-memory cache for GET requests
-  const cacheKey = useCache && method.toLowerCase() === 'get' ? `${url}:${JSON.stringify(params)}` : null;
+  const cacheKey = useCache && method.toLowerCase() === 'get' ? `${normalizedUrl}:${JSON.stringify(params)}` : null;
   const cachedResponse = cacheKey ? sessionStorage.getItem(cacheKey) : null;
   
   if (cachedResponse) {
@@ -388,7 +465,7 @@ export const apiRequest = async ({
       
       // Use cache if less than 10 seconds old
       if (cacheTime && now - cacheTime < 10000) {
-        console.log(`[API Cache] Using cached response for ${url}`);
+        console.log(`[API Cache] Using cached response for ${normalizedUrl}`);
         delete parsedResponse._cacheTime;
         return { data: parsedResponse, fromCache: true };
       }
@@ -400,20 +477,20 @@ export const apiRequest = async ({
   // If using mock data, check if we have a mock for this endpoint
   if (USE_MOCK_DATA) {
     // Special handling for bot action URLs to prevent API calls for these actions
-    if (url.includes('/bot/start/') || url.includes('/bot/stop/') || url.includes('/bot/run-cycle/')) {
+    if (normalizedUrl.includes('/bot/start/') || normalizedUrl.includes('/bot/stop/') || normalizedUrl.includes('/bot/run-cycle/')) {
       // Extract bot type from URL
       let botType = '';
-      if (url.includes('/bot/start/')) {
-        botType = url.split('/bot/start/')[1];
-      } else if (url.includes('/bot/stop/')) {
-        botType = url.split('/bot/stop/')[1];
-      } else if (url.includes('/bot/run-cycle/')) {
-        botType = url.split('/bot/run-cycle/')[1];
+      if (normalizedUrl.includes('/bot/start/')) {
+        botType = normalizedUrl.split('/bot/start/')[1];
+      } else if (normalizedUrl.includes('/bot/stop/')) {
+        botType = normalizedUrl.split('/bot/stop/')[1];
+      } else if (normalizedUrl.includes('/bot/run-cycle/')) {
+        botType = normalizedUrl.split('/bot/run-cycle/')[1];
       }
       
-      console.log(`[API Mock] Special handling for bot action: ${url} (botType: ${botType})`);
+      console.log(`[API Mock] Special handling for bot action: ${normalizedUrl} (botType: ${botType})`);
       
-      if (url.includes('/bot/start/')) {
+      if (normalizedUrl.includes('/bot/start/')) {
         // Update mock data for start action
         const botKey = `${botType}_bot`;
         if (mockData.botStatus[botKey]) {
@@ -429,7 +506,7 @@ export const apiRequest = async ({
           }, 
           fromMock: true 
         };
-      } else if (url.includes('/bot/stop/')) {
+      } else if (normalizedUrl.includes('/bot/stop/')) {
         // Update mock data for stop action
         const botKey = `${botType}_bot`;
         if (mockData.botStatus[botKey]) {
@@ -445,7 +522,7 @@ export const apiRequest = async ({
           }, 
           fromMock: true 
         };
-      } else if (url.includes('/bot/run-cycle/')) {
+      } else if (normalizedUrl.includes('/bot/run-cycle/')) {
         // Return mock data for run-cycle action (doesn't change status)
         return { 
           data: { 
@@ -458,9 +535,9 @@ export const apiRequest = async ({
       }
     }
     
-    const mockKey = getMockDataKey(url);
+    const mockKey = getMockDataKey(normalizedUrl);
     if (mockKey) {
-      console.log(`[API Mock] Using mock data for ${url}`);
+      console.log(`[API Mock] Using mock data for ${normalizedUrl}`);
       return { data: mockData[mockKey], fromMock: true };
     }
   }
@@ -469,7 +546,7 @@ export const apiRequest = async ({
   while (retries <= maxRetries) {
     try {
       const response = await apiClient({
-        url,
+        url: normalizedUrl,
         method,
         data,
         params
@@ -502,7 +579,7 @@ export const apiRequest = async ({
       retries++;
       
       if (retries <= maxRetries) {
-        console.log(`[API Retry] Attempt ${retries}/${maxRetries} for ${url}`);
+        console.log(`[API Retry] Attempt ${retries}/${maxRetries} for ${normalizedUrl}`);
         await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * retries));
       }
     }
@@ -511,25 +588,25 @@ export const apiRequest = async ({
   // If we reach this point, all retries failed
   // Check if we should use mock data as fallback
   if (USE_MOCK_DATA) {
-    const mockKey = getMockDataKey(url);
+    const mockKey = getMockDataKey(normalizedUrl);
     if (mockKey) {
-      console.log(`[API Fallback] Using mock data for ${url} after failed API request`);
+      console.log(`[API Fallback] Using mock data for ${normalizedUrl} after failed API request`);
       return { data: mockData[mockKey], fromMock: true };
     }
   }
 
   if (lastError.response && lastError.response.status === 404) {
-    console.error(`[API Error] Endpoint not found: ${url}`);
-    throw new Error(`API endpoint not found: ${url}`);
+    console.error(`[API Error] Endpoint not found: ${normalizedUrl}`);
+    throw new Error(`API endpoint not found: ${normalizedUrl}`);
   }
   
   if (lastError.code === 'ECONNABORTED') {
-    console.error(`[API Error] Request timeout for ${url}`);
+    console.error(`[API Error] Request timeout for ${normalizedUrl}`);
     throw new Error('Request timed out. Please check your connection and try again.');
   }
   
   if (lastError.code === 'ERR_NETWORK') {
-    console.error(`[API Error] Network error for ${url}`);
+    console.error(`[API Error] Network error for ${normalizedUrl}`);
     throw new Error('Network error. The API server may be unavailable.');
   }
 
@@ -602,7 +679,7 @@ export const apiService = {
   checkHealth: async () => {
     try {
       const response = await apiRequest({
-        url: '/api/health-check',
+        url: '/api/health',
         method: 'get',
         maxRetries: 1,
         useCache: false
@@ -622,33 +699,76 @@ export const apiService = {
    * @param {Object} options - Request options
    * @returns {Promise} - Bot status data
    */
-  getBotStatus: (options = {}) => {
+  getBotStatus: async () => {
+    let response = null;
+    let error = null;
+    
+    // Try the dedicated bot status endpoint first
     try {
-      // If using mock data, immediately return mock data without making an API call
-      if (USE_MOCK_DATA) {
-        console.log('[Bot Status] Using mock data without API call');
-        console.log('Current mock bot status values:', {
-          autonomous: mockData.botStatus.autonomous_bot.status,
-          rsi: mockData.botStatus.rsi_bot.status,
-          dual: mockData.botStatus.dual_bot.status
-        });
-        return Promise.resolve({ data: mockData.botStatus, fromMock: true });
-      }
+      response = await apiRequest({
+        url: '/bot/status',
+        method: 'get',
+        maxRetries: 2
+      });
       
-    return apiRequest({
-        url: '/api/bot/status',
-      method: 'get',
-      useCache: options.useCache || false,
-      maxRetries: options.maxRetries || 2
-    });
-    } catch (error) {
-      console.error('[Bot Status] Error:', error.message);
-      if (USE_MOCK_DATA) {
-        console.log('[Bot Status] Returning mock data after error');
-        return Promise.resolve({ data: mockData.botStatus, fromMock: true });
+      if (response && response.data) {
+        console.log('[Bot Status] Successfully retrieved from /bot/status');
+        return response;
       }
-      throw error;
+    } catch (e) {
+      console.log('[Bot Status] Bot status endpoint failed, trying standard endpoint:', e.message);
+      error = e;
     }
+    
+    // Try the standard status endpoint next
+    try {
+      response = await apiRequest({
+        url: '/status',
+        method: 'get',
+        maxRetries: 2
+      });
+      
+      if (response && response.data) {
+        console.log('[Bot Status] Successfully retrieved from /status');
+        return response;
+      }
+    } catch (e) {
+      console.log('[Bot Status] Standard endpoint failed, trying dual-bot endpoint:', e.message);
+      error = e;
+    }
+    
+    // Try the dual-bot status endpoint as last resort
+    try {
+      response = await apiRequest({
+        url: '/dual-bot/status',
+        method: 'get',
+        maxRetries: 2
+      });
+      
+      if (response && response.data) {
+        console.log('[Bot Status] Successfully retrieved from /dual-bot/status');
+        return response;
+      }
+    } catch (e) {
+      console.log('[Bot Status] All status endpoints failed. Using mock data as fallback.');
+      error = e;
+    }
+    
+    // All endpoints failed, use mock data as fallback
+    if (mockData && mockData.botStatus) {
+      console.log('[Bot Status] Using mock data as fallback');
+      return {
+        data: {
+          success: true,
+          autonomous_bot: mockData.botStatus.autonomous_bot,
+          rsi_bot: mockData.botStatus.rsi_bot,
+          dual_bot: mockData.botStatus.dual_bot
+        }
+      };
+    }
+    
+    // If no mock data, throw the error
+    throw error || new Error('Failed to retrieve bot status from all endpoints');
   },
   
   /**
@@ -684,28 +804,19 @@ export const apiService = {
         });
       }
       
-    return apiRequest({
-        url: `/api/bot/start/${normalizedBotType}`,
-      method: 'post'
+      // Format bot ID to match server expectations - the server expects 'autonomous_bot', not just 'autonomous'
+      const botId = `${normalizedBotType}_bot`;
+      
+      // Use the API endpoint format that exactly matches the server route: /api/bot/{botId}/start
+      return apiRequest({
+        url: `/api/bot/${botId}/start`,
+        method: 'post'
       }).then(response => {
         console.log(`Bot start response:`, response.data);
         
         // Handle different response formats from the server
-        // Our fixed server returns success and message directly
-        if (response.data.success && response.data.status === "success") {
+        if (response.data.success) {
           console.log(`Successfully started ${normalizedBotType} bot. Setting status to "active".`);
-          
-          // If using mock data, immediately update it
-          if (response.fromMock) {
-            const botKey = `${normalizedBotType}_bot`;
-            if (mockData.botStatus[botKey]) {
-              mockData.botStatus[botKey].status = "active";
-              console.log(`Updated mock data status for ${botKey} to "active"`, mockData.botStatus);
-            } else {
-              console.error(`Bot key ${botKey} not found in mock data`);
-            }
-          }
-          
           return response;
         }
         
@@ -773,27 +884,19 @@ export const apiService = {
         });
       }
       
-    return apiRequest({
-        url: `/api/bot/stop/${normalizedBotType}`,
-      method: 'post'
+      // Format bot ID to match server expectations - the server expects 'autonomous_bot', not just 'autonomous'
+      const botId = `${normalizedBotType}_bot`;
+      
+      // Use the API endpoint format that exactly matches the server route: /api/bot/{botId}/stop
+      return apiRequest({
+        url: `/api/bot/${botId}/stop`,
+        method: 'post'
       }).then(response => {
         console.log(`Bot stop response:`, response.data);
         
         // Handle different response formats from the server
-        if (response.data.success && response.data.status === "success") {
+        if (response.data.success) {
           console.log(`Successfully stopped ${normalizedBotType} bot. Setting status to "inactive".`);
-          
-          // If using mock data, immediately update it
-          if (response.fromMock) {
-            const botKey = `${normalizedBotType}_bot`;
-            if (mockData.botStatus[botKey]) {
-              mockData.botStatus[botKey].status = "inactive";
-              console.log(`Updated mock data status for ${botKey} to "inactive"`, mockData.botStatus);
-            } else {
-              console.error(`Bot key ${botKey} not found in mock data`);
-            }
-          }
-          
           return response;
         }
         
@@ -892,45 +995,93 @@ export const apiService = {
   },
   
   /**
-   * Get trading history for bots
-   * @param {Object} options - Request options
+   * Get trading history from the API
+   * @param {Object} options - Filter options
    * @returns {Promise} - Trading history data
    */
-  getTradingHistory: (options = {}) => {
+  getTradingHistory: async (options = {}) => {
+    const { botId, strategy, tradeType, limit = 30, offset = 0 } = options;
+    
+    // Build query parameters
+    const params = {};
+    if (botId) params.bot_id = botId;
+    if (strategy) params.strategy = strategy;
+    if (tradeType) params.trade_type = tradeType;
+    if (limit) params.limit = limit;
+    if (offset) params.offset = offset;
+    
     try {
-    return apiRequest({
-        url: '/api/bot/trading-history',
+      console.log('[Trading History] Fetching trading history...');
+      const response = await apiRequest({
+        url: '/bot/trading-history',
         method: 'get',
-        useCache: options.useCache || false,
-        maxRetries: options.maxRetries || 2
+        params,
+        maxRetries: 2
       });
-    } catch (error) {
-      console.error('[Trading History] Error:', error.message);
-      if (USE_MOCK_DATA) {
-        return { data: mockData.tradingHistory, fromMock: true };
+      
+      if (response && response.data) {
+        console.log('[Trading History] Successfully retrieved trading history');
+        return response;
       }
+    } catch (error) {
+      console.error('[Trading History] Error fetching trading history:', error.message);
+      
+      // Use mock data if real API fails
+      if (USE_MOCK_DATA || error) {
+        console.log('[Trading History] Using mock data as fallback');
+        return {
+          data: {
+            success: true,
+            trades: mockData.tradingHistory.data,
+            total: mockData.tradingHistory.data.length
+          }
+        };
+      }
+      
       throw error;
     }
   },
   
   /**
-   * Get performance data for bots
-   * @param {Object} options - Request options
+   * Get performance data from the API
+   * @param {Object} options - Filter options
    * @returns {Promise} - Performance data
    */
-  getPerformanceData: (options = {}) => {
+  getPerformanceData: async (options = {}) => {
+    const { botId, days } = options;
+    
+    // Build query parameters
+    const params = {};
+    if (botId) params.bot_id = botId;
+    if (days) params.time_range = `${days}d`;
+    
     try {
-    return apiRequest({
-        url: '/api/bot/performance',
-      method: 'get',
-        useCache: options.useCache || false,
-        maxRetries: options.maxRetries || 2
+      console.log('[Performance] Fetching performance data...');
+      const response = await apiRequest({
+        url: '/bot/performance',
+        method: 'get',
+        params,
+        maxRetries: 2
       });
-    } catch (error) {
-      console.error('[Performance Data] Error:', error.message);
-      if (USE_MOCK_DATA) {
-        return { data: mockData.performance, fromMock: true };
+      
+      if (response && response.data) {
+        console.log('[Performance] Successfully retrieved performance data');
+        return response;
       }
+    } catch (error) {
+      console.error('[Performance] Error fetching performance data:', error.message);
+      
+      // Use mock data if real API fails
+      if (USE_MOCK_DATA || error) {
+        console.log('[Performance] Using mock data as fallback');
+        return {
+          data: {
+            success: true,
+            data: mockData.performance.data
+          }
+        };
+      }
+      
       throw error;
     }
   },

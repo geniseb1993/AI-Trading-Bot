@@ -140,23 +140,23 @@ const BotManagement = () => {
       
       console.log('Bot status API response:', response);
       
-      if (response.data) {
+      if (response.data && response.data.success) {
         // Process the API response that contains three bots
         const bots = [];
         
         // Debug status values from API response
         console.log('Bot status values from API:', {
-          autonomous: {
-            rawStatus: response.data.autonomous_bot?.status,
-            typeOfStatus: typeof response.data.autonomous_bot?.status
+          autonomous: response.data.autonomous_bot && {
+            rawStatus: response.data.autonomous_bot.status,
+            typeOfStatus: typeof response.data.autonomous_bot.status
           },
-          rsi: {
-            rawStatus: response.data.rsi_bot?.status,
-            typeOfStatus: typeof response.data.rsi_bot?.status
+          rsi: response.data.rsi_bot && {
+            rawStatus: response.data.rsi_bot.status,
+            typeOfStatus: typeof response.data.rsi_bot.status
           },
-          dual: {
-            rawStatus: response.data.dual_bot?.status,
-            typeOfStatus: typeof response.data.dual_bot?.status
+          dual: response.data.dual_bot && {
+            rawStatus: response.data.dual_bot.status,
+            typeOfStatus: typeof response.data.dual_bot.status
           }
         });
         
@@ -170,8 +170,8 @@ const BotManagement = () => {
             id: 'autonomous-bot',
             name: 'Autonomous Trading Bot',
             status: isActive ? 'active' : 'paused',
-            lastTrade: response.data.autonomous_bot.last_update || new Date().toISOString(),
-            activeStrategies: response.data.autonomous_bot.active_trades?.length || 0,
+            lastTrade: response.data.autonomous_bot.last_active || new Date().toISOString(),
+            activeStrategies: response.data.autonomous_bot.current_positions || 0,
             pnl24h: response.data.autonomous_bot.pnl_24h || 0, // Use API PnL if available
             isRealData: true
           });
@@ -187,8 +187,8 @@ const BotManagement = () => {
             id: 'rsi-bot',
             name: 'RSI Strategy Bot',
             status: isActive ? 'active' : 'paused',
-            lastTrade: response.data.rsi_bot.last_update || new Date().toISOString(),
-            activeStrategies: response.data.rsi_bot.active_signals?.length || 0,
+            lastTrade: response.data.rsi_bot.last_active || new Date().toISOString(),
+            activeStrategies: response.data.rsi_bot.current_positions || 0,
             pnl24h: response.data.rsi_bot.pnl_24h || 0, // Use API PnL if available
             isRealData: true
           });
@@ -204,8 +204,8 @@ const BotManagement = () => {
             id: 'dual-bot',
             name: 'Dual Bot System',
             status: isActive ? 'active' : 'paused',
-            lastTrade: response.data.dual_bot.last_update || new Date().toISOString(),
-            activeStrategies: response.data.dual_bot.active_positions?.length || 0,
+            lastTrade: response.data.dual_bot.last_active || new Date().toISOString(),
+            activeStrategies: response.data.dual_bot.current_positions || 0,
             pnl24h: response.data.dual_bot.pnl_24h || 0, // Use API PnL if available
             isRealData: true
           });

@@ -1,0 +1,16 @@
+[
+  {
+    "symbol": "AAPL",
+    "qty": 50.0,
+    "avg_entry_price": 218.1509682836557,
+    "current_price": 208.12125713092803,
+    "side": "buy"
+  },
+  {
+    "symbol": "MSFT",
+    "qty": 5.0,
+    "avg_entry_price": 206.72858240036413,
+    "current_price": 206.72858240036413,
+    "side": "buy"
+  }
+]

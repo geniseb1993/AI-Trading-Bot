@@ -63,19 +63,10 @@ class TradeExecutor:
         symbol: str, 
         qty: float, 
         side: str, 
-        limit_price: float,
-        time_in_force: str = "day"
+        limit_price: float
     ) -> Optional[Order]:
         """Execute a limit order"""
         order_side = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
-        
-        tif_map = {
-            "day": TimeInForce.DAY,
-            "gtc": TimeInForce.GTC,
-            "ioc": TimeInForce.IOC,
-            "fok": TimeInForce.FOK
-        }
-        order_tif = tif_map.get(time_in_force.lower(), TimeInForce.DAY)
         
         logger.info(f"Executing limit order: {side} {qty} {symbol} @ ${limit_price}")
         
@@ -86,7 +77,7 @@ class TradeExecutor:
                 side=order_side,
                 type=OrderType.LIMIT,
                 limit_price=limit_price,
-                time_in_force=order_tif
+                time_in_force=TimeInForce.DAY
             )
             
             if order:
@@ -104,19 +95,10 @@ class TradeExecutor:
         symbol: str, 
         qty: float, 
         side: str, 
-        stop_price: float,
-        time_in_force: str = "day"
+        stop_price: float
     ) -> Optional[Order]:
         """Execute a stop order"""
         order_side = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
-        
-        tif_map = {
-            "day": TimeInForce.DAY,
-            "gtc": TimeInForce.GTC,
-            "ioc": TimeInForce.IOC,
-            "fok": TimeInForce.FOK
-        }
-        order_tif = tif_map.get(time_in_force.lower(), TimeInForce.DAY)
         
         logger.info(f"Executing stop order: {side} {qty} {symbol} @ ${stop_price}")
         
@@ -127,7 +109,7 @@ class TradeExecutor:
                 side=order_side,
                 type=OrderType.STOP,
                 stop_price=stop_price,
-                time_in_force=order_tif
+                time_in_force=TimeInForce.DAY
             )
             
             if order:
@@ -146,19 +128,10 @@ class TradeExecutor:
         qty: float, 
         side: str, 
         stop_price: float,
-        limit_price: float,
-        time_in_force: str = "day"
+        limit_price: float
     ) -> Optional[Order]:
         """Execute a stop-limit order"""
         order_side = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
-        
-        tif_map = {
-            "day": TimeInForce.DAY,
-            "gtc": TimeInForce.GTC,
-            "ioc": TimeInForce.IOC,
-            "fok": TimeInForce.FOK
-        }
-        order_tif = tif_map.get(time_in_force.lower(), TimeInForce.DAY)
         
         logger.info(f"Executing stop-limit order: {side} {qty} {symbol} @ stop ${stop_price}, limit ${limit_price}")
         
@@ -170,7 +143,7 @@ class TradeExecutor:
                 type=OrderType.STOP_LIMIT,
                 stop_price=stop_price,
                 limit_price=limit_price,
-                time_in_force=order_tif
+                time_in_force=TimeInForce.DAY
             )
             
             if order:
@@ -188,19 +161,10 @@ class TradeExecutor:
         symbol: str, 
         qty: float, 
         side: str, 
-        trail_percent: float,
-        time_in_force: str = "day"
+        trail_percent: float
     ) -> Optional[Order]:
         """Execute a trailing stop order"""
         order_side = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
-        
-        tif_map = {
-            "day": TimeInForce.DAY,
-            "gtc": TimeInForce.GTC,
-            "ioc": TimeInForce.IOC,
-            "fok": TimeInForce.FOK
-        }
-        order_tif = tif_map.get(time_in_force.lower(), TimeInForce.DAY)
         
         logger.info(f"Executing trailing stop order: {side} {qty} {symbol} @ {trail_percent}% trail")
         
@@ -211,7 +175,7 @@ class TradeExecutor:
                 side=order_side,
                 type=OrderType.TRAILING_STOP,
                 trail_percent=trail_percent,
-                time_in_force=order_tif
+                time_in_force=TimeInForce.DAY
             )
             
             if order:
@@ -226,123 +190,157 @@ class TradeExecutor:
     
     def cancel_order(self, order_id: str) -> bool:
         """Cancel an existing order"""
-        logger.info(f"Canceling order: {order_id}")
-        
         try:
             result = self.active_broker.cancel_order(order_id)
             if result:
-                logger.info(f"Order {order_id} canceled successfully")
+                logger.info(f"Order cancelled: {order_id}")
             else:
-                logger.error(f"Failed to cancel order {order_id}")
+                logger.error(f"Failed to cancel order: {order_id}")
             return result
         except Exception as e:
-            logger.error(f"Error canceling order: {e}")
+            logger.error(f"Error cancelling order: {e}")
             return False
     
-    def execute_entry_with_stop_loss(
-        self, 
-        symbol: str, 
-        qty: float, 
-        side: str,
-        entry_price: Optional[float] = None,  # If None, use market order
-        stop_loss_price: float = None,  # Required for risk management
-        take_profit_price: Optional[float] = None,  # Optional profit target
-        use_market_order: bool = False  # Force market order even if entry_price is provided
-    ) -> Dict[str, Any]:
-        """
-        Execute a complete trade entry with stop loss and optional take profit
-        Returns a dictionary with entry and stop/target orders
-        """
-        order_side = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
-        stop_side = OrderSide.SELL if order_side == OrderSide.BUY else OrderSide.BUY
-        
-        # Validate stop loss is specified
-        if stop_loss_price is None:
-            logger.error("Stop loss price is required for risk management")
-            return {"success": False, "error": "Stop loss price is required"}
-        
-        # Validate stop loss is in the right direction
-        if order_side == OrderSide.BUY and stop_loss_price >= (entry_price or float('inf')):
-            logger.error(f"Invalid stop loss price ${stop_loss_price} for long position")
-            return {"success": False, "error": "Stop loss must be below entry price for long positions"}
-        
-        if order_side == OrderSide.SELL and stop_loss_price <= (entry_price or 0):
-            logger.error(f"Invalid stop loss price ${stop_loss_price} for short position")
-            return {"success": False, "error": "Stop loss must be above entry price for short positions"}
-        
-        # Execute entry order
-        entry_order = None
-        if use_market_order or entry_price is None:
-            entry_order = self.market_order(symbol, qty, side)
-        else:
-            entry_order = self.limit_order(symbol, qty, side, entry_price)
-        
-        if not entry_order:
-            return {"success": False, "error": "Failed to place entry order"}
-        
-        result = {
-            "success": True,
-            "entry_order": entry_order.to_dict(),
-            "stop_loss_order": None,
-            "take_profit_order": None
-        }
-        
-        # For market orders, wait for fill then place stop loss
-        if entry_order.type == OrderType.MARKET:
-            # Should already be filled, but just in case
-            # In a real system you would want to poll for the order status
-            time.sleep(1)
-            
-            # Place stop loss order
-            stop_loss_order = self.stop_order(
-                symbol=symbol,
-                qty=qty,
-                side="sell" if order_side == OrderSide.BUY else "buy",
-                stop_price=stop_loss_price,
-                time_in_force="gtc"
-            )
-            
-            if stop_loss_order:
-                result["stop_loss_order"] = stop_loss_order.to_dict()
-            
-            # Place take profit order if specified
-            if take_profit_price:
-                take_profit_order = self.limit_order(
-                    symbol=symbol,
-                    qty=qty,
-                    side="sell" if order_side == OrderSide.BUY else "buy",
-                    limit_price=take_profit_price,
-                    time_in_force="gtc"
-                )
-                
-                if take_profit_order:
-                    result["take_profit_order"] = take_profit_order.to_dict()
-        
-        # For limit orders, we would need to monitor for fill before placing stop loss
-        # In a real system, you would use broker's API callback or poll for order status
-        
-        return result
+    def cancel_all_orders(self) -> bool:
+        """Cancel all open orders"""
+        try:
+            result = self.active_broker.cancel_all_orders()
+            if result:
+                logger.info("All orders cancelled")
+            else:
+                logger.error("Failed to cancel all orders")
+            return result
+        except Exception as e:
+            logger.error(f"Error cancelling all orders: {e}")
+            return False
     
-    def get_order_status(self, order_id: str) -> Dict[str, Any]:
-        """Get the current status of an order"""
+    def get_open_orders(self) -> List[Order]:
+        """Get all open orders"""
+        try:
+            return self.active_broker.get_orders(status=OrderStatus.NEW)
+        except Exception as e:
+            logger.error(f"Error getting open orders: {e}")
+            return []
+    
+    def get_order_status(self, order_id: str) -> Optional[OrderStatus]:
+        """Get the status of a specific order"""
         try:
             order = self.active_broker.get_order(order_id)
             if order:
-                return {
-                    "success": True,
-                    "order": order.to_dict()
-                }
-            else:
-                return {
-                    "success": False,
-                    "error": f"Order {order_id} not found"
-                }
+                return order.status
+            return None
         except Exception as e:
             logger.error(f"Error getting order status: {e}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
+            return None
+    
+    def place_bracket_order(
+        self,
+        symbol: str,
+        qty: float,
+        side: str,
+        entry_price: Optional[float] = None,
+        take_profit_price: Optional[float] = None,
+        stop_loss_price: Optional[float] = None,
+        take_profit_percent: Optional[float] = None,
+        stop_loss_percent: Optional[float] = None
+    ) -> Tuple[Optional[Order], Optional[Order], Optional[Order]]:
+        """
+        Place a bracket order (entry order + take profit + stop loss)
+        
+        Args:
+            symbol: The symbol to trade
+            qty: The quantity to trade
+            side: Buy or sell
+            entry_price: Limit price for entry (None for market order)
+            take_profit_price: Price for take profit order
+            stop_loss_price: Price for stop loss order
+            take_profit_percent: Alternative to take_profit_price (% from entry)
+            stop_loss_percent: Alternative to stop_loss_price (% from entry)
+            
+        Returns:
+            Tuple of (entry_order, take_profit_order, stop_loss_order)
+        """
+        # Validate arguments
+        if take_profit_price is None and take_profit_percent is None:
+            logger.error("Either take_profit_price or take_profit_percent must be provided")
+            return None, None, None
+            
+        if stop_loss_price is None and stop_loss_percent is None:
+            logger.error("Either stop_loss_price or stop_loss_percent must be provided")
+            return None, None, None
+        
+        # Determine if we're using market or limit entry
+        is_market_entry = entry_price is None
+        order_side = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
+        
+        # For market orders, we need to estimate the entry price
+        if is_market_entry:
+            # Get current market data
+            market_data = self.active_broker.get_market_data(symbol)
+            if order_side == OrderSide.BUY:
+                estimated_entry = market_data.get("ask", market_data.get("last"))
+            else:
+                estimated_entry = market_data.get("bid", market_data.get("last"))
+            
+            # Calculate take profit and stop loss if using percentages
+            if take_profit_percent is not None:
+                if order_side == OrderSide.BUY:
+                    take_profit_price = estimated_entry * (1 + take_profit_percent / 100)
+                else:
+                    take_profit_price = estimated_entry * (1 - take_profit_percent / 100)
+            
+            if stop_loss_percent is not None:
+                if order_side == OrderSide.BUY:
+                    stop_loss_price = estimated_entry * (1 - stop_loss_percent / 100)
+                else:
+                    stop_loss_price = estimated_entry * (1 + stop_loss_percent / 100)
+            
+            # Place market entry order
+            entry_order = self.market_order(symbol, qty, side)
+            
+        else:
+            # Calculate take profit and stop loss if using percentages
+            if take_profit_percent is not None:
+                if order_side == OrderSide.BUY:
+                    take_profit_price = entry_price * (1 + take_profit_percent / 100)
+                else:
+                    take_profit_price = entry_price * (1 - take_profit_percent / 100)
+            
+            if stop_loss_percent is not None:
+                if order_side == OrderSide.BUY:
+                    stop_loss_price = entry_price * (1 - stop_loss_percent / 100)
+                else:
+                    stop_loss_price = entry_price * (1 + stop_loss_percent / 100)
+            
+            # Place limit entry order
+            entry_order = self.limit_order(symbol, qty, side, entry_price)
+        
+        if not entry_order:
+            logger.error("Failed to place entry order")
+            return None, None, None
+        
+        # Set up opposite side for exit orders
+        exit_side = "sell" if order_side == OrderSide.BUY else "buy"
+        
+        # Place take profit order
+        take_profit_order = self.limit_order(
+            symbol=symbol,
+            qty=qty,
+            side=exit_side,
+            limit_price=take_profit_price
+        )
+        
+        # Place stop loss order
+        stop_loss_order = self.stop_order(
+            symbol=symbol,
+            qty=qty,
+            side=exit_side,
+            stop_price=stop_loss_price
+        )
+        
+        logger.info(f"Placed bracket order for {symbol}: Entry={entry_order.id}, TP={take_profit_order.id if take_profit_order else None}, SL={stop_loss_order.id if stop_loss_order else None}")
+        
+        return entry_order, take_profit_order, stop_loss_order
     
     def get_positions(self) -> Dict[str, Any]:
         """Get all current positions"""

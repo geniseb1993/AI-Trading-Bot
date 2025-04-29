@@ -1,0 +1,29 @@
+{
+  "autonomous_bot": {
+    "status": "paused",
+    "running_since": "2025-04-28T09:46:16.947437",
+    "last_update": "2025-04-28T09:59:45.966932",
+    "health": "ok",
+    "error_count": 0,
+    "active_positions": 0,
+    "last_active": "2025-04-28T22:41:42.972967"
+  },
+  "rsi_bot": {
+    "status": "inactive",
+    "running_since": null,
+    "last_update": "2025-04-28T09:59:45.966932",
+    "health": "ok",
+    "error_count": 0,
+    "active_positions": 0,
+    "last_active": "2025-04-28T22:41:42.972967"
+  },
+  "dual_bot": {
+    "status": "paused",
+    "running_since": "2025-04-28T09:40:25.360488",
+    "last_update": "2025-04-28T09:59:45.966932",
+    "health": "ok",
+    "error_count": 0,
+    "active_positions": 0,
+    "last_active": "2025-04-28T22:41:42.972967"
+  }
+}

@@ -1,7 +1,7 @@
 # api package initialization
 import os
 import logging
-from flask import Flask
+from flask import Flask, send_from_directory
 from flask_cors import CORS
 
 def create_app(test_config=None):
@@ -11,9 +11,10 @@ def create_app(test_config=None):
     # Enable CORS with better configuration
     CORS(app, resources={
         r"/*": {
-            "origins": ["http://localhost:3000", "http://127.0.0.1:3000"],
+            "origins": ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001", "http://localhost:5000", "http://127.0.0.1:5000", "http://localhost:5001", "http://127.0.0.1:5001", "http://localhost:5002", "http://127.0.0.1:5002"],
             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization", "Accept"]
+            "allow_headers": ["Content-Type", "Authorization", "Accept", "X-Requested-With", "X-API-Key"],
+            "supports_credentials": True
         }
     })
     
@@ -66,6 +67,31 @@ def create_app(test_config=None):
         logging.info("Dual Bot routes registered successfully")
     except Exception as e:
         logging.error(f"Failed to register dual bot routes: {str(e)}")
+    
+    # Add static file routes
+    @app.route('/data/dashboard/<path:filename>')
+    def serve_dashboard_data(filename):
+        """Serve dashboard data files."""
+        app.logger.info(f"Serving dashboard data file: {filename}")
+        return send_from_directory(os.path.join(os.getcwd(), 'data', 'dashboard'), filename)
+
+    @app.route('/images/<path:filename>')
+    def serve_images(filename):
+        """Serve image files."""
+        app.logger.info(f"Serving image file: {filename}")
+        return send_from_directory(os.path.join(os.getcwd(), 'public', 'images'), filename)
+
+    @app.route('/sounds/<path:filename>')
+    def serve_sounds(filename):
+        """Serve sound files."""
+        app.logger.info(f"Serving sound file: {filename}")
+        return send_from_directory(os.path.join(os.getcwd(), 'public', 'sounds'), filename)
+
+    @app.route('/backtest_results.csv')
+    def serve_backtest_results():
+        """Serve backtest results file."""
+        app.logger.info("Serving backtest results file")
+        return send_from_directory(os.getcwd(), 'backtest_results.csv')
     
     # Simple root endpoint
     @app.route('/')

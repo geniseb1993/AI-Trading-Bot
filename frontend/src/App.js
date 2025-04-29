@@ -8,6 +8,7 @@ import Backtest from './pages/Backtest';
 import MarketData from './pages/MarketData';
 import TradingViewAlerts from './pages/TradingViewAlerts';
 import APIConfiguration from './pages/APIConfiguration';
+import BrokerSettingsPage from './pages/BrokerSettingsPage';
 import MarketAnalysis from './pages/MarketAnalysis';
 import InstitutionalFlow from './pages/InstitutionalFlow';
 import TradeSetups from './pages/TradeSetups';
@@ -66,6 +67,7 @@ function App() {
         <Route path="/market-data" element={<MarketData />} />
         <Route path="/tradingview-alerts" element={<TradingViewAlerts />} />
         <Route path="/market-data-config" element={<APIConfiguration />} />
+        <Route path="/broker-settings" element={<BrokerSettingsPage />} />
         <Route path="/market-analysis" element={<MarketAnalysis />} />
         <Route path="/institutional-flow" element={<InstitutionalFlow />} />
         <Route path="/trade-setups" element={<TradeSetups />} />

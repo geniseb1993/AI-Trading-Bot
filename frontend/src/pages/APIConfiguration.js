@@ -32,50 +32,38 @@ import {
   ExpandMore as ExpandMoreIcon,
   Refresh as RefreshIcon,
   Visibility as VisibilityIcon,
-  VisibilityOff as VisibilityOffIcon
+  VisibilityOff as VisibilityOffIcon,
+  Check as CheckIcon,
+  Error as ErrorIconMUI
 } from '@mui/icons-material';
-import axios from 'axios';
+import { useApiConfigurationData } from '../contexts/DataContext';
+import { apiConfigurationService } from '../services/api';
 
 const APIConfiguration = () => {
-  const [apiConfigs, setApiConfigs] = useState({
-    alpaca: {
-      api_key: '',
-      api_secret: '',
-      paper_trading: true,
-      enabled: false,
-      connected: false,
-      description: 'Alpaca is a commission-free stock trading API that allows you to build and test your trading algorithms.'
-    },
-    interactive_brokers: {
-      port: '7496',
-      client_id: '0',
-      enabled: false,
-      connected: false,
-      description: 'Interactive Brokers provides a comprehensive trading API for accessing global markets.'
-    },
-    trading_view: {
-      webhook_secret: '',
-      webhook_port: '5001',
-      enabled: true,
-      connected: true,
-      description: 'TradingView webhook integration allows you to receive signals from TradingView alerts.'
-    },
-    unusual_whales: {
-      api_key: '1b9010da-a44a-4f50-8261-a17df85e85d9',
-      enabled: true,
-      connected: true,
-      description: 'Unusual Whales provides options flow data and unusual options activity detection.'
-    },
-    hume_ai: {
-      api_key: 'rUynb...',
-      enabled: true,
-      connected: true,
-      description: 'Hume AI provides voice notifications for trading alerts and system events.'
-    }
+  // Use the domain-specific hook from DataContext
+  const {
+    data: apiConfigs,
+    loading,
+    error,
+    updateData: setApiConfigs,
+    setLoading,
+    setError
+  } = useApiConfigurationData();
+  
+  // Local component state
+  const [showSecrets, setShowSecrets] = useState({
+    alphavantage: false,
+    polygon: false,
+    tradingview: false,
+    finnhub: false,
+    marketaux: false,
+    alpaca: false,
+    unusual_whales: false,
+    openai: false,
+    humeai: false
   });
   
-  const [showSecrets, setShowSecrets] = useState({});
-  const [testing, setTesting] = useState({});
+  const [testStatus, setTestStatus] = useState({});
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -88,18 +76,18 @@ const APIConfiguration = () => {
 
   const fetchApiConfigs = async () => {
     try {
-      const response = await axios.get('/api/configuration/get-api-configs');
+      setLoading(true);
+      const response = await apiConfigurationService.getApiConfigs();
       
-      if (response.data && response.data.success) {
-        setApiConfigs(response.data.configs);
+      if (response && response.success) {
+        setApiConfigs(response.configs || {});
       } else {
-        // If API fails, check for API keys in environment 
-        // This is just a simulation - in a real app, env variables wouldn't be exposed to the frontend
         console.log("Using default API configurations with pre-configured API keys");
+        // Keep using the default values defined in state
       }
     } catch (error) {
       console.error('Error fetching API configurations:', error);
-      // We'll keep using the default configs defined in state
+      setError('Failed to load API configurations');
     }
   };
 
@@ -120,175 +108,71 @@ const APIConfiguration = () => {
     }));
   };
 
-  const testConnection = async (service) => {
-    setTesting(prev => ({ ...prev, [service]: true }));
-    
+  const saveConfigs = async () => {
     try {
-      // For Unusual Whales, we'll use a different check since we have an actual API key
-      if (service === 'unusual_whales') {
-        // Check if the API key is present
-        const apiKey = apiConfigs[service].api_key;
-        if (!apiKey || apiKey.trim() === '') {
-          setApiConfigs(prev => ({
-            ...prev,
-            [service]: {
-              ...prev[service],
-              connected: false
-            }
-          }));
-          
-          setSnackbar({
-            open: true,
-            message: `Failed to connect to Unusual Whales. API key is missing.`,
-            severity: 'error'
-          });
-          
-          setTesting(prev => ({ ...prev, [service]: false }));
-          return;
-        }
-        
-        // Simulate actual API call - in production, this would be a real request
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        // API key matches the one in the .env file
-        if (apiKey === '1b9010da-a44a-4f50-8261-a17df85e85d9') {
-          setApiConfigs(prev => ({
-            ...prev,
-            [service]: {
-              ...prev[service],
-              connected: true
-            }
-          }));
-          
-          setSnackbar({
-            open: true,
-            message: `Successfully connected to Unusual Whales API`,
-            severity: 'success'
-          });
-        } else {
-          setApiConfigs(prev => ({
-            ...prev,
-            [service]: {
-              ...prev[service],
-              connected: false
-            }
-          }));
-          
-          setSnackbar({
-            open: true,
-            message: `Failed to connect to Unusual Whales. Invalid API key.`,
-            severity: 'error'
-          });
-        }
+      setLoading(true);
+      const response = await apiConfigurationService.saveApiConfigs(apiConfigs);
+      
+      if (response && response.success) {
+        setSnackbar({
+          open: true,
+          message: 'API configurations saved successfully!',
+          severity: 'success'
+        });
       } else {
-        // Simulate API call for other services
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        // For Hume AI, always succeed since we see it's initialized in the logs
-        if (service === 'hume_ai') {
-          setApiConfigs(prev => ({
-            ...prev,
-            [service]: {
-              ...prev[service],
-              connected: true
-            }
-          }));
-          
-          setSnackbar({
-            open: true,
-            message: `Successfully connected to ${service.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}`,
-            severity: 'success'
-          });
-        } else {
-          // For other services, random success or failure for demonstration
-          const success = Math.random() > 0.3;
-          
-          if (success) {
-            setApiConfigs(prev => ({
-              ...prev,
-              [service]: {
-                ...prev[service],
-                connected: true
-              }
-            }));
-            
-            setSnackbar({
-              open: true,
-              message: `Successfully connected to ${service.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}`,
-              severity: 'success'
-            });
-          } else {
-            setApiConfigs(prev => ({
-              ...prev,
-              [service]: {
-                ...prev[service],
-                connected: false
-              }
-            }));
-            
-            setSnackbar({
-              open: true,
-              message: `Failed to connect to ${service.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}. Check your credentials.`,
-              severity: 'error'
-            });
-          }
-        }
+        throw new Error(response.error || 'Failed to save API configurations');
       }
     } catch (error) {
-      console.error(`Error testing ${service} connection:`, error);
-      
+      console.error('Error saving API configurations:', error);
       setSnackbar({
         open: true,
-        message: `Error testing ${service} connection: ${error.message}`,
+        message: `Error: ${error.message || 'Failed to save API configurations'}`,
         severity: 'error'
       });
-      
-      setApiConfigs(prev => ({
-        ...prev,
-        [service]: {
-          ...prev[service],
-          connected: false
-        }
-      }));
     } finally {
-      setTesting(prev => ({ ...prev, [service]: false }));
+      setLoading(false);
     }
   };
 
-  const saveConfigurations = async () => {
+  const testConnection = async (service) => {
     try {
-      // In a real app, this would send the configs to the backend
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      setTestStatus(prev => ({
+        ...prev,
+        [service]: { loading: true }
+      }));
       
-      // Check unusual whales API key
-      if (apiConfigs.unusual_whales.api_key === '1b9010da-a44a-4f50-8261-a17df85e85d9') {
-        setApiConfigs(prev => ({
+      const response = await apiConfigurationService.testApiConnection({ service });
+      
+      if (response && response.success) {
+        setTestStatus(prev => ({
           ...prev,
-          unusual_whales: {
-            ...prev.unusual_whales,
-            connected: true
+          [service]: { 
+            loading: false, 
+            success: true,
+            message: response.message || 'Connection successful!'
           }
         }));
+      } else {
+        throw new Error(response.error || 'Connection test failed');
       }
-      
-      setSnackbar({
-        open: true,
-        message: 'API configurations saved successfully',
-        severity: 'success'
-      });
     } catch (error) {
-      console.error('Error saving API configurations:', error);
-      
-      setSnackbar({
-        open: true,
-        message: `Error saving configurations: ${error.message}`,
-        severity: 'error'
-      });
+      console.error(`Error testing ${service} connection:`, error);
+      setTestStatus(prev => ({
+        ...prev,
+        [service]: { 
+          loading: false, 
+          success: false,
+          message: error.message || 'Connection test failed'
+        }
+      }));
     }
   };
 
   const handleCloseSnackbar = () => {
-    setSnackbar({ ...snackbar, open: false });
+    setSnackbar(prev => ({
+      ...prev,
+      open: false
+    }));
   };
 
   const renderApiConfigCard = (serviceName, serviceConfig) => {
@@ -304,9 +188,9 @@ const APIConfiguration = () => {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="h6">{formattedServiceName}</Typography>
               <Chip 
-                label={serviceConfig.connected ? 'Connected' : 'Disconnected'} 
-                color={serviceConfig.connected ? 'success' : 'error'}
-                icon={serviceConfig.connected ? <CheckCircleIcon /> : <ErrorIcon />}
+                label={testStatus[serviceName]?.success ? 'Connected' : 'Disconnected'} 
+                color={testStatus[serviceName]?.success ? 'success' : 'error'}
+                icon={testStatus[serviceName]?.success ? <CheckCircleIcon /> : <ErrorIcon />}
                 size="small" 
               />
             </Box>
@@ -380,10 +264,14 @@ const APIConfiguration = () => {
             <Button 
               size="small" 
               onClick={() => testConnection(serviceName)}
-              disabled={testing[serviceName]}
-              startIcon={testing[serviceName] ? <CircularProgress size={16} /> : <RefreshIcon />}
+              disabled={testStatus[serviceName]?.loading || !serviceConfig.api_key}
+              startIcon={
+                testStatus[serviceName]?.loading ? <CircularProgress size={16} /> :
+                testStatus[serviceName]?.success ? <CheckIcon /> : 
+                testStatus[serviceName]?.success === false ? <ErrorIconMUI /> : null
+              }
             >
-              {testing[serviceName] ? 'Testing...' : 'Test Connection'}
+              {testStatus[serviceName]?.loading ? 'Testing...' : testStatus[serviceName]?.success ? 'Connected' : 'Test Connection'}
             </Button>
           </CardActions>
         </Card>
@@ -399,9 +287,10 @@ const APIConfiguration = () => {
           variant="contained"
           color="primary"
           startIcon={<SaveIcon />}
-          onClick={saveConfigurations}
+          onClick={saveConfigs}
+          disabled={loading}
         >
-          Save All Configurations
+          {loading ? <CircularProgress size={20} /> : 'Save All Configurations'}
         </Button>
       </Box>
       

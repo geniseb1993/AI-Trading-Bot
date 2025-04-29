@@ -62,20 +62,22 @@ class BrokerManager:
         
         # Initialize mock broker
         mock_config = broker_configs.get("mock", {"type": "mock", "initial_balance": 100000.0})
-        self.brokers["mock"] = MockBroker(initial_balance=mock_config.get("initial_balance", 100000.0))
+        self.brokers["mock"] = MockBroker(config=mock_config)
         
-        # Initialize Alpaca broker
+        # Initialize Alpaca broker if configured
         alpaca_config = broker_configs.get("alpaca", {
             "type": "alpaca",
             "api_key": os.environ.get("ALPACA_API_KEY", ""),
             "api_secret": os.environ.get("ALPACA_API_SECRET", ""),
             "is_paper": True
         })
-        self.brokers["alpaca"] = AlpacaBroker(
-            api_key=alpaca_config.get("api_key"),
-            api_secret=alpaca_config.get("api_secret"),
-            is_paper=alpaca_config.get("is_paper", True)
-        )
+        
+        # Only create the Alpaca broker if API keys are available
+        if alpaca_config.get("api_key") and alpaca_config.get("api_secret"):
+            try:
+                self.brokers["alpaca"] = AlpacaBroker(config=alpaca_config)
+            except Exception as e:
+                logger.error(f"Error initializing Alpaca broker: {e}")
     
     def get_broker(self, broker_name: Optional[str] = None) -> BrokerInterface:
         """Get the specified broker or the active broker if none specified."""
@@ -119,13 +121,9 @@ class BrokerManager:
         
         # Reinitialize the broker
         if broker_name == "mock":
-            self.brokers["mock"] = MockBroker(initial_balance=config.get("initial_balance", 100000.0))
-        elif broker_name == "alpaca":
-            self.brokers["alpaca"] = AlpacaBroker(
-                api_key=config.get("api_key"),
-                api_secret=config.get("api_secret"),
-                is_paper=config.get("is_paper", True)
-            )
+            self.brokers["mock"] = MockBroker(config=self.config["brokers"]["mock"])
+        elif broker_name == "alpaca" and config.get("api_key") and config.get("api_secret"):
+            self.brokers["alpaca"] = AlpacaBroker(config=self.config["brokers"]["alpaca"])
         
         logger.info(f"Updated configuration for broker '{broker_name}'")
         return True 

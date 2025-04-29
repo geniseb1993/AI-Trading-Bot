@@ -677,9 +677,7 @@ const LiveMarket = () => {
                 <TradingViewWidget 
                   symbol={formatSymbolForTradingView(selectedSymbol)} 
                   interval={timeframe === '1d' ? 'D' : timeframe === '1w' ? 'W' : timeframe === '4h' ? '240' : '60'}
-                  height="100%"
-                  width="100%"
-                  key={`${selectedSymbol}_${timeframe}`}
+                  key={`tv-widget-${selectedSymbol}-${timeframe}-${Math.random().toString(36).substring(2, 9)}`}
                 />
               </CardContent>
             </Card>

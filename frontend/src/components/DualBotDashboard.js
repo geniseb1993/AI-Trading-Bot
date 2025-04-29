@@ -49,23 +49,56 @@ const DualBotDashboard = () => {
   const [availableSymbols, setAvailableSymbols] = useState(['QQQ', 'TSLA', 'PLTR', 'AAPL', 'NVDA']);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState('connecting');
+  const [connectionDetails, setConnectionDetails] = useState(null);
+
+  const checkConnectionStatus = async () => {
+    try {
+      const status = await dualBotService.checkConnectionStatus();
+      setConnectionDetails(status);
+      
+      if (status.status === 'connected') {
+        setConnectionStatus('connected');
+        setError(null);
+      } else if (status.status === 'partial') {
+        setConnectionStatus('partial');
+        setError('Some API endpoints are not responding correctly. Limited functionality available.');
+      } else {
+        setConnectionStatus('disconnected');
+        setError('Cannot connect to the Dual Bot API. Using mock data instead.');
+        setUseMockData(true);
+      }
+      
+      return status.status;
+    } catch (err) {
+      console.error('Error checking connection status:', err);
+      setConnectionStatus('disconnected');
+      setError('Connection check failed. Using mock data instead.');
+      setUseMockData(true);
+      return 'disconnected';
+    }
+  };
 
   const fetchDualBotData = async () => {
     setLoading(true);
     setError(null);
     
     try {
+      // First check the connection status
+      const connStatus = await checkConnectionStatus();
+      
+      if (connStatus === 'disconnected') {
+        console.log('Using mock data due to disconnected status');
+        setUseMockData(true);
+      }
+      
       // Try to get configuration
-      let config;
       try {
-        config = await dualBotService.getConfig();
+        const config = await dualBotService.getConfig();
         if (config?.symbols?.length) {
           setAvailableSymbols(config.symbols);
         }
-        setConnectionStatus('connected');
       } catch (err) {
         console.error('Failed to fetch config:', err);
-        setConnectionStatus('partial');
       }
       
       // Get bot status
@@ -75,8 +108,7 @@ const DualBotDashboard = () => {
         setBotStatus(status);
       } catch (err) {
         console.error('Failed to fetch bot status:', err);
-        setError(`Failed to fetch bot status: ${err.message}`);
-        setConnectionStatus(prev => prev === 'connected' ? 'partial' : 'disconnected');
+        setError(prev => prev || `Failed to fetch bot status: ${err.message}`);
       }
       
       // Get market data for symbol
@@ -86,19 +118,13 @@ const DualBotDashboard = () => {
         setMarketData(marketDataResult);
       } catch (err) {
         console.error(`Failed to fetch market data for ${symbol}:`, err);
-        setError(`Failed to fetch market data: ${err.message}`);
-        setConnectionStatus(prev => prev === 'connected' ? 'partial' : 'disconnected');
+        setError(prev => prev || `Failed to fetch market data: ${err.message}`);
       }
 
-      // Check if we're using mock data
-      setUseMockData(connectionStatus !== 'connected');
-      
       setLastUpdated(new Date());
     } catch (err) {
       console.error('Error fetching dual bot data:', err);
       setError(`Failed to connect to the Dual Bot API: ${err.message}`);
-      setConnectionStatus('disconnected');
-      setUseMockData(true);
     } finally {
       setLoading(false);
     }
@@ -155,41 +181,24 @@ const DualBotDashboard = () => {
 
   // Initial data fetch
   useEffect(() => {
-    // Test CORS connection first
-    const testCorsConnection = async () => {
-      try {
-        const corsTest = await dualBotService.testCorsConnection();
-        if (corsTest.success) {
-          console.log('CORS connection successful, fetching data...');
-          fetchDualBotData();
-        } else {
-          console.error('CORS connection failed:', corsTest.error);
-          let errorMessage = `CORS connection failed: ${corsTest.error}`;
-          
-          // Provide more helpful messages for common CORS errors
-          if (corsTest.error && corsTest.error.includes('Network Error')) {
-            errorMessage = 'Cannot connect to the Dual Bot API server. Please ensure it is running on port 5001.';
-          } else if (corsTest.error && corsTest.error.includes('CORS')) {
-            errorMessage = 'CORS policy error: The API server is running but has CORS issues. Please check the server configuration.';
-          }
-          
-          setError(errorMessage);
-          setConnectionStatus('disconnected');
-          setUseMockData(true);
-        }
-      } catch (err) {
-        console.error('Error testing CORS connection:', err);
-        setError(`Failed to test CORS connection: ${err.message}`);
-        setConnectionStatus('disconnected');
-        setUseMockData(true);
-      }
+    // Check connection status first
+    const initialSetup = async () => {
+      await checkConnectionStatus();
+      fetchDualBotData();
     };
     
-    testCorsConnection();
+    initialSetup();
     
     // Fetch data every 60 seconds
     const interval = setInterval(fetchDualBotData, 60000);
-    return () => clearInterval(interval);
+    
+    // Check connection status every 30 seconds
+    const connectionInterval = setInterval(checkConnectionStatus, 30000);
+    
+    return () => {
+      clearInterval(interval);
+      clearInterval(connectionInterval);
+    };
   }, []);
 
   // Fetch market data when symbol changes
@@ -291,6 +300,55 @@ const DualBotDashboard = () => {
             Last Updated: {marketData.timestamp ? new Date(marketData.timestamp).toLocaleString() : new Date().toLocaleString()}
           </Typography>
         </Box>
+      </Box>
+    );
+  };
+
+  // Add a connection status component
+  const renderConnectionStatus = () => {
+    const getStatusColor = () => {
+      switch (connectionStatus) {
+        case 'connected': return 'success.main';
+        case 'partial': return 'warning.main';
+        case 'disconnected': return 'error.main';
+        default: return 'info.main';
+      }
+    };
+    
+    const getStatusIcon = () => {
+      switch (connectionStatus) {
+        case 'connected': return <CheckCircle color="success" />;
+        case 'partial': return <Warning color="warning" />;
+        case 'disconnected': return <Error color="error" />;
+        default: return <InfoIcon color="info" />;
+      }
+    };
+    
+    const getStatusText = () => {
+      switch (connectionStatus) {
+        case 'connected': return 'Connected to API Server';
+        case 'partial': return 'Partial API Connection';
+        case 'disconnected': return 'Using Mock Data (API Disconnected)';
+        default: return 'Checking Connection...';
+      }
+    };
+    
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+        {getStatusIcon()}
+        <Typography color={getStatusColor()}>
+          {getStatusText()}
+        </Typography>
+        {connectionStatus !== 'connected' && (
+          <Button 
+            size="small" 
+            variant="outlined" 
+            startIcon={<Refresh />}
+            onClick={checkConnectionStatus}
+          >
+            Retry
+          </Button>
+        )}
       </Box>
     );
   };

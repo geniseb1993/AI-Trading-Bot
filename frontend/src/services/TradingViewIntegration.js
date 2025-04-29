@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // TradingView API URL (integrated with main API)
-const TRADINGVIEW_API_URL = 'http://localhost:5000/api/tradingview';
+const TRADINGVIEW_API_URL = 'http://localhost:5003/api/tradingview';
 
 // Main API URL
 const MAIN_API_URL = 'http://localhost:5000/api';

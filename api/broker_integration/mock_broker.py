@@ -1,140 +1,345 @@
-import uuid
+import os
+import json
 import random
-import datetime
 import logging
-from typing import Dict, List, Optional, Any, Union
+import uuid
+from typing import Dict, List, Optional, Any
+from datetime import datetime, timedelta
 from .broker_interface import (
     BrokerInterface,
     Account,
     Position,
     Order,
+    OrderStatus,
     OrderSide,
     OrderType,
-    OrderStatus,
     TimeInForce,
 )
 
 logger = logging.getLogger(__name__)
 
+# Mock data for testing
+MOCK_SYMBOLS = {
+    "AAPL": {"price": 175.50, "name": "Apple Inc."},
+    "MSFT": {"price": 345.20, "name": "Microsoft Corporation"},
+    "AMZN": {"price": 145.30, "name": "Amazon.com, Inc."},
+    "GOOGL": {"price": 152.80, "name": "Alphabet Inc."},
+    "META": {"price": 505.40, "name": "Meta Platforms, Inc."},
+    "TSLA": {"price": 205.60, "name": "Tesla, Inc."},
+    "NVDA": {"price": 840.80, "name": "NVIDIA Corporation"},
+    "BRK.B": {"price": 410.20, "name": "Berkshire Hathaway Inc."},
+    "JPM": {"price": 198.75, "name": "JPMorgan Chase & Co."},
+    "V": {"price": 278.40, "name": "Visa Inc."}
+}
+
 class MockBroker(BrokerInterface):
-    """Mock implementation of a broker for testing and development"""
+    """Mock broker implementation for testing"""
     
-    def __init__(self, initial_balance: float = 100000.0):
+    def __init__(self, config: Dict[str, Any] = None):
+        """Initialize mock broker with optional configuration"""
+        self.config = config or {}
         self.connected = False
-        self.account_id = f"mock-account-{uuid.uuid4()}"
-        self.initial_balance = initial_balance
-        self.cash = initial_balance
-        self.positions: Dict[str, Position] = {}
-        self.orders: Dict[str, Order] = {}
-        self.market_data: Dict[str, Dict[str, Any]] = {}
+        self.data_dir = os.path.join("data", "broker", "mock")
+        self._ensure_data_dir()
         
-        # Initialize with some random market data
-        self._initialize_market_data()
+        # In-memory data storage
+        self._account = self._create_mock_account()
+        self._positions = {}
+        self._orders = {}
+        self._market_data = {}
         
-        logger.info(f"MockBroker initialized with ${initial_balance} balance")
+        # Load saved data if available
+        self._load_saved_data()
+        self._generate_market_data()
     
-    def _initialize_market_data(self):
-        """Initialize mock market data for common symbols"""
-        symbols = ["AAPL", "MSFT", "AMZN", "TSLA", "GOOGL", "META", "SPY", "QQQ"]
+    def _ensure_data_dir(self):
+        """Ensure data directory exists"""
+        os.makedirs(self.data_dir, exist_ok=True)
+    
+    def _create_mock_account(self) -> Account:
+        """Create mock account with default values"""
+        return Account(
+            id=str(uuid.uuid4()),
+            cash=100000.0,
+            portfolio_value=105000.0,
+            buying_power=200000.0,
+            equity=105000.0
+        )
+    
+    def _load_saved_data(self):
+        """Load saved mock broker data if available"""
+        try:
+            # Load positions
+            positions_file = os.path.join(self.data_dir, "positions.json")
+            if os.path.exists(positions_file):
+                with open(positions_file, "r") as f:
+                    positions_data = json.load(f)
+                    self._positions = {
+                        p["symbol"]: Position(
+                            symbol=p["symbol"],
+                            qty=float(p["qty"]),
+                            avg_entry_price=float(p["avg_entry_price"]),
+                            current_price=float(p["current_price"]),
+                            side=OrderSide(p["side"])
+                        )
+                        for p in positions_data
+                    }
+            
+            # Load orders
+            orders_file = os.path.join(self.data_dir, "orders.json")
+            if os.path.exists(orders_file):
+                with open(orders_file, "r") as f:
+                    orders_data = json.load(f)
+                    self._orders = {
+                        o["id"]: Order(
+                            id=o["id"],
+                            symbol=o["symbol"],
+                            qty=float(o["qty"]),
+                            side=OrderSide(o["side"]),
+                            type=OrderType(o["type"]),
+                            limit_price=float(o["limit_price"]) if o.get("limit_price") else None,
+                            stop_price=float(o["stop_price"]) if o.get("stop_price") else None,
+                            time_in_force=TimeInForce(o["time_in_force"]),
+                            status=OrderStatus(o["status"]),
+                            created_at=datetime.fromisoformat(o["created_at"]),
+                            filled_at=datetime.fromisoformat(o["filled_at"]) if o.get("filled_at") else None,
+                            filled_qty=float(o["filled_qty"]) if o.get("filled_qty") else 0.0,
+                            filled_avg_price=float(o["filled_avg_price"]) if o.get("filled_avg_price") else None
+                        )
+                        for o in orders_data
+                    }
+            
+            # Load account
+            account_file = os.path.join(self.data_dir, "account.json")
+            if os.path.exists(account_file):
+                with open(account_file, "r") as f:
+                    account_data = json.load(f)
+                    self._account = Account(
+                        id=account_data["id"],
+                        cash=float(account_data["cash"]),
+                        portfolio_value=float(account_data["portfolio_value"]),
+                        buying_power=float(account_data["buying_power"]),
+                        equity=float(account_data["equity"]),
+                        currency=account_data.get("currency", "USD")
+                    )
+        except Exception as e:
+            logger.error(f"Error loading saved mock broker data: {e}")
+    
+    def _save_data(self):
+        """Save current mock broker data"""
+        try:
+            # Save positions
+            positions_data = [
+                {
+                    "symbol": p.symbol,
+                    "qty": p.qty,
+                    "avg_entry_price": p.avg_entry_price,
+                    "current_price": p.current_price,
+                    "side": p.side.value
+                }
+                for p in self._positions.values()
+            ]
+            with open(os.path.join(self.data_dir, "positions.json"), "w") as f:
+                json.dump(positions_data, f, indent=2)
+            
+            # Save orders
+            orders_data = [
+                {
+                    "id": o.id,
+                    "symbol": o.symbol,
+                    "qty": o.qty,
+                    "side": o.side.value,
+                    "type": o.type.value,
+                    "limit_price": o.limit_price,
+                    "stop_price": o.stop_price,
+                    "time_in_force": o.time_in_force.value,
+                    "status": o.status.value,
+                    "created_at": o.created_at.isoformat(),
+                    "filled_at": o.filled_at.isoformat() if o.filled_at else None,
+                    "filled_qty": o.filled_qty,
+                    "filled_avg_price": o.filled_avg_price
+                }
+                for o in self._orders.values()
+            ]
+            with open(os.path.join(self.data_dir, "orders.json"), "w") as f:
+                json.dump(orders_data, f, indent=2)
+            
+            # Save account
+            account_data = {
+                "id": self._account.id,
+                "cash": self._account.cash,
+                "portfolio_value": self._account.portfolio_value,
+                "buying_power": self._account.buying_power,
+                "equity": self._account.equity,
+                "currency": self._account.currency
+            }
+            with open(os.path.join(self.data_dir, "account.json"), "w") as f:
+                json.dump(account_data, f, indent=2)
+        
+        except Exception as e:
+            logger.error(f"Error saving mock broker data: {e}")
+    
+    def _generate_market_data(self):
+        """Generate mock market data for common stocks"""
+        symbols = [
+            "AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", 
+            "META", "NVDA", "NFLX", "AMD", "INTC"
+        ]
+        
+        # Add symbols from positions if any
+        for position in self._positions.values():
+            if position.symbol not in symbols:
+                symbols.append(position.symbol)
         
         for symbol in symbols:
-            base_price = random.uniform(100, 500)
-            self.market_data[symbol] = {
+            last_price = 100.0 + random.uniform(-50, 200)
+            self._market_data[symbol] = {
                 "symbol": symbol,
-                "bid": round(base_price * 0.999, 2),
-                "ask": round(base_price * 1.001, 2),
-                "last": round(base_price, 2),
-                "high": round(base_price * 1.02, 2),
-                "low": round(base_price * 0.98, 2),
-                "volume": random.randint(100000, 1000000),
-                "timestamp": datetime.datetime.now().isoformat(),
+                "last_price": last_price,
+                "bid": last_price - random.uniform(0.01, 0.5),
+                "ask": last_price + random.uniform(0.01, 0.5),
+                "volume": random.randint(10000, 1000000),
+                "timestamp": datetime.now().isoformat(),
+                "change": random.uniform(-5, 5),
+                "change_percent": random.uniform(-5, 5)
             }
     
     def _update_market_data(self):
-        """Simulate market data changes"""
-        for symbol, data in self.market_data.items():
-            # Simulate price movement
-            price_change_pct = random.uniform(-0.002, 0.002)  # 0.2% max movement
-            base_price = data["last"]
-            new_price = round(base_price * (1 + price_change_pct), 2)
+        """Update mock market data with random price movements"""
+        for symbol, data in self._market_data.items():
+            # Generate price movement between -2% and +2%
+            price_change = data["last_price"] * random.uniform(-0.02, 0.02)
+            new_price = data["last_price"] + price_change
             
-            self.market_data[symbol] = {
-                "symbol": symbol,
-                "bid": round(new_price * 0.999, 2),
-                "ask": round(new_price * 1.001, 2),
-                "last": new_price,
-                "high": max(data["high"], new_price),
-                "low": min(data["low"], new_price),
-                "volume": data["volume"] + random.randint(100, 1000),
-                "timestamp": datetime.datetime.now().isoformat(),
-            }
-            
-            # Update positions with new prices
-            if symbol in self.positions:
-                pos = self.positions[symbol]
-                pos.current_price = new_price
-                pos.market_value = pos.qty * new_price
-                pos.unrealized_pl = pos.market_value - pos.cost_basis if pos.side == OrderSide.BUY else pos.cost_basis - pos.market_value
-                pos.unrealized_pl_pct = (pos.unrealized_pl / pos.cost_basis) * 100 if pos.cost_basis != 0 else 0
+            # Update market data
+            data["last_price"] = new_price
+            data["bid"] = new_price - random.uniform(0.01, 0.5)
+            data["ask"] = new_price + random.uniform(0.01, 0.5)
+            data["volume"] += random.randint(100, 10000)
+            data["timestamp"] = datetime.now().isoformat()
+            data["change"] = price_change
+            data["change_percent"] = (price_change / (new_price - price_change)) * 100
+        
+        # Update position current prices
+        for position in self._positions.values():
+            if position.symbol in self._market_data:
+                position.current_price = self._market_data[position.symbol]["last_price"]
     
     def connect(self) -> bool:
-        """Simulate connecting to broker API"""
+        """Connect to mock broker (always successful)"""
         self.connected = True
         logger.info("Connected to mock broker")
         return True
     
+    def disconnect(self) -> bool:
+        """Disconnect from mock broker"""
+        self.connected = False
+        logger.info("Disconnected from mock broker")
+        return True
+    
+    def is_connected(self) -> bool:
+        """Check if connected to mock broker"""
+        return self.connected
+    
     def get_account(self) -> Account:
-        """Get mock account information"""
-        if not self.connected:
-            self.connect()
+        """Get account information"""
+        # Update portfolio value based on positions
+        positions_value = sum(p.market_value for p in self._positions.values())
+        self._account.portfolio_value = self._account.cash + positions_value
+        self._account.equity = self._account.portfolio_value
+        return self._account
+    
+    def get_account_info(self) -> Dict[str, Any]:
+        """Get account information as dictionary"""
+        account = self.get_account()
+        return account.to_dict()
+    
+    def get_positions(self) -> List[Dict[str, Any]]:
+        """Get all current positions as dictionaries"""
+        self._update_market_data()  # Update prices
+        return [position.to_dict() for position in self._positions.values()]
+    
+    def get_position(self, symbol: str) -> Optional[Dict[str, Any]]:
+        """Get position for a specific symbol as dictionary"""
+        self._update_market_data()  # Update prices
+        position = self._positions.get(symbol.upper())
+        return position.to_dict() if position else None
+    
+    def get_orders(self, status: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Get orders with optional status filter as dictionaries"""
+        orders = list(self._orders.values())
         
-        self._update_market_data()
+        # Filter by status if provided
+        if status:
+            try:
+                status_enum = OrderStatus(status)
+                orders = [o for o in orders if o.status == status_enum]
+            except (ValueError, KeyError):
+                # Invalid status, log and ignore filter
+                logger.warning(f"Invalid order status filter: {status}")
         
-        # Calculate portfolio value as cash + positions value
-        portfolio_value = self.cash
-        for symbol, position in self.positions.items():
-            portfolio_value += position.market_value
+        return [order.to_dict() for order in orders]
+    
+    def get_order(self, order_id: str) -> Optional[Dict[str, Any]]:
+        """Get a specific order by ID as dictionary"""
+        order = self._orders.get(order_id)
+        return order.to_dict() if order else None
+    
+    def place_order(
+        self,
+        symbol: str,
+        qty: float,
+        side: str,
+        type: str = "market",
+        limit_price: Optional[float] = None,
+        stop_price: Optional[float] = None,
+        time_in_force: str = "day"
+    ) -> Dict[str, Any]:
+        """
+        Place an order with the mock broker.
         
-        return Account(
-            id=self.account_id,
-            cash=self.cash,
-            portfolio_value=portfolio_value,
-            buying_power=self.cash * 2,  # Simulate 2x margin
-            equity=portfolio_value,
-            currency="USD"
+        Args:
+            symbol: Symbol to trade
+            qty: Quantity to trade
+            side: Order side ("buy" or "sell")
+            type: Order type ("market", "limit", "stop", "stop_limit")
+            limit_price: Limit price for limit orders
+            stop_price: Stop price for stop orders
+            time_in_force: Time in force ("day", "gtc", "ioc", "fok")
+            
+        Returns:
+            Dict containing order information
+        """
+        # Convert string parameters to enums
+        try:
+            side_enum = OrderSide(side)
+            type_enum = OrderType(type)
+            time_in_force_enum = TimeInForce(time_in_force)
+        except (ValueError, KeyError) as e:
+            logger.error(f"Invalid order parameter: {e}")
+            return {
+                "error": f"Invalid order parameter: {e}",
+                "status": "rejected"
+            }
+        
+        # Create and submit order
+        order = self.submit_order(
+            symbol=symbol.upper(),
+            qty=float(qty),
+            side=side_enum,
+            type=type_enum,
+            time_in_force=time_in_force_enum,
+            limit_price=float(limit_price) if limit_price is not None else None,
+            stop_price=float(stop_price) if stop_price is not None else None
         )
-    
-    def get_positions(self) -> List[Position]:
-        """Get all current positions"""
-        if not self.connected:
-            self.connect()
         
-        self._update_market_data()
-        return list(self.positions.values())
-    
-    def get_position(self, symbol: str) -> Optional[Position]:
-        """Get position for a specific symbol"""
-        if not self.connected:
-            self.connect()
-        
-        self._update_market_data()
-        return self.positions.get(symbol)
-    
-    def get_orders(self, status: Optional[OrderStatus] = None) -> List[Order]:
-        """Get list of orders with optional status filter"""
-        if not self.connected:
-            self.connect()
-        
-        if status is None:
-            return list(self.orders.values())
-        return [order for order in self.orders.values() if order.status == status]
-    
-    def get_order(self, order_id: str) -> Optional[Order]:
-        """Get a specific order by ID"""
-        if not self.connected:
-            self.connect()
-        
-        return self.orders.get(order_id)
+        if order:
+            return order.to_dict()
+        else:
+            return {
+                "error": "Failed to create order",
+                "status": "rejected"
+            }
     
     def submit_order(
         self,
@@ -147,175 +352,267 @@ class MockBroker(BrokerInterface):
         stop_price: Optional[float] = None,
         trail_percent: Optional[float] = None,
     ) -> Optional[Order]:
-        """Submit a mock order"""
-        if not self.connected:
-            self.connect()
-        
-        self._update_market_data()
-        
-        # Validate the order
-        if symbol not in self.market_data:
-            logger.error(f"Symbol {symbol} not found in market data")
+        """Submit an order to the mock broker"""
+        # Validate the symbol exists
+        symbol = symbol.upper()
+        if symbol not in self._market_data and symbol not in MOCK_SYMBOLS:
+            logger.error(f"Symbol not found: {symbol}")
             return None
         
-        if qty <= 0:
-            logger.error(f"Invalid quantity: {qty}")
-            return None
+        # Ensure we have market data for this symbol
+        if symbol not in self._market_data:
+            last_price = MOCK_SYMBOLS.get(symbol, {"price": 100.0})["price"]
+            self._market_data[symbol] = {
+                "symbol": symbol,
+                "last_price": last_price,
+                "bid": last_price - random.uniform(0.01, 0.5),
+                "ask": last_price + random.uniform(0.01, 0.5),
+                "volume": random.randint(10000, 1000000),
+                "timestamp": datetime.now().isoformat(),
+                "change": 0,
+                "change_percent": 0
+            }
         
-        if type in [OrderType.LIMIT, OrderType.STOP_LIMIT] and limit_price is None:
-            logger.error(f"Limit price required for {type} orders")
-            return None
-        
-        if type in [OrderType.STOP, OrderType.STOP_LIMIT] and stop_price is None:
-            logger.error(f"Stop price required for {type} orders")
-            return None
-        
-        if type == OrderType.TRAILING_STOP and trail_percent is None:
-            logger.error("Trail percent required for trailing stop orders")
-            return None
-        
-        # Create the order
-        order_id = f"mock-order-{uuid.uuid4()}"
-        now = datetime.datetime.now()
-        
+        # Create new order
+        order_id = str(uuid.uuid4())
         order = Order(
             id=order_id,
             symbol=symbol,
             qty=qty,
             side=side,
             type=type,
+            status=OrderStatus.NEW,
+            time_in_force=time_in_force,
             limit_price=limit_price,
             stop_price=stop_price,
-            time_in_force=time_in_force,
-            status=OrderStatus.NEW,
-            created_at=now,
             trail_percent=trail_percent,
+            created_at=datetime.now()
         )
         
-        self.orders[order_id] = order
-        logger.info(f"Submitted order: {order_id} for {qty} {symbol} {side} {type}")
+        # Add to orders dictionary
+        self._orders[order_id] = order
         
-        # Simulate execution - immediately for market orders
-        if type == OrderType.MARKET:
+        # Execute order (simulate fill process)
             self._execute_order(order)
+        
+        # Save data
+        self._save_data()
         
         return order
     
     def _execute_order(self, order: Order):
-        """Simulate order execution"""
-        symbol = order.symbol
-        current_data = self.market_data[symbol]
+        """Execute an order (simulate fill process)"""
+        # For simplicity in mock broker, execute all orders immediately
+        # In a real broker, this would happen asynchronously
         
-        # Determine execution price
-        if order.side == OrderSide.BUY:
-            exec_price = current_data["ask"]
-        else:
-            exec_price = current_data["bid"]
+        # Update market data
+        self._update_market_data()
         
-        # Apply small random slippage to simulate real market
-        slippage = random.uniform(-0.001, 0.001)  # 0.1% max slippage
-        exec_price = round(exec_price * (1 + slippage), 2)
+        # Get current market price
+        market_data = self._market_data.get(order.symbol)
+        if not market_data:
+            order.status = OrderStatus.REJECTED
+            logger.error(f"No market data for {order.symbol}")
+            return
         
-        # Update order
-        order.status = OrderStatus.FILLED
-        order.filled_qty = order.qty
-        order.filled_avg_price = exec_price
-        order.filled_at = datetime.datetime.now()
+        current_price = market_data["last_price"]
         
-        # Update account
-        cost = order.qty * exec_price
+        # Check if order should be filled based on type and price
+        should_fill = False
+        fill_price = current_price
         
-        if order.side == OrderSide.BUY:
-            # Deduct cash
-            self.cash -= cost
+        if order.type == OrderType.MARKET:
+            # Market orders always fill
+            should_fill = True
             
-            # Update or create position
-            if symbol in self.positions:
-                pos = self.positions[symbol]
-                # Update average entry
-                new_qty = pos.qty + order.qty
-                new_cost_basis = pos.cost_basis + cost
-                pos.avg_entry_price = new_cost_basis / new_qty
-                pos.qty = new_qty
-                pos.cost_basis = new_cost_basis
-                pos.market_value = new_qty * pos.current_price
-                pos.unrealized_pl = pos.market_value - pos.cost_basis
-                pos.unrealized_pl_pct = (pos.unrealized_pl / pos.cost_basis) * 100 if pos.cost_basis != 0 else 0
+            # Use bid for sell orders and ask for buy orders
+            if order.side == OrderSide.SELL:
+                fill_price = market_data["bid"]
             else:
-                # Create new position
-                self.positions[symbol] = Position(
+                fill_price = market_data["ask"]
+                
+        elif order.type == OrderType.LIMIT:
+            # Limit orders fill if price is favorable
+            if order.limit_price is None:
+                order.status = OrderStatus.REJECTED
+                logger.error("Limit order without limit price")
+                return
+                
+            if order.side == OrderSide.BUY and current_price <= order.limit_price:
+                should_fill = True
+                fill_price = min(current_price, order.limit_price)
+            elif order.side == OrderSide.SELL and current_price >= order.limit_price:
+                should_fill = True
+                fill_price = max(current_price, order.limit_price)
+                
+        elif order.type == OrderType.STOP:
+            # Stop orders fill if price crosses the stop
+            if order.stop_price is None:
+                order.status = OrderStatus.REJECTED
+                logger.error("Stop order without stop price")
+                return
+                
+            if order.side == OrderSide.BUY and current_price >= order.stop_price:
+                should_fill = True
+                fill_price = current_price
+            elif order.side == OrderSide.SELL and current_price <= order.stop_price:
+                should_fill = True
+                fill_price = current_price
+                
+        elif order.type == OrderType.STOP_LIMIT:
+            # Stop-limit orders become limit orders when stop is triggered
+            if order.stop_price is None or order.limit_price is None:
+                order.status = OrderStatus.REJECTED
+                logger.error("Stop-limit order without stop or limit price")
+                return
+                
+            # Check if stop is triggered
+            stop_triggered = False
+            if order.side == OrderSide.BUY and current_price >= order.stop_price:
+                stop_triggered = True
+            elif order.side == OrderSide.SELL and current_price <= order.stop_price:
+                stop_triggered = True
+                
+            if stop_triggered:
+                # Now check if limit condition is met
+                if order.side == OrderSide.BUY and current_price <= order.limit_price:
+                    should_fill = True
+                    fill_price = min(current_price, order.limit_price)
+                elif order.side == OrderSide.SELL and current_price >= order.limit_price:
+                    should_fill = True
+                    fill_price = max(current_price, order.limit_price)
+        
+        # Fill the order if conditions are met
+        if should_fill:
+                order.status = OrderStatus.FILLED
+            order.filled_qty = order.qty
+            order.filled_avg_price = fill_price
+            order.filled_at = datetime.now()
+            
+            # Update account and positions
+            self._update_account_and_positions(order, fill_price)
+            
+            logger.info(f"Order {order.id} filled: {order.qty} {order.symbol} @ {fill_price}")
+            
+            # Introduce random delay for filled orders (simulate latency)
+            latency = self.config.get("latency_ms", 0)
+            if latency > 0:
+                delay = latency / 1000
+                logger.debug(f"Simulating latency: {latency}ms")
+                # In a real implementation, we'd use time.sleep(delay) here
+    
+    def _update_account_and_positions(self, order: Order, fill_price: float):
+        """Update account and positions based on filled order"""
+        symbol = order.symbol
+        qty = order.qty
+        side = order.side
+        
+        # Calculate order value
+        order_value = qty * fill_price
+        
+        # Update account cash
+        if side == OrderSide.BUY:
+            self._account.cash -= order_value
+        else:
+            self._account.cash += order_value
+        
+        # Update or create position
+        if symbol in self._positions:
+            position = self._positions[symbol]
+            
+            if side == OrderSide.BUY:
+                # Adding to position
+                new_qty = position.qty + qty
+                new_cost = (position.avg_entry_price * position.qty) + (fill_price * qty)
+                position.qty = new_qty
+                position.avg_entry_price = new_cost / new_qty
+            else:
+                # Reducing position
+                position.qty -= qty
+                # If position is closed, remove it
+                if position.qty <= 0:
+                    del self._positions[symbol]
+        else:
+            # New position (only for buys)
+            if side == OrderSide.BUY:
+                self._positions[symbol] = Position(
                     symbol=symbol,
-                    qty=order.qty,
-                    avg_entry_price=exec_price,
-                    current_price=exec_price,
+                    qty=qty,
+                    avg_entry_price=fill_price,
+                    current_price=fill_price,
                     side=OrderSide.BUY
                 )
-        else:  # SELL
-            # Add to cash
-            self.cash += cost
-            
-            # Update position
-            if symbol in self.positions:
-                pos = self.positions[symbol]
-                pos.qty -= order.qty
-                
-                # Remove position if qty becomes 0
-                if pos.qty <= 0:
-                    del self.positions[symbol]
-                else:
-                    # No need to update avg_entry_price on sell
-                    pos.market_value = pos.qty * pos.current_price
-                    pos.unrealized_pl = pos.market_value - pos.cost_basis
-                    pos.unrealized_pl_pct = (pos.unrealized_pl / pos.cost_basis) * 100 if pos.cost_basis != 0 else 0
-            
-        logger.info(f"Executed order: {order.id} at ${exec_price} for {order.qty} {symbol}")
+        
+        # Update account values
+        positions_value = sum(p.market_value for p in self._positions.values())
+        self._account.portfolio_value = self._account.cash + positions_value
+        self._account.equity = self._account.portfolio_value
     
     def cancel_order(self, order_id: str) -> bool:
-        """Cancel an existing order"""
-        if not self.connected:
-            self.connect()
-        
-        if order_id not in self.orders:
-            logger.error(f"Order {order_id} not found")
+        """Cancel an order"""
+        if order_id not in self._orders:
+            logger.warning(f"Order {order_id} not found for cancellation")
             return False
         
-        order = self.orders[order_id]
+        order = self._orders[order_id]
         
-        if order.status not in [OrderStatus.NEW, OrderStatus.PARTIALLY_FILLED]:
-            logger.error(f"Cannot cancel order with status: {order.status}")
+        # Can only cancel active orders
+        if not order.is_active:
+            logger.warning(f"Cannot cancel order {order_id} with status {order.status}")
             return False
         
-        order.status = OrderStatus.CANCELED
-        logger.info(f"Canceled order: {order_id}")
+        # Cancel the order
+        order.status = OrderStatus.CANCELLED
         
+        # Save data
+        self._save_data()
+        
+        logger.info(f"Order {order_id} cancelled")
         return True
     
     def cancel_all_orders(self) -> bool:
-        """Cancel all open orders"""
-        if not self.connected:
-            self.connect()
+        """Cancel all active orders"""
+        cancelled_count = 0
         
-        cancellable_orders = [
-            order for order in self.orders.values() 
-            if order.status in [OrderStatus.NEW, OrderStatus.PARTIALLY_FILLED]
-        ]
+        for order_id, order in list(self._orders.items()):
+            if order.is_active:
+                order.status = OrderStatus.CANCELLED
+                cancelled_count += 1
         
-        for order in cancellable_orders:
-            order.status = OrderStatus.CANCELED
+        # Save data
+        self._save_data()
         
-        logger.info(f"Canceled {len(cancellable_orders)} orders")
-        
+        logger.info(f"Cancelled {cancelled_count} orders")
         return True
     
     def get_market_data(self, symbol: str) -> Dict[str, Any]:
-        """Get current market data for a symbol"""
-        if not self.connected:
-            self.connect()
-        
+        """Get market data for a symbol"""
+        # Update market data
         self._update_market_data()
         
-        if symbol not in self.market_data:
-            logger.error(f"Symbol {symbol} not found in market data")
-            return {}
+        symbol = symbol.upper()
         
-        return self.market_data[symbol] 
+        # Check if we have data for this symbol
+        if symbol not in self._market_data:
+            # Add symbol if it's in our mock symbols
+            if symbol in MOCK_SYMBOLS:
+                price = MOCK_SYMBOLS[symbol]["price"]
+                self._market_data[symbol] = {
+                    "symbol": symbol,
+                    "last_price": price,
+                    "bid": price - random.uniform(0.01, 0.5),
+                    "ask": price + random.uniform(0.01, 0.5),
+                    "volume": random.randint(10000, 1000000),
+                    "timestamp": datetime.now().isoformat(),
+                    "change": 0,
+                    "change_percent": 0
+                }
+            else:
+                logger.warning(f"No market data for symbol: {symbol}")
+                return {
+                    "symbol": symbol,
+                    "error": "Symbol not found"
+                }
+        
+        return self._market_data[symbol] 
+

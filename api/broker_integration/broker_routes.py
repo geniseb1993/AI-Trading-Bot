@@ -104,10 +104,15 @@ def configure_broker():
 
 @broker_bp.route('/account', methods=['GET'])
 def get_account_info():
-    """Get account information"""
+    """Get account information from active broker"""
     try:
-        account_info = trade_executor.get_account_info()
-        return jsonify(account_info)
+        broker = broker_manager.get_broker()
+        account = broker.get_account()
+        
+        return jsonify({
+            'success': True,
+            'account': account.to_dict()
+        })
     except Exception as e:
         logger.error(f"Error getting account info: {e}")
         return jsonify({
@@ -117,12 +122,62 @@ def get_account_info():
 
 @broker_bp.route('/positions', methods=['GET'])
 def get_positions():
-    """Get current positions"""
+    """Get current positions from active broker"""
     try:
-        positions = trade_executor.get_positions()
-        return jsonify(positions)
+        broker = broker_manager.get_broker()
+        positions = broker.get_positions()
+        
+        return jsonify({
+            'success': True,
+            'positions': [
+                {
+                    'symbol': p.symbol,
+                    'qty': p.qty,
+                    'avg_entry_price': p.avg_entry_price,
+                    'current_price': p.current_price,
+                    'market_value': p.market_value,
+                    'unrealized_pl': p.unrealized_pl,
+                    'unrealized_pl_pct': p.unrealized_pl_pct
+                }
+                for p in positions
+            ]
+        })
     except Exception as e:
         logger.error(f"Error getting positions: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@broker_bp.route('/orders', methods=['GET'])
+def get_orders():
+    """Get orders from active broker"""
+    try:
+        broker = broker_manager.get_broker()
+        status = request.args.get('status')
+        
+        # Convert status string to enum if provided
+        order_status = None
+        if status:
+            from .broker_interface import OrderStatus
+            status_map = {
+                'new': OrderStatus.NEW,
+                'filled': OrderStatus.FILLED,
+                'partially_filled': OrderStatus.PARTIALLY_FILLED,
+                'cancelled': OrderStatus.CANCELLED,
+                'rejected': OrderStatus.REJECTED,
+                'expired': OrderStatus.EXPIRED
+            }
+            order_status = status_map.get(status.lower())
+        
+        orders = broker.get_orders(status=order_status)
+        
+        return jsonify({
+            'success': True,
+            'orders': [order.to_dict() for order in orders]
+        })
+    except Exception as e:
+        logger.error(f"Error getting orders: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
@@ -154,135 +209,239 @@ def get_market_data():
             'error': str(e)
         }), 500
 
-@broker_bp.route('/order', methods=['POST'])
-def place_order():
-    """Place a new order"""
+@broker_bp.route('/execute/market', methods=['POST'])
+def execute_market_order():
+    """Execute a market order"""
     try:
         data = request.json
-        order_type = data.get('type', 'market').lower()
-        
-        # Required for all order types
         symbol = data.get('symbol')
-        side = data.get('side')
         qty = data.get('qty')
+        side = data.get('side')
         
-        if not all([symbol, side, qty]):
+        # Validate required fields
+        if not symbol or not qty or not side:
             return jsonify({
                 'success': False,
-                'error': 'Symbol, side, and quantity are required'
+                'error': 'Symbol, qty, and side are required'
             }), 400
         
-        # Execute the order based on type
-        if order_type == 'market':
-            order = trade_executor.market_order(symbol, float(qty), side)
-        elif order_type == 'limit':
-            limit_price = data.get('limit_price')
-            time_in_force = data.get('time_in_force', 'day')
-            
-            if not limit_price:
-                return jsonify({
-                    'success': False,
-                    'error': 'Limit price is required for limit orders'
-                }), 400
-            
-            order = trade_executor.limit_order(symbol, float(qty), side, float(limit_price), time_in_force)
-        elif order_type == 'stop':
-            stop_price = data.get('stop_price')
-            time_in_force = data.get('time_in_force', 'day')
-            
-            if not stop_price:
-                return jsonify({
-                    'success': False,
-                    'error': 'Stop price is required for stop orders'
-                }), 400
-            
-            order = trade_executor.stop_order(symbol, float(qty), side, float(stop_price), time_in_force)
-        elif order_type == 'stop_limit':
-            stop_price = data.get('stop_price')
-            limit_price = data.get('limit_price')
-            time_in_force = data.get('time_in_force', 'day')
-            
-            if not stop_price or not limit_price:
-                return jsonify({
-                    'success': False,
-                    'error': 'Stop price and limit price are required for stop-limit orders'
-                }), 400
-            
-            order = trade_executor.stop_limit_order(symbol, float(qty), side, float(stop_price), float(limit_price), time_in_force)
-        elif order_type == 'trailing_stop':
-            trail_percent = data.get('trail_percent')
-            time_in_force = data.get('time_in_force', 'day')
-            
-            if not trail_percent:
-                return jsonify({
-                    'success': False,
-                    'error': 'Trail percent is required for trailing stop orders'
-                }), 400
-            
-            order = trade_executor.trailing_stop_order(symbol, float(qty), side, float(trail_percent), time_in_force)
-        else:
+        # Convert qty to float
+        try:
+            qty = float(qty)
+        except ValueError:
             return jsonify({
                 'success': False,
-                'error': f'Unsupported order type: {order_type}'
+                'error': 'Qty must be a number'
             }), 400
         
-        # Check if order was successful
+        # Validate side
+        if side.lower() not in ['buy', 'sell']:
+            return jsonify({
+                'success': False,
+                'error': 'Side must be buy or sell'
+            }), 400
+        
+        # Execute order
+        order = trade_executor.market_order(symbol, qty, side)
+        
         if order:
-            # Add to portfolio tracker with default stop loss/take profit if provided
-            stop_loss_price = data.get('stop_loss_price')
-            take_profit_price = data.get('take_profit_price')
-            strategy = data.get('strategy', 'default')
-            tags = data.get('tags', [])
-            notes = data.get('notes', '')
-            
-            if order.status == 'filled':
-                trade = Trade(
-                    trade_id=str(uuid.uuid4()),
-                    symbol=symbol,
-                    side=side,
-                    entry_date=datetime.datetime.now(),
-                    entry_price=order.filled_avg_price if order.filled_avg_price else order.limit_price or 0.0,
-                    entry_order_id=order.id,
-                    qty=qty,
-                    stop_loss_price=stop_loss_price,
-                    take_profit_price=take_profit_price,
-                    strategy=strategy,
-                    tags=tags,
-                    notes=notes
-                )
-                portfolio_tracker.add_trade(trade)
+            # Create a trade record
+            trade = portfolio_tracker.open_trade(
+                symbol=symbol,
+                quantity=qty,
+                entry_price=order.filled_avg_price or 0.0,
+                side='long' if side.lower() == 'buy' else 'short',
+                strategy=data.get('strategy', 'manual'),
+                entry_order_id=order.id,
+                stop_loss=data.get('stop_loss'),
+                take_profit=data.get('take_profit'),
+                notes=data.get('notes'),
+                tags=data.get('tags', [])
+            )
             
             return jsonify({
                 'success': True,
                 'order': order.to_dict(),
-                'message': 'Order placed successfully'
+                'trade_id': trade.id
             })
         else:
             return jsonify({
                 'success': False,
-                'error': 'Failed to place order'
+                'error': 'Failed to execute market order'
             }), 400
     except Exception as e:
-        logger.error(f"Error placing order: {e}")
+        logger.error(f"Error executing market order: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
         }), 500
 
-@broker_bp.route('/order/<order_id>', methods=['GET'])
-def get_order(order_id):
-    """Get order status"""
+@broker_bp.route('/execute/limit', methods=['POST'])
+def execute_limit_order():
+    """Execute a limit order"""
     try:
-        order_status = trade_executor.get_order_status(order_id)
-        return jsonify(order_status)
+        data = request.json
+        symbol = data.get('symbol')
+        qty = data.get('qty')
+        side = data.get('side')
+        limit_price = data.get('limit_price')
+        
+        # Validate required fields
+        if not symbol or not qty or not side or not limit_price:
+            return jsonify({
+                'success': False,
+                'error': 'Symbol, qty, side, and limit_price are required'
+            }), 400
+        
+        # Convert numeric values
+        try:
+            qty = float(qty)
+            limit_price = float(limit_price)
+        except ValueError:
+            return jsonify({
+                'success': False,
+                'error': 'Qty and limit_price must be numbers'
+            }), 400
+        
+        # Validate side
+        if side.lower() not in ['buy', 'sell']:
+            return jsonify({
+                'success': False,
+                'error': 'Side must be buy or sell'
+            }), 400
+        
+        # Execute order
+        order = trade_executor.limit_order(symbol, qty, side, limit_price)
+        
+        if order:
+            # Create a trade record
+            trade = portfolio_tracker.open_trade(
+                symbol=symbol,
+                quantity=qty,
+                entry_price=limit_price,  # This is just an estimate until the order fills
+                side='long' if side.lower() == 'buy' else 'short',
+                strategy=data.get('strategy', 'manual'),
+                entry_order_id=order.id,
+                stop_loss=data.get('stop_loss'),
+                take_profit=data.get('take_profit'),
+                notes=data.get('notes'),
+                tags=data.get('tags', [])
+            )
+            
+            return jsonify({
+                'success': True,
+                'order': order.to_dict(),
+                'trade_id': trade.id
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to execute limit order'
+            }), 400
     except Exception as e:
-        logger.error(f"Error getting order status: {e}")
+        logger.error(f"Error executing limit order: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
         }), 500
 
-@broker_bp.route('/order/<order_id>/cancel', methods=['POST'])
+@broker_bp.route('/execute/bracket', methods=['POST'])
+def execute_bracket_order():
+    """Execute a bracket order (entry + take profit + stop loss)"""
+    try:
+        data = request.json
+        symbol = data.get('symbol')
+        qty = data.get('qty')
+        side = data.get('side')
+        entry_price = data.get('entry_price')  # Optional for market orders
+        take_profit_price = data.get('take_profit_price')
+        stop_loss_price = data.get('stop_loss_price')
+        take_profit_percent = data.get('take_profit_percent')
+        stop_loss_percent = data.get('stop_loss_percent')
+        
+        # Validate required fields
+        if not symbol or not qty or not side:
+            return jsonify({
+                'success': False,
+                'error': 'Symbol, qty, and side are required'
+            }), 400
+        
+        # Convert numeric values
+        try:
+            qty = float(qty)
+            if entry_price:
+                entry_price = float(entry_price)
+            if take_profit_price:
+                take_profit_price = float(take_profit_price)
+            if stop_loss_price:
+                stop_loss_price = float(stop_loss_price)
+            if take_profit_percent:
+                take_profit_percent = float(take_profit_percent)
+            if stop_loss_percent:
+                stop_loss_percent = float(stop_loss_percent)
+        except ValueError:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid numeric value'
+            }), 400
+        
+        # Validate side
+        if side.lower() not in ['buy', 'sell']:
+            return jsonify({
+                'success': False,
+                'error': 'Side must be buy or sell'
+            }), 400
+        
+        # Execute bracket order
+        entry_order, take_profit_order, stop_loss_order = trade_executor.place_bracket_order(
+            symbol=symbol,
+            qty=qty,
+            side=side,
+            entry_price=entry_price,
+            take_profit_price=take_profit_price,
+            stop_loss_price=stop_loss_price,
+            take_profit_percent=take_profit_percent,
+            stop_loss_percent=stop_loss_percent
+        )
+        
+        if entry_order:
+            # Get the price from the order or entry_price
+            price = entry_order.filled_avg_price or entry_price or 0.0
+            
+            # Create a trade record
+            trade = portfolio_tracker.open_trade(
+                symbol=symbol,
+                quantity=qty,
+                entry_price=price,
+                side='long' if side.lower() == 'buy' else 'short',
+                strategy=data.get('strategy', 'manual'),
+                entry_order_id=entry_order.id,
+                stop_loss=stop_loss_price,
+                take_profit=take_profit_price,
+                notes=data.get('notes'),
+                tags=data.get('tags', [])
+            )
+            
+            return jsonify({
+                'success': True,
+                'entry_order': entry_order.to_dict(),
+                'take_profit_order': take_profit_order.to_dict() if take_profit_order else None,
+                'stop_loss_order': stop_loss_order.to_dict() if stop_loss_order else None,
+                'trade_id': trade.id
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to execute bracket order'
+            }), 400
+    except Exception as e:
+        logger.error(f"Error executing bracket order: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@broker_bp.route('/cancel-order/<order_id>', methods=['DELETE'])
 def cancel_order(order_id):
     """Cancel an order"""
     try:
@@ -290,99 +449,64 @@ def cancel_order(order_id):
         
         return jsonify({
             'success': result,
-            'message': 'Order canceled successfully' if result else 'Failed to cancel order'
+            'message': f'Order {order_id} cancelled' if result else f'Failed to cancel order {order_id}'
         })
     except Exception as e:
-        logger.error(f"Error canceling order: {e}")
+        logger.error(f"Error cancelling order: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
         }), 500
 
-@broker_bp.route('/entry-with-stop', methods=['POST'])
-def entry_with_stop():
-    """Place an entry order with stop loss and optional take profit"""
+@broker_bp.route('/cancel-all-orders', methods=['DELETE'])
+def cancel_all_orders():
+    """Cancel all open orders"""
     try:
-        data = request.json
+        result = trade_executor.cancel_all_orders()
         
-        # Required parameters
-        symbol = data.get('symbol')
-        side = data.get('side')
-        qty = data.get('qty')
-        stop_loss_price = data.get('stop_loss_price')
-        
-        # Optional parameters
-        entry_price = data.get('entry_price')
-        take_profit_price = data.get('take_profit_price')
-        use_market_order = data.get('use_market_order', False)
-        strategy = data.get('strategy', 'default')
-        tags = data.get('tags', [])
-        notes = data.get('notes', '')
-        
-        if not all([symbol, side, qty, stop_loss_price]):
-            return jsonify({
-                'success': False,
-                'error': 'Symbol, side, quantity, and stop loss price are required'
-            }), 400
-        
-        # Execute the trade
-        result = trade_executor.execute_entry_with_stop_loss(
-            symbol=symbol,
-            qty=float(qty),
-            side=side,
-            entry_price=float(entry_price) if entry_price else None,
-            stop_loss_price=float(stop_loss_price),
-            take_profit_price=float(take_profit_price) if take_profit_price else None,
-            use_market_order=use_market_order
-        )
-        
-        if result.get('success', False):
-            # Add to portfolio tracker
-            entry_order = result.get('entry_order')
-            
-            if entry_order:
-                trade = Trade(
-                    trade_id=str(uuid.uuid4()),
-                    symbol=symbol,
-                    side=side,
-                    entry_date=datetime.datetime.now(),
-                    entry_price=entry_order.get('filled_avg_price') or entry_order.get('limit_price') or entry_order.get('stop_price') or 0.0,
-                    entry_order_id=entry_order.get('id'),
-                    qty=float(qty),
-                    stop_loss_price=float(stop_loss_price),
-                    take_profit_price=float(take_profit_price) if take_profit_price else None,
-                    strategy=strategy,
-                    tags=tags,
-                    notes=notes
-                )
-                portfolio_tracker.add_trade(trade)
-                result['trade_id'] = trade.trade_id
-        
-        return jsonify(result)
+        return jsonify({
+            'success': result,
+            'message': 'All orders cancelled' if result else 'Failed to cancel all orders'
+        })
     except Exception as e:
-        logger.error(f"Error executing entry with stop: {e}")
+        logger.error(f"Error cancelling all orders: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
         }), 500
+
+# Portfolio tracking routes
 
 @broker_bp.route('/trades', methods=['GET'])
 def get_trades():
-    """Get trade history"""
+    """Get all trades with optional filtering"""
     try:
+        status = request.args.get('status')
         symbol = request.args.get('symbol')
-        is_open_str = request.args.get('is_open')
+        strategy = request.args.get('strategy')
         
-        # Convert is_open to boolean if provided
-        is_open = None
-        if is_open_str is not None:
-            is_open = is_open_str.lower() in ['true', '1', 't', 'y', 'yes']
+        trades = []
         
-        trades = portfolio_tracker.get_trades(symbol=symbol, is_open=is_open)
+        # Filter by status
+        if status == 'open':
+            trades = portfolio_tracker.get_open_trades()
+        elif status == 'closed':
+            trades = portfolio_tracker.get_closed_trades()
+        else:
+            # Get all trades
+            trades = list(portfolio_tracker.trades.values())
+        
+        # Filter by symbol
+        if symbol:
+            trades = [t for t in trades if t.symbol == symbol]
+        
+        # Filter by strategy
+        if strategy:
+            trades = [t for t in trades if t.strategy == strategy]
         
         return jsonify({
             'success': True,
-            'trades': [trade.to_dict() for trade in trades]
+            'trades': [t.to_dict() for t in trades]
         })
     except Exception as e:
         logger.error(f"Error getting trades: {e}")
@@ -391,9 +515,9 @@ def get_trades():
             'error': str(e)
         }), 500
 
-@broker_bp.route('/trade/<trade_id>', methods=['GET'])
+@broker_bp.route('/trades/<trade_id>', methods=['GET'])
 def get_trade(trade_id):
-    """Get specific trade"""
+    """Get a specific trade by ID"""
     try:
         trade = portfolio_tracker.get_trade(trade_id)
         
@@ -414,40 +538,55 @@ def get_trade(trade_id):
             'error': str(e)
         }), 500
 
-@broker_bp.route('/trade/<trade_id>/update', methods=['POST'])
-def update_trade(trade_id):
-    """Update a trade"""
+@broker_bp.route('/trades/<trade_id>/close', methods=['POST'])
+def close_trade(trade_id):
+    """Close a trade"""
     try:
         data = request.json
+        exit_price = data.get('exit_price')
+        exit_order_id = data.get('exit_order_id')
+        fees = data.get('fees')
+        notes = data.get('notes')
         
-        # Handle exit information
-        if 'exit_price' in data:
-            exit_price = float(data['exit_price'])
-            exit_date = datetime.datetime.fromisoformat(data.get('exit_date', datetime.datetime.now().isoformat()))
-            exit_order_id = data.get('exit_order_id', 'manual-exit')
-            
-            result = portfolio_tracker.update_trade(
-                trade_id,
-                exit_date=exit_date,
-                exit_price=exit_price,
-                exit_order_id=exit_order_id
-            )
-        else:
-            # Update other fields
-            result = portfolio_tracker.update_trade(trade_id, **data)
+        # Validate required fields
+        if not exit_price:
+            return jsonify({
+                'success': False,
+                'error': 'Exit price is required'
+            }), 400
         
-        if result:
+        # Convert numeric values
+        try:
+            exit_price = float(exit_price)
+            if fees:
+                fees = float(fees)
+        except ValueError:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid numeric value'
+            }), 400
+        
+        # Close the trade
+        trade = portfolio_tracker.close_trade(
+            trade_id=trade_id,
+            exit_price=exit_price,
+            exit_order_id=exit_order_id,
+            fees=fees,
+            notes=notes
+        )
+        
+        if trade:
             return jsonify({
                 'success': True,
-                'trade': portfolio_tracker.get_trade(trade_id).to_dict()
+                'trade': trade.to_dict()
             })
         else:
             return jsonify({
                 'success': False,
-                'error': f'Failed to update trade {trade_id}'
+                'error': f'Failed to close trade {trade_id}'
             }), 400
     except Exception as e:
-        logger.error(f"Error updating trade: {e}")
+        logger.error(f"Error closing trade: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
@@ -455,15 +594,27 @@ def update_trade(trade_id):
 
 @broker_bp.route('/performance', methods=['GET'])
 def get_performance():
-    """Get portfolio performance metrics"""
+    """Get performance metrics"""
     try:
-        metrics = portfolio_tracker.get_performance_metrics()
-        daily_pnl = portfolio_tracker.get_daily_pnl()
+        starting_balance = request.args.get('starting_balance')
+        
+        # Convert starting balance if provided
+        if starting_balance:
+            try:
+                starting_balance = float(starting_balance)
+            except ValueError:
+                return jsonify({
+                    'success': False,
+                    'error': 'Starting balance must be a number'
+                }), 400
+        else:
+            starting_balance = 10000.0  # Default
+        
+        metrics = portfolio_tracker.get_performance_metrics(starting_balance)
         
         return jsonify({
             'success': True,
-            'metrics': metrics,
-            'daily_pnl': daily_pnl
+            'metrics': metrics.to_dict()
         })
     except Exception as e:
         logger.error(f"Error getting performance metrics: {e}")
@@ -472,21 +623,18 @@ def get_performance():
             'error': str(e)
         }), 500
 
-@broker_bp.route('/trades/export', methods=['POST'])
-def export_trades():
-    """Export trades to CSV"""
+@broker_bp.route('/sync', methods=['POST'])
+def sync_portfolio():
+    """Synchronize portfolio with current broker positions"""
     try:
-        data = request.json
-        filepath = data.get('filepath', 'trade_export.csv')
-        
-        result = portfolio_tracker.export_trades_to_csv(filepath)
+        portfolio_tracker.update_from_positions()
         
         return jsonify({
-            'success': result,
-            'message': f'Trades exported to {filepath}' if result else 'Failed to export trades'
+            'success': True,
+            'message': 'Portfolio synchronized with broker positions'
         })
     except Exception as e:
-        logger.error(f"Error exporting trades: {e}")
+        logger.error(f"Error synchronizing portfolio: {e}")
         return jsonify({
             'success': False,
             'error': str(e)

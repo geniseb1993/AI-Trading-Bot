@@ -34,7 +34,11 @@ import {
   Insights as InsightsIcon,
   Security as SecurityIcon,
   SmartToy as SmartToyIcon,
-  BugReport as BugReportIcon
+  BugReport as BugReportIcon,
+  AccountBalance as AccountBalanceIcon,
+  CandlestickChart as CandlestickChartIcon,
+  DoubleArrow as DoubleArrowIcon,
+  PrecisionManufacturing as PrecisionManufacturingIcon
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { motion } from 'framer-motion';
@@ -134,7 +138,7 @@ const Layout = ({ children }) => {
 
   const menuItems = [
     { name: 'Dashboard', path: '/', icon: <DashboardIcon /> },
-    { name: 'Live Market', path: '/live-market', icon: <ShowChartIcon /> },
+    { name: 'Live Market', path: '/live-market', icon: <CandlestickChartIcon /> },
     { name: 'Signals', path: '/signals', icon: <TrendingUpIcon /> },
     { name: 'Backtest', path: '/backtest', icon: <TimelineIcon /> },
     { name: 'Market Data', path: '/market-data', icon: <BarChartIcon /> },
@@ -145,7 +149,7 @@ const Layout = ({ children }) => {
     { name: 'Trade Setups', path: '/trade-setups', icon: <ShowChartIcon /> },
     { name: 'Risk Management', path: '/risk-management', icon: <SecurityIcon /> },
     { name: 'Bot Management', path: '/bot-management', icon: <SmartToyIcon /> },
-    { name: 'Dual Bot', path: '/dual-bot', icon: <SmartToyIcon /> },
+    { name: 'Dual Bot', path: '/dual-bot', icon: <PrecisionManufacturingIcon /> },
     { name: 'Settings', path: '/settings', icon: <SettingsIcon /> },
     { name: 'Debug', path: '/debug', icon: <BugReportIcon /> },
   ];
@@ -200,7 +204,7 @@ const Layout = ({ children }) => {
               color: theme.palette.primary.main 
             }}
           >
-            VELMA
+            VICKY
           </Typography>
           
           <AuthenticatedNotificationBell />
@@ -225,8 +229,8 @@ const Layout = ({ children }) => {
           
           <Tooltip title="User Profile">
             <Avatar 
-              src="/images/velma.png" 
-              alt="Velma Assistant"
+              src="/images/vicky.png" 
+              alt="Vicky Assistant"
               sx={{ 
                 bgcolor: theme.palette.primary.dark,
                 border: `1px solid ${theme.palette.primary.main}`,
@@ -244,8 +248,8 @@ const Layout = ({ children }) => {
       >
         <DrawerHeader>
           <Avatar 
-            src="/images/velma.png" 
-            alt="Velma Assistant"
+            src="/images/vicky.png" 
+            alt="Vicky Assistant"
             sx={{ 
               height: 45, 
               width: 45, 
@@ -316,7 +320,7 @@ const Layout = ({ children }) => {
           zIndex: 1
         }}>
           <Typography variant="caption" color="text.secondary">
-            v2.0 • Velma
+            v2.0 • Vicky
           </Typography>
         </Box>
       </StyledDrawer>

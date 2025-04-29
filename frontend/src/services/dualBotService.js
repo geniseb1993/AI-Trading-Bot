@@ -1,21 +1,25 @@
 import axios from 'axios';
 
 // API base URL - Set to match dual_bot API server port
-const API_BASE_URL = 'http://localhost:5001/api';
+const API_BASE_URL = '/api';
+// Market data API URL - Fixed direct endpoint
+const MARKET_DATA_URL = 'http://localhost:5001/api';
 
-// Flag to enable/disable mock data - Set to true to prioritize mock data over API calls
+// Flag to enable/disable mock data - Set to false to use real data
 const USE_MOCK_DATA = false;
+// Set to false to fail rather than fallback to mock data - this helps debug data issues
+const AUTO_FALLBACK = false;  
 
 // Configure axios with defaults for this service
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000, // 10 seconds timeout
+  timeout: 10000, // Increased timeout to 10 seconds for slower connections
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
     'X-Requested-With': 'XMLHttpRequest'
   },
-  withCredentials: false // Change to false to avoid CORS issues
+  withCredentials: true // Enable credentials for CORS
 });
 
 // Add logging interceptors
@@ -126,45 +130,255 @@ const mockData = {
       max_position_size: 5000,
       max_daily_loss: 2000
     }
-  }
+  },
+  tradingHistory: [
+    {
+      id: "mock-1",
+      symbol: "QQQ",
+      strategy: "Options Flow",
+      entryDate: "2025-04-10T14:30:00Z",
+      exitDate: "2025-04-11T15:45:00Z",
+      entryPrice: 450.25,
+      exitPrice: 455.75,
+      profit: 1350,
+      profitPercent: 5.5,
+      tradeType: "LONG"
+    },
+    {
+      id: "mock-2",
+      symbol: "TSLA",
+      strategy: "Momentum",
+      entryDate: "2025-04-15T10:15:00Z",
+      exitDate: "2025-04-17T11:30:00Z",
+      entryPrice: 180.50,
+      exitPrice: 187.25,
+      profit: 840,
+      profitPercent: 3.7,
+      tradeType: "LONG"
+    }
+  ],
+  performance: {
+    totalTrades: 45,
+    winRate: 68.5,
+    profitFactor: 2.3,
+    averageProfit: 850,
+    netProfit: 38250,
+    maxDrawdown: 12500,
+    dailyReturns: [
+      { date: "2025-04-01", return: 1.5 },
+      { date: "2025-04-02", return: 0.8 },
+      { date: "2025-04-03", return: -0.5 },
+      { date: "2025-04-04", return: 2.1 },
+      { date: "2025-04-05", return: 0.3 }
+    ]
+  },
+  alerts: [
+    {
+      id: "alert-1",
+      timestamp: "2025-04-26T09:45:00Z",
+      symbol: "SPY",
+      message: "Bullish divergence detected on SPY 4h chart",
+      source: "TradingView",
+      status: "new"
+    },
+    {
+      id: "alert-2",
+      timestamp: "2025-04-26T10:15:00Z",
+      symbol: "QQQ",
+      message: "QQQ crossing above 20-day EMA",
+      source: "TradingView",
+      status: "read"
+    }
+  ],
+  institutionalFlow: {
+    darkPool: [
+      {
+        symbol: "AAPL",
+        timestamp: "2025-04-26T14:30:00Z",
+        price: 185.75,
+        volume: 250000,
+        sentiment: "bullish",
+        source: "Mock Data"
+      },
+      {
+        symbol: "MSFT",
+        timestamp: "2025-04-26T14:15:00Z",
+        price: 415.50,
+        volume: 180000,
+        sentiment: "neutral",
+        source: "Mock Data"
+      }
+    ],
+    optionsFlow: [
+      {
+        symbol: "SPY",
+        timestamp: "2025-04-26T13:45:00Z",
+        strike: 485,
+        expiration: "2025-05-15",
+        premium: 1250000,
+        sentiment: "bullish",
+        contractType: "CALL",
+        source: "Mock Data"
+      },
+      {
+        symbol: "QQQ",
+        timestamp: "2025-04-26T14:05:00Z",
+        strike: 440,
+        expiration: "2025-05-15",
+        premium: 950000,
+        sentiment: "bullish",
+        contractType: "CALL",
+        source: "Mock Data"
+      }
+    ]
+  },
+  tradeSetups: [
+    {
+      id: "setup-1",
+      symbol: "AAPL",
+      setup: "Bull Flag",
+      confidence: 0.85,
+      timeframe: "1D",
+      entryPrice: 186.50,
+      stopLoss: 182.75,
+      targetPrice: 195.00,
+      timestamp: "2025-04-26T16:00:00Z",
+      source: "Mock Data"
+    },
+    {
+      id: "setup-2",
+      symbol: "MSFT",
+      setup: "Cup and Handle",
+      confidence: 0.78,
+      timeframe: "4H",
+      entryPrice: 418.25,
+      stopLoss: 412.50,
+      targetPrice: 430.00,
+      timestamp: "2025-04-26T16:00:00Z",
+      source: "Mock Data"
+    }
+  ]
 };
 
+// Global connection status tracking
+let _connectionStatus = 'unknown'; // 'connected', 'disconnected', 'partial', 'unknown'
+let _lastConnectionAttempt = null;
+let _connectionAttempts = 0;
+
 // Helper function to handle API requests with fallback to mock data
-const apiRequest = async (endpoint, method = 'GET', data = null, retries = 2) => {
-  // If using mock data and explicitly requested through parameter
+const apiRequest = async (endpoint, method = 'GET', data = null, retries = 1) => {
+  // Remove leading slash if present to prevent double slashes
+  const normalizedEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+  
+  // If using mock data by default, return mock data immediately
   if (USE_MOCK_DATA) {
-    // Extract the endpoint name from the URL to find matching mock data
-    const mockKey = endpoint.split('/').pop().replace(/[-]/g, '');
+    const mockKey = normalizedEndpoint.split('/').pop().replace(/[-]/g, '');
     if (mockData[mockKey]) {
-      console.log(`[DualBot] Using mock data for: ${endpoint}`);
+      console.log(`[DualBot] Using mock data for: ${normalizedEndpoint}`);
       return mockData[mockKey];
+    } else if (normalizedEndpoint.includes('market-data') || normalizedEndpoint.includes('signals')) {
+      console.log(`[DualBot] Using market data mock for: ${normalizedEndpoint}`);
+      return mockData.marketData;
+    } else if (normalizedEndpoint.includes('status')) {
+      console.log(`[DualBot] Using status mock for: ${normalizedEndpoint}`);
+      return mockData.status;
     }
   }
 
   try {
+    // Use the market data URL for market-data endpoints
+    const baseUrl = normalizedEndpoint.includes('market-data') ? 
+      MARKET_DATA_URL : 
+      API_BASE_URL;
+    
     // Attempt to make the real API call
-    console.log(`[DualBot] Making API request to: ${endpoint}`);
-    const response = await apiClient({
-      url: endpoint,
+    console.log(`[DualBot] Making API request to: ${baseUrl}/${normalizedEndpoint} (${method})`);
+    const response = await axios({
+      url: `${baseUrl}/${normalizedEndpoint}`,
       method,
       data,
+      timeout: 10000,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      }
     });
+    
+    // Update connection status on successful response
+    _connectionStatus = 'connected';
+    _lastConnectionAttempt = new Date();
+    _connectionAttempts = 0;
+    
     return response.data;
   } catch (error) {
-    console.error(`[DualBot] API request failed for ${endpoint}:`, error);
+    console.error(`[DualBot] API request failed for ${normalizedEndpoint}:`, error);
     
-    // Implement retry logic for network errors
-    if (retries > 0 && (!error.response || error.response.status >= 500)) {
-      console.log(`[DualBot] Retrying request to ${endpoint}. Attempts remaining: ${retries}`);
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
-      return apiRequest(endpoint, method, data, retries - 1);
+    // Only retry critical endpoints and with fewer retries
+    if (retries > 0 && (normalizedEndpoint.includes('signals') || normalizedEndpoint.includes('status'))) {
+      console.log(`[DualBot] Retrying request to ${normalizedEndpoint}. Attempts remaining: ${retries}`);
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Shorter wait
+      return apiRequest(normalizedEndpoint, method, data, retries - 1);
     }
     
-    // If all retries failed or it's a client error (4xx), fallback to mock data
-    const mockKey = endpoint.split('/').pop().replace(/[-]/g, '');
-    if (mockData[mockKey]) {
-      console.log(`[DualBot] Falling back to mock data for: ${endpoint}`);
-      return mockData[mockKey];
+    // Update connection status on failure
+    _connectionStatus = 'disconnected';
+    _lastConnectionAttempt = new Date();
+    _connectionAttempts++;
+    
+    // Always fall back to mock data if AUTO_FALLBACK is enabled
+    if (AUTO_FALLBACK) {
+      console.log(`[DualBot] AUTO_FALLBACK enabled. Using mock data for: ${normalizedEndpoint}`);
+      
+      // Handle various endpoint types
+      if (normalizedEndpoint.includes('trading-history')) {
+        return mockData.tradingHistory;
+      }
+      else if (normalizedEndpoint.includes('performance')) {
+        return mockData.performance;
+      }
+      else if (normalizedEndpoint.includes('alerts')) {
+        return mockData.alerts;
+      }
+      else if (normalizedEndpoint.includes('institutional-flow')) {
+        return mockData.institutionalFlow;
+      }
+      else if (normalizedEndpoint.includes('trade-setups')) {
+        return mockData.tradeSetups;
+      }
+      else if (normalizedEndpoint.includes('market-data') || normalizedEndpoint.includes('signals')) {
+        console.log(`[DualBot] Falling back to market data mock for: ${normalizedEndpoint}`);
+        return mockData.marketData;
+      }
+      else if (normalizedEndpoint.includes('status')) {
+        console.log(`[DualBot] Falling back to status mock for: ${normalizedEndpoint}`);
+        return mockData.status;
+      }
+      else if (normalizedEndpoint.includes('config')) {
+        console.log(`[DualBot] Falling back to config mock for: ${normalizedEndpoint}`);
+        return mockData.config;
+      }
+      else if (normalizedEndpoint.includes('options')) {
+        console.log(`[DualBot] Falling back to options data mock for: ${normalizedEndpoint}`);
+        return mockData.optionsData;
+      }
+      else if (normalizedEndpoint.includes('news')) {
+        console.log(`[DualBot] Falling back to news mock for: ${normalizedEndpoint}`);
+        return mockData.news;
+      }
+      else if (normalizedEndpoint.includes('scan')) {
+        console.log(`[DualBot] Falling back to recommendation mock for: ${normalizedEndpoint}`);
+        return mockData.recommendation;
+      }
+      else if (normalizedEndpoint.includes('risk')) {
+        console.log(`[DualBot] Falling back to risk assessment mock for: ${normalizedEndpoint}`);
+        return mockData.riskAssessment;
+      }
+      else {
+        // Generic fallback for any other endpoint
+        console.log(`[DualBot] No specific mock data for ${normalizedEndpoint}, using generic mock`);
+        return { success: true, message: "Mock data response", timestamp: new Date().toISOString() };
+      }
     }
     
     throw error;
@@ -172,12 +386,84 @@ const apiRequest = async (endpoint, method = 'GET', data = null, retries = 2) =>
 };
 
 const dualBotService = {
+  // Check connection status
+  checkConnectionStatus: async () => {
+    // Only check once every 10 seconds to avoid excessive calls
+    const now = new Date();
+    if (_lastConnectionAttempt && (now - _lastConnectionAttempt) < 10000) {
+      console.log(`[DualBot] Using cached connection status: ${_connectionStatus}`);
+      return {
+        status: _connectionStatus,
+        timestamp: _lastConnectionAttempt
+      };
+    }
+
+    _lastConnectionAttempt = now;
+    _connectionAttempts++;
+
+    try {
+      console.log('[DualBot] Checking API connection status...');
+      // Try health endpoint first
+      const healthResponse = await apiClient.get('/health', { timeout: 3000 });
+      
+      if (healthResponse.status === 200 && healthResponse.data?.status === 'healthy') {
+        _connectionStatus = 'connected';
+        _connectionAttempts = 0;
+        console.log('[DualBot] API connection is healthy');
+        
+        // Try another endpoint to confirm full connectivity
+        try {
+          const statusResponse = await apiClient.get('/status', { timeout: 3000 });
+          if (statusResponse.status === 200) {
+            console.log('[DualBot] Confirmed access to status endpoint');
+          }
+        } catch (err) {
+          console.warn('[DualBot] Health endpoint works but status endpoint failed');
+          _connectionStatus = 'partial';
+        }
+      } else {
+        console.warn('[DualBot] Health check returned unexpected response');
+        _connectionStatus = 'partial';
+      }
+    } catch (error) {
+      console.error('[DualBot] Connection check failed:', error.message);
+      _connectionStatus = 'disconnected';
+      
+      // After 3 failed attempts, set to use mock data
+      if (_connectionAttempts >= 3 && AUTO_FALLBACK) {
+        console.log('[DualBot] Multiple connection failures, forcing mock data mode');
+        Object.defineProperty(dualBotService, '_useMockData', {
+          value: true,
+          writable: true
+        });
+      }
+    }
+    
+    return {
+      status: _connectionStatus,
+      timestamp: _lastConnectionAttempt,
+      attempts: _connectionAttempts
+    };
+  },
+
   // Test CORS
   testCorsConnection: async () => {
     try {
+      // Call the check connection method first
+      const connectionStatus = await dualBotService.checkConnectionStatus();
+      
+      if (connectionStatus.status === 'disconnected') {
+        console.log('[DualBot] Using mock data due to disconnected status');
+        return {
+          success: false,
+          message: 'CORS connection test failed. API server is not accessible.',
+          error: 'Connection refused'
+        };
+      }
+      
       console.log('[DualBot] Testing CORS connection...');
       // Use our specially designed CORS test endpoint
-      const response = await apiRequest('/test-frontend-cors');
+      const response = await apiRequest('test-frontend-cors');
       console.log('[DualBot] CORS test successful:', response);
       return {
         success: true,
@@ -197,15 +483,42 @@ const dualBotService = {
   // Bot status
   getBotStatus: async () => {
     try {
-      const response = await apiRequest('/dual-bot/status');
-      // Extract the actual status object from the response
+      // Try dual-bot/status endpoint first
+      try {
+        const response = await apiRequest('dual-bot/status');
       if (response && response.success && response.status) {
         return response.status;
+      } else if (response && response.status === true) {
+        // Direct status object response
+        return response;
+        }
+      } catch (dualBotError) {
+        console.log('[DualBot] Dual bot status endpoint failed, trying regular status endpoint');
       }
-      return response;
+      
+      // Try the regular status endpoint as fallback
+      try {
+        const directStatus = await apiRequest('status');
+        if (directStatus) {
+          return directStatus;
+        }
+      } catch (directError) {
+        console.error('[DualBot] Both status endpoints failed');
+        if (!AUTO_FALLBACK) {
+          throw new Error('Failed to get bot status from any endpoint');
+        }
+      }
+      
+      // If all else fails and AUTO_FALLBACK is enabled, use mock data
+      if (AUTO_FALLBACK) {
+      console.log('[DualBot] Using mock status data');
+      return mockData.status;
+      }
+      
+      throw new Error('Failed to get bot status and AUTO_FALLBACK is disabled');
     } catch (error) {
       console.error('[DualBot] Error getting bot status:', error);
-      if (USE_MOCK_DATA) {
+      if (USE_MOCK_DATA || AUTO_FALLBACK) {
         return mockData.status;
       }
       throw error;
@@ -215,12 +528,22 @@ const dualBotService = {
   // Market data
   getMarketData: async (symbol) => {
     try {
+      // Get direct market data for the symbol
+      try {
+        const marketData = await apiRequest(`market-data/${symbol}`);
+        if (marketData && marketData.symbol) {
+          return marketData;
+        }
+      } catch (marketError) {
+        console.error(`[DualBot] Error getting market data for ${symbol}:`, marketError);
+        
       // Fallback to signals endpoint if market-data is not available
-      const response = await apiRequest(`/dual-bot/signals`);
+        try {
+          const response = await apiRequest(`dual-bot/signals`);
       // Extract signal data and transform it to match expected market data format
       if (response && response.success && response.signals) {
         // Look for a signal matching the requested symbol or use the first one
-        const signal = response.signals.signals.find(s => s.symbol === symbol) || response.signals.signals[0];
+        const signal = response.signals.find(s => s.symbol === symbol) || response.signals[0];
         if (signal) {
           return {
             symbol: signal.symbol,
@@ -234,11 +557,25 @@ const dualBotService = {
           };
         }
       }
-      return response;
+        } catch (signalError) {
+          console.error(`[DualBot] Signals endpoint failed as fallback:`, signalError);
+          if (!AUTO_FALLBACK) {
+            throw new Error(`Failed to get market data for ${symbol} from any endpoint`);
+          }
+        }
+      }
+      
+      // If all else fails and AUTO_FALLBACK is enabled, use mock data
+      if (AUTO_FALLBACK) {
+      console.log(`[DualBot] Using mock data for ${symbol}`);
+        return { ...mockData.marketData, symbol }; // Return mock data with the requested symbol
+      }
+      
+      throw new Error(`Failed to get market data for ${symbol} and AUTO_FALLBACK is disabled`);
     } catch (error) {
       console.error(`[DualBot] Error getting market data for ${symbol}:`, error);
-      if (USE_MOCK_DATA) {
-        return mockData.marketData;
+      if (USE_MOCK_DATA || AUTO_FALLBACK) {
+        return { ...mockData.marketData, symbol };
       }
       throw error;
     }
@@ -247,11 +584,11 @@ const dualBotService = {
   // Options data
   getOptionsData: async (symbol) => {
     try {
-      return await apiRequest(`/options-data/${symbol}`);
+      return await apiRequest(`options-data/${symbol}`);
     } catch (error) {
       console.error(`[DualBot] Error getting options data for ${symbol}:`, error);
-      if (USE_MOCK_DATA) {
-        return mockData.optionsData;
+      if (USE_MOCK_DATA || AUTO_FALLBACK) {
+        return { ...mockData.optionsData, symbol };
       }
       throw error;
     }
@@ -260,11 +597,76 @@ const dualBotService = {
   // News
   getNews: async (symbol) => {
     try {
-      return await apiRequest(`/news/${symbol}`);
+      return await apiRequest(`news/${symbol}`);
     } catch (error) {
       console.error(`[DualBot] Error getting news for ${symbol}:`, error);
-      if (USE_MOCK_DATA) {
+      if (USE_MOCK_DATA || AUTO_FALLBACK) {
         return mockData.news;
+      }
+      throw error;
+    }
+  },
+  
+  // Get TradingView alerts
+  getTradingViewAlerts: async () => {
+    try {
+      return await apiRequest('tradingview/alerts');
+    } catch (error) {
+      console.error('[DualBot] Error getting TradingView alerts:', error);
+      if (USE_MOCK_DATA || AUTO_FALLBACK) {
+        return mockData.alerts || []; // Ensure we return an array even if mockData.alerts is undefined
+      }
+      throw error;
+    }
+  },
+  
+  // Get trading history
+  getTradingHistory: async () => {
+    try {
+      return await apiRequest('bot/trading-history', 'GET');
+    } catch (error) {
+      console.error('[DualBot] Error getting trading history:', error);
+      if (USE_MOCK_DATA || AUTO_FALLBACK) {
+        return mockData.tradingHistory || [];
+      }
+      throw error;
+    }
+  },
+  
+  // Get performance data
+  getPerformanceData: async () => {
+    try {
+      return await apiRequest('bot/performance', 'GET');
+    } catch (error) {
+      console.error('[DualBot] Error getting performance data:', error);
+      if (USE_MOCK_DATA || AUTO_FALLBACK) {
+        return mockData.performance;
+      }
+      throw error;
+    }
+  },
+  
+  // Get institutional flow data
+  getInstitutionalFlow: async () => {
+    try {
+      return await apiRequest('institutional-flow');
+    } catch (error) {
+      console.error('[DualBot] Error getting institutional flow data:', error);
+      if (USE_MOCK_DATA || AUTO_FALLBACK) {
+        return mockData.institutionalFlow;
+      }
+      throw error;
+    }
+  },
+  
+  // Get trade setups
+  getTradeSetups: async () => {
+    try {
+      return await apiRequest('trade-setups');
+    } catch (error) {
+      console.error('[DualBot] Error getting trade setups:', error);
+      if (USE_MOCK_DATA || AUTO_FALLBACK) {
+        return mockData.tradeSetups;
       }
       throw error;
     }
@@ -273,11 +675,11 @@ const dualBotService = {
   // Scan for trades
   scanForTrades: async (symbol) => {
     try {
-      const response = await apiRequest('/dual-bot/signals');
+      const response = await apiRequest('dual-bot/signals');
       // Extract signal data and transform it to match expected recommendation format
       if (response && response.success && response.signals) {
         // Look for a signal matching the requested symbol or use the first one
-        const signal = response.signals.signals.find(s => s.symbol === symbol) || response.signals.signals[0];
+        const signal = response.signals.find(s => s.symbol === symbol) || response.signals[0];
         if (signal) {
           // Convert signal to a recommendation format
           return {
@@ -291,11 +693,35 @@ const dualBotService = {
           };
         }
       }
-      return mockData.recommendation;
+      
+      // If we can't extract signal data or the specific requested symbol isn't found,
+      // try the direct scan endpoint
+      try {
+        const scanResponse = await apiRequest('scan', 'POST', { 
+          symbol, 
+          strategy: 'options' 
+        });
+        if (scanResponse && scanResponse.symbol) {
+          return scanResponse;
+        }
+      } catch (scanError) {
+        console.error(`[DualBot] Scan endpoint failed:`, scanError);
+        if (!AUTO_FALLBACK) {
+          throw new Error(`Failed to scan trades for ${symbol} from any endpoint`);
+        }
+      }
+      
+      // If all else fails and AUTO_FALLBACK is enabled, use mock data
+      if (AUTO_FALLBACK) {
+      console.log(`[DualBot] Using mock recommendation data for ${symbol}`);
+        return { ...mockData.recommendation, symbol };
+      }
+      
+      throw new Error(`Failed to scan trades for ${symbol} and AUTO_FALLBACK is disabled`);
     } catch (error) {
       console.error(`[DualBot] Error scanning for trades for ${symbol}:`, error);
-      if (USE_MOCK_DATA) {
-        return mockData.recommendation;
+      if (USE_MOCK_DATA || AUTO_FALLBACK) {
+        return { ...mockData.recommendation, symbol };
       }
       throw error;
     }
@@ -304,15 +730,23 @@ const dualBotService = {
   // Risk assessment
   assessRisk: async (recommendation, marketContext) => {
     try {
-      // Instead of using /assess-risk endpoint that doesn't exist,
-      // Let's use mock data since we don't have a proper risk assessment endpoint
-      console.log('[DualBot] Using mock data for risk assessment');
+      // Try to use the assess-risk endpoint
+      try {
+        const response = await apiRequest('assess-risk', 'POST', { 
+          recommendation, 
+          market_context: marketContext 
+        });
+        return response;
+      } catch (assessError) {
+        console.error('[DualBot] Assess risk endpoint failed:', assessError);
+        if (!AUTO_FALLBACK) {
+          throw new Error('Failed to assess risk');
+        }
+      }
       
-      // For future implementation: replace this with a real API call when endpoint is available
-      // const response = await apiRequest('/risk-assessment', 'POST', { 
-      //   recommendation, 
-      //   market_context: marketContext 
-      // });
+      // If endpoint fails and AUTO_FALLBACK is enabled, use mock data
+      if (AUTO_FALLBACK) {
+        console.log('[DualBot] Using mock data for risk assessment');
       
       // Create a simulated risk assessment based on the recommendation
       const mockRiskAssessment = {
@@ -328,9 +762,12 @@ const dualBotService = {
       };
       
       return mockRiskAssessment;
+      }
+      
+      throw new Error('Failed to assess risk and AUTO_FALLBACK is disabled');
     } catch (error) {
       console.error('[DualBot] Error assessing risk:', error);
-      if (USE_MOCK_DATA) {
+      if (USE_MOCK_DATA || AUTO_FALLBACK) {
         return mockData.riskAssessment;
       }
       throw error;
@@ -340,12 +777,15 @@ const dualBotService = {
   // Check if position should be closed
   checkPosition: async (position, marketData) => {
     try {
-      return await apiRequest('/check-position', 'POST', { 
+      return await apiRequest('check-position', 'POST', { 
         position, 
         market_data: marketData 
       });
     } catch (error) {
       console.error('[DualBot] Error checking position:', error);
+      if (USE_MOCK_DATA || AUTO_FALLBACK) {
+        return { should_close: false, reason: 'Mock data: position still valid' };
+      }
       throw error;
     }
   },
@@ -353,10 +793,10 @@ const dualBotService = {
   // Get config
   getConfig: async () => {
     try {
-      return await apiRequest('/config');
+      return await apiRequest('config');
     } catch (error) {
       console.error('[DualBot] Error getting config:', error);
-      if (USE_MOCK_DATA) {
+      if (USE_MOCK_DATA || AUTO_FALLBACK) {
         return mockData.config;
       }
       throw error;
@@ -370,6 +810,20 @@ const dualBotService = {
       value: shouldUseMock,
       writable: true
     });
+  },
+  
+  // Check if using mock data
+  isUsingMockData: () => {
+    return USE_MOCK_DATA || dualBotService._useMockData || false;
+  },
+  
+  // Get connection status
+  getConnectionStatus: () => {
+    return {
+      status: _connectionStatus,
+      lastChecked: _lastConnectionAttempt,
+      attempts: _connectionAttempts
+    };
   }
 };
 

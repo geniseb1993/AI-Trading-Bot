@@ -1,32 +1,64 @@
 """
 Standalone TradingView mock API server
 """
-from flask import Flask, jsonify, request
-from flask_cors import CORS
+from flask import Flask, jsonify, request, render_template
+from flask_cors import CORS, cross_origin
 import random
 import json
 import logging
 from datetime import datetime, timedelta
 import os
+import sys
 
 # Set up logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO,
+                   format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # Create a Flask app
 app = Flask(__name__)
-CORS(app)
+
+# Configure CORS to allow all origins
+CORS(app, resources={r"/*": {"origins": "*", "methods": ["GET", "POST", "OPTIONS"], "allow_headers": "*"}})
+
+# Add CORS headers to all responses
+@app.after_request
+def add_cors_headers(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
 
 # Store received webhook alerts
 webhook_alerts = []
 MAX_ALERTS = 100
+
+# Get port from environment variable or command line argument, default to 5003
+def get_port():
+    # First check environment variable
+    port = os.environ.get('TRADINGVIEW_PORT')
+    if port:
+        try:
+            return int(port)
+        except ValueError:
+            logger.warning(f"Invalid TRADINGVIEW_PORT value: {port}, using default 5003")
+    
+    # Then check command line arguments
+    if len(sys.argv) > 1:
+        try:
+            return int(sys.argv[1])
+        except ValueError:
+            logger.warning(f"Invalid port argument: {sys.argv[1]}, using default 5003")
+    
+    # Default port
+    return 5003
 
 @app.route('/api/test', methods=['GET'])
 def test_api():
     """Simple test endpoint to verify the server is running"""
     return jsonify({
         'success': True,
-        'message': 'TradingView mock API server is running',
+        'message': 'TradingView integration server is running',
         'timestamp': datetime.now().isoformat(),
         'version': '1.0'
     })
@@ -274,7 +306,7 @@ for rule in app.url_map.iter_rules():
 # Run the server
 if __name__ == '__main__':
     try:
-        port = 5002  # Use a different port to avoid conflicts
+        port = get_port()
         print(f"\nStarting TradingView mock API server on port {port}...")
         print(f"Test route: http://localhost:{port}/api/test")
         print(f"TradingView routes available at: http://localhost:{port}/api/tradingview/")

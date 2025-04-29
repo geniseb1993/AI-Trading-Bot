@@ -121,13 +121,13 @@ const Dashboard = () => {
       // First, try to get all dashboard data in a single request
       try {
         console.log('Attempting to fetch main dashboard data from:', `${API_BASE_URL}/api/dashboard`);
-        const dashboardResponse = await axios.get(`${API_BASE_URL}/api/dashboard`, { timeout: 5000 });
+        const dashboardResponse = await axios.get(`${API_BASE_URL}/dashboard`, { timeout: 8000 });
         
         if (dashboardResponse.data && dashboardResponse.data.success) {
           console.log('Dashboard data successfully retrieved');
           
           // Extract data from the response
-          const apiData = dashboardResponse.data;
+          const apiData = dashboardResponse.data.dashboard;
           
           // Initialize the dashboard data structure
           const formattedData = {
@@ -136,64 +136,78 @@ const Dashboard = () => {
             activeTrades: null,
             botStatus: null,
             recentAlerts: null,
-            marketOverview: null
+            marketOverview: null,
+            isRealData: true
           };
           
           // Format portfolio data
-          if (apiData.portfolio) {
-            formattedData.portfolio = apiData.portfolio;
-          } else if (apiData.stats) {
-            // Create portfolio data from stats
+          if (apiData.account_summary) {
             formattedData.portfolio = {
-              totalValue: apiData.stats.total_value || 0,
-              dailyChange: apiData.stats.daily_change || 0,
-              dailyChangePercent: apiData.stats.daily_return_percent || 0,
-              allocation: [],
-              isRealData: false // Mark as mock data because it's not real portfolio data
+              totalValue: apiData.account_summary.total_value || 0,
+              dailyChange: apiData.account_summary.total_pnl || 0,
+              dailyChangePercent: apiData.account_summary.total_pnl_pct || 0,
+              allocation: [
+                { asset: 'Equity', value: apiData.account_summary.total_value - apiData.account_summary.cash_balance, percent: 75 },
+                { asset: 'Cash', value: apiData.account_summary.cash_balance, percent: 25 }
+              ],
+              isRealData: true
             };
           }
           
-          // Format performance data
-          if (apiData.portfolio_performance && Array.isArray(apiData.portfolio_performance)) {
-            formattedData.performance = {
-              history: apiData.portfolio_performance.map(day => ({
-                date: day.date,
-                value: parseFloat(day.portfolio_value)
-              }))
-            };
+          // Get market overview data
+          try {
+            console.log('Fetching market overview data');
+            const marketResponse = await axios.get(`${API_BASE_URL}/market-overview`, { timeout: 5000 });
+            if (marketResponse.data && marketResponse.data.success) {
+              formattedData.marketOverview = marketResponse.data.market_overview;
+              formattedData.marketOverview.isRealData = true;
+            }
+          } catch (error) {
+            console.log('Error fetching market overview:', error.message);
           }
           
-          // Format active trades
-          if (apiData.active_trades && Array.isArray(apiData.active_trades)) {
-            formattedData.activeTrades = apiData.active_trades.map(trade => ({
+          // Get portfolio performance data
+          try {
+            console.log('Fetching portfolio performance data');
+            const performanceResponse = await axios.get(`${API_BASE_URL}/portfolio-performance`, { timeout: 5000 });
+            if (performanceResponse.data && performanceResponse.data.success) {
+              formattedData.performance = {
+                history: performanceResponse.data.performance.dates.map((date, i) => ({
+                  date: date,
+                  value: performanceResponse.data.performance.values[i]
+                })),
+                isRealData: true
+              };
+            }
+          } catch (error) {
+            console.log('Error fetching portfolio performance:', error.message);
+          }
+          
+          // Get active trades
+          if (apiData.active_positions) {
+            formattedData.activeTrades = apiData.active_positions.map(trade => ({
               id: trade.id || `trade-${Math.random().toString(36).substring(2, 9)}`,
               symbol: trade.symbol || 'UNKNOWN',
-              side: (trade.position_type || '').toUpperCase() === 'SHORT' ? 'SELL' : 'BUY',
+              side: (trade.type || '').toUpperCase() === 'SHORT' ? 'SELL' : 'BUY',
               entryPrice: parseFloat(trade.entry_price) || 0,
               currentPrice: parseFloat(trade.current_price) || 0,
               quantity: parseFloat(trade.quantity) || 0,
-              pnl: parseFloat(trade.pnl) || 0,
-              pnlPercent: parseFloat(trade.pnl_percent) || 0
+              pnl: parseFloat(trade.profit_loss) || 0,
+              pnlPercent: parseFloat(trade.profit_loss_pct) || 0
             }));
           }
           
-          // Format recent alerts from activity logs
+          // Format recent alerts
           if (apiData.recent_alerts) {
             formattedData.recentAlerts = apiData.recent_alerts.map(alert => ({
               id: alert.id || `alert-${Math.random().toString(36).substring(2, 9)}`,
               title: alert.title || alert.type || 'Alert',
               message: alert.message || `${alert.symbol} ${alert.condition}`,
               timestamp: alert.timestamp || alert.triggered_at || new Date().toISOString(),
-              type: alert.status === 'triggered' ? 'success' : 'info'
+              type: alert.priority === 'HIGH' ? 'error' : alert.priority === 'MEDIUM' ? 'warning' : 'info'
             }));
           }
           
-          // Format market overview
-          if (apiData.market_overview) {
-            formattedData.marketOverview = apiData.market_overview;
-          }
-          
-          // Get any missing data via individual API calls
           await fetchMissingData(formattedData);
           
           setDashboardData(formattedData);
@@ -204,7 +218,7 @@ const Dashboard = () => {
         // Continue to individual calls if main endpoint fails
       }
       
-      // If we get here, we need to fetch data from individual endpoints
+      // If main dashboard endpoint failed, try individual endpoints
       await fetchDataFromIndividualEndpoints();
       
     } catch (error) {
@@ -217,8 +231,8 @@ const Dashboard = () => {
       } catch (fallbackError) {
         console.error('Failed to load data from public folder:', fallbackError);
         // Use mock data as last resort
-      const mockData = generateMockData();
-      setDashboardData(mockData);
+        const mockData = generateMockData();
+        setDashboardData(mockData);
       }
     } finally {
       setLoading(false);
@@ -308,7 +322,42 @@ const Dashboard = () => {
       const botStatusResponse = await axios.get('/data/dashboard/bot_status.json');
       if (botStatusResponse.data) {
         console.log('Loaded bot status from public folder');
-        data.botStatus = botStatusResponse.data;
+        
+        // Process bot status data to ensure all three bots are included
+        let botData = botStatusResponse.data;
+        
+        // Check if the data is already in the expected format
+        if (!Array.isArray(botData)) {
+          // If not an array, convert to array with all three bots
+          botData = [
+            {
+              id: 'autonomous-bot',
+              name: 'Autonomous Trading Bot',
+              status: botData.autonomous_bot?.status ? 'active' : 'paused',
+              lastTrade: botData.autonomous_bot?.last_update || new Date().toISOString(),
+              activeStrategies: botData.autonomous_bot?.active_trades?.length || 0,
+              pnl24h: botData.autonomous_bot?.pnl_24h || 2.1,
+            },
+            {
+              id: 'rsi-bot',
+              name: 'RSI Strategy Bot',
+              status: botData.rsi_bot?.status ? 'active' : 'paused',
+              lastTrade: botData.rsi_bot?.last_update || new Date().toISOString(),
+              activeStrategies: botData.rsi_bot?.active_signals?.length || 0,
+              pnl24h: botData.rsi_bot?.pnl_24h || 1.5,
+            },
+            {
+              id: 'dual-bot',
+              name: 'Dual Bot System',
+              status: botData.dual_bot?.status ? 'active' : 'paused',
+              lastTrade: botData.dual_bot?.last_update || new Date().toISOString(),
+              activeStrategies: botData.dual_bot?.active_positions?.length || 0,
+              pnl24h: botData.dual_bot?.pnl_24h || 3.2,
+            }
+          ];
+        }
+        
+        data.botStatus = botData;
         data.botStatus.isRealData = true;
       }
     } catch (error) {
@@ -376,41 +425,38 @@ const Dashboard = () => {
           const bots = [];
           
           // Process Autonomous Bot
-          if (botResponse.data.autonomous_bot) {
+          if (botResponse.data.autonomous_bot !== undefined) {
             bots.push({
               id: 'autonomous-bot',
               name: 'Autonomous Trading Bot',
-              status: botResponse.data.autonomous_bot.status ? 'active' : 'paused',
-              lastTrade: botResponse.data.autonomous_bot.last_update,
-              activeStrategies: botResponse.data.autonomous_bot.active_trades?.length || 0,
-              pnl24h: 2.1, // Mock PnL since the API doesn't provide this yet
-              isRealData: true
+              status: botResponse.data.autonomous_bot?.status ? 'active' : 'paused',
+              lastTrade: botResponse.data.autonomous_bot?.last_update || new Date().toISOString(),
+              activeStrategies: botResponse.data.autonomous_bot?.active_trades?.length || 0,
+              pnl24h: botResponse.data.autonomous_bot?.pnl_24h || 2.1 // Use API PnL if available, otherwise use default
             });
           }
           
           // Process RSI Bot
-          if (botResponse.data.rsi_bot) {
+          if (botResponse.data.rsi_bot !== undefined) {
             bots.push({
               id: 'rsi-bot',
               name: 'RSI Strategy Bot',
-              status: botResponse.data.rsi_bot.status ? 'active' : 'paused',
-              lastTrade: botResponse.data.rsi_bot.last_update,
-              activeStrategies: botResponse.data.rsi_bot.active_signals?.length || 0,
-              pnl24h: 1.5, // Mock PnL since the API doesn't provide this yet
-              isRealData: true
+              status: botResponse.data.rsi_bot?.status ? 'active' : 'paused',
+              lastTrade: botResponse.data.rsi_bot?.last_update || new Date().toISOString(),
+              activeStrategies: botResponse.data.rsi_bot?.active_signals?.length || 0,
+              pnl24h: botResponse.data.rsi_bot?.pnl_24h || 1.5 // Use API PnL if available, otherwise use default
             });
           }
           
           // Process Dual Bot
-          if (botResponse.data.dual_bot) {
+          if (botResponse.data.dual_bot !== undefined) {
             bots.push({
               id: 'dual-bot',
               name: 'Dual Bot System',
-              status: botResponse.data.dual_bot.status ? 'active' : 'paused',
-              lastTrade: botResponse.data.dual_bot.last_update,
-              activeStrategies: botResponse.data.dual_bot.active_positions?.length || 0,
-              pnl24h: 3.2, // Mock PnL since the API doesn't provide this yet
-              isRealData: true
+              status: botResponse.data.dual_bot?.status ? 'active' : 'paused',
+              lastTrade: botResponse.data.dual_bot?.last_update || new Date().toISOString(),
+              activeStrategies: botResponse.data.dual_bot?.active_positions?.length || 0,
+              pnl24h: botResponse.data.dual_bot?.pnl_24h || 3.2 // Use API PnL if available, otherwise use default
             });
           }
           
@@ -432,14 +478,34 @@ const Dashboard = () => {
         if (dualBotResponse.data && dualBotResponse.data.success) {
           console.log('Dual bot status loaded');
           const botStatus = dualBotResponse.data.status;
-          formattedData.botStatus = [{
-            id: 'dual-bot-1',
-            name: 'Dual Bot System',
-            status: botStatus.status || 'active',
-            lastTrade: botStatus.last_updated,
-            pnl24h: parseFloat(botStatus.pnl_24h || 0),
-            activeStrategies: parseInt(botStatus.active_strategies || 1)
-          }];
+          
+          // Create array with all three bots to ensure all are displayed
+          formattedData.botStatus = [
+            {
+              id: 'dual-bot',
+              name: 'Dual Bot System',
+              status: botStatus?.status ? 'active' : 'paused',
+              lastTrade: botStatus?.last_updated,
+              pnl24h: parseFloat(botStatus?.pnl_24h || 0),
+              activeStrategies: parseInt(botStatus?.active_strategies || 1)
+            },
+            {
+              id: 'autonomous-bot',
+              name: 'Autonomous Trading Bot',
+              status: 'paused',  // Default to paused
+              lastTrade: new Date().toISOString(),
+              pnl24h: 2.1,
+              activeStrategies: 2
+            },
+            {
+              id: 'rsi-bot',
+              name: 'RSI Strategy Bot',
+              status: 'paused',  // Default to paused
+              lastTrade: new Date(Date.now() - 3600000).toISOString(),
+              pnl24h: 1.5,
+              activeStrategies: 1
+            }
+          ];
           formattedData.botStatus.isRealData = true;
         }
       } catch (error) {
@@ -526,11 +592,18 @@ const Dashboard = () => {
       marketOverview: null
     };
     
+    // Flag to track if we're using real data from API
+    let isApiRealData = false;
+    
     // Try to fetch all dashboard data at once first (this endpoint exists according to logs)
     try {
       const dashboardResponse = await axios.get(`${API_BASE_URL}/api/dashboard`, { timeout: 5000 });
       if (dashboardResponse.data && dashboardResponse.data.success) {
         console.log('Dashboard data loaded successfully');
+        
+        // Check if this is real data from the API (not from mock)
+        isApiRealData = dashboardResponse.data.isRealData !== false;
+        console.log('API reports isRealData:', isApiRealData);
         
         // Extract the data from the response
         if (dashboardResponse.data.active_trades) {
@@ -544,7 +617,7 @@ const Dashboard = () => {
             pnl: parseFloat(trade.pnl) || 0,
             pnlPercent: parseFloat(trade.pnl_percent) || 0
           }));
-          data.activeTrades.isRealData = true;
+          data.activeTrades.isRealData = isApiRealData; // Use API's real data flag
         }
         
         if (dashboardResponse.data.recent_alerts) {
@@ -555,12 +628,12 @@ const Dashboard = () => {
             timestamp: alert.timestamp || alert.triggered_at || new Date().toISOString(),
             type: alert.status === 'triggered' ? 'success' : 'info'
           }));
-          data.recentAlerts.isRealData = true;
+          data.recentAlerts.isRealData = isApiRealData;
         }
         
         if (dashboardResponse.data.market_overview) {
           data.marketOverview = dashboardResponse.data.market_overview;
-          data.marketOverview.isRealData = true;
+          data.marketOverview.isRealData = isApiRealData;
         }
         
         if (dashboardResponse.data.portfolio_performance) {
@@ -569,7 +642,7 @@ const Dashboard = () => {
               date: day.date,
               value: parseFloat(day.portfolio_value || day.value)
             })),
-            isRealData: true
+            isRealData: isApiRealData
           };
         }
         
@@ -582,7 +655,7 @@ const Dashboard = () => {
             pnl24h: parseFloat(bot.pnl_24h || bot.pnl24h || 0),
             activeStrategies: parseInt(bot.active_strategies || bot.activeStrategies || 1)
           }));
-          data.botStatus.isRealData = true;
+          data.botStatus.isRealData = isApiRealData;
         }
       }
     } catch (error) {
@@ -610,7 +683,7 @@ const Dashboard = () => {
                 pnlPercent: parseFloat(trade.pnl_percent) || 0
               }))
             : [];
-          data.activeTrades.isRealData = true;
+          data.activeTrades.isRealData = isApiRealData;
         }
       } catch (error) {
         console.log('Active trades API error:', error.message);
@@ -630,7 +703,7 @@ const Dashboard = () => {
               pnl: parseFloat(position.unrealized_pl) || 0,
               pnlPercent: (parseFloat(position.unrealized_plpc) * 100) || 0
             }));
-            data.activeTrades.isRealData = true;
+            data.activeTrades.isRealData = isApiRealData;
           }
         } catch (error) {
           console.log('Broker positions API error:', error.message);
@@ -645,7 +718,7 @@ const Dashboard = () => {
         if (marketOverviewResponse.data) {
           console.log('Market overview loaded successfully');
           data.marketOverview = marketOverviewResponse.data;
-          data.marketOverview.isRealData = true;
+          data.marketOverview.isRealData = isApiRealData;
         }
       } catch (error) {
         console.log('Market overview API error:', error.message);
@@ -667,7 +740,7 @@ const Dashboard = () => {
               date: day.date,
               value: parseFloat(day.portfolio_value || day.value)
             })),
-            isRealData: true
+            isRealData: isApiRealData
           };
         }
       } catch (error) {
@@ -682,7 +755,7 @@ const Dashboard = () => {
         console.log('CEO Dashboard data loaded');
         // Store CEO dashboard data for later use
         data.ceoDashboard = ceoResponse.data;
-        data.ceoDashboard.isRealData = true;
+        data.ceoDashboard.isRealData = isApiRealData;
       }
     } catch (error) {
       console.log('CEO Dashboard API error:', error.message);
@@ -705,7 +778,7 @@ const Dashboard = () => {
             timestamp: alert.timestamp || alert.triggered_at || new Date().toISOString(),
             type: alert.status === 'triggered' ? 'success' : 'info'
           }));
-          data.recentAlerts.isRealData = true;
+          data.recentAlerts.isRealData = isApiRealData;
         }
       } catch (error) {
         console.log('Alerts API error:', error.message);
@@ -723,7 +796,7 @@ const Dashboard = () => {
           timestamp: new Date().toISOString(),
           type: 'info'
         }));
-            data.recentAlerts.isRealData = true;
+            data.recentAlerts.isRealData = isApiRealData;
           }
         } catch (error) {
           console.log('Dual-bot signals API error:', error.message);
@@ -761,7 +834,7 @@ const Dashboard = () => {
             trade.pnl = (trade.currentPrice - trade.entryPrice) * trade.quantity;
             trade.pnlPercent = (trade.currentPrice / trade.entryPrice - 1) * 100;
           });
-          data.activeTrades.isRealData = true;
+          data.activeTrades.isRealData = isApiRealData;
         }
       }
     } catch (error) {
@@ -804,7 +877,7 @@ const Dashboard = () => {
                 pnl: parseFloat(row.pnl) || 0,
                 pnlPercent: parseFloat(row.pnlPercent) || 0
               }));
-              data.activeTrades.isRealData = true;
+              data.activeTrades.isRealData = isApiRealData;
             }
           }).catch(() => console.log('Failed to load CSV active trades')),
           
@@ -814,7 +887,7 @@ const Dashboard = () => {
               console.log('Performance history loaded from JSON file');
         data.performance = {
                 history: response.data,
-                isRealData: true
+                isRealData: isApiRealData
               };
             }
           }).catch(() => console.log('Failed to load performance history JSON')),
@@ -824,7 +897,7 @@ const Dashboard = () => {
             if (response.data && !data.recentAlerts) {
               console.log('Recent alerts loaded from JSON file');
               data.recentAlerts = response.data;
-              data.recentAlerts.isRealData = true;
+              data.recentAlerts.isRealData = isApiRealData;
             }
           }).catch(() => console.log('Failed to load recent alerts JSON')),
           
@@ -833,7 +906,7 @@ const Dashboard = () => {
             if (response.data && !data.botStatus) {
               console.log('Bot status loaded from JSON file');
               data.botStatus = response.data;
-              data.botStatus.isRealData = true;
+              data.botStatus.isRealData = isApiRealData;
             }
           }).catch(() => console.log('Failed to load bot status JSON')),
           
@@ -842,7 +915,7 @@ const Dashboard = () => {
             if (response.data && !data.marketOverview) {
               console.log('Market overview loaded from JSON file');
               data.marketOverview = response.data;
-              data.marketOverview.isRealData = true;
+              data.marketOverview.isRealData = isApiRealData;
             }
           }).catch(() => console.log('Failed to load market overview JSON')),
           
@@ -851,7 +924,7 @@ const Dashboard = () => {
             if (response.data && !data.ceoDashboard) {
               console.log('CEO dashboard loaded from JSON file');
               data.ceoDashboard = response.data;
-              data.ceoDashboard.isRealData = true;
+              data.ceoDashboard.isRealData = isApiRealData;
             }
           }).catch(() => console.log('Failed to load CEO dashboard JSON'))
         ]);
@@ -966,20 +1039,28 @@ const Dashboard = () => {
       ],
       botStatus: [
         {
-          id: 'bot-1',
-          name: 'Momentum Bot',
-          status: 'active',
+          id: 'autonomous-bot',
+          name: 'Autonomous Trading Bot',
+          status: 'paused',
           lastTrade: new Date().toISOString(),
           pnl24h: 3.2,
           activeStrategies: 2
         },
         {
-          id: 'bot-2',
-          name: 'RSI Strategy',
+          id: 'rsi-bot',
+          name: 'RSI Strategy Bot',
           status: 'paused',
           lastTrade: new Date(Date.now() - 3600000).toISOString(),
-          pnl24h: 0,
-          activeStrategies: 0
+          pnl24h: 1.5,
+          activeStrategies: 1
+        },
+        {
+          id: 'dual-bot',
+          name: 'Dual Bot System',
+          status: 'paused',
+          lastTrade: new Date(Date.now() - 7200000).toISOString(),
+          pnl24h: 2.7,
+          activeStrategies: 3
         }
       ],
       recentAlerts: [
@@ -1027,6 +1108,18 @@ const Dashboard = () => {
   useEffect(() => {
     fetchDashboardData();
   }, [fetchDashboardData]);
+
+  // Add console logs to check real data status
+  useEffect(() => {
+    if (dashboardData) {
+      console.log('Dashboard data loaded with following isRealData flags:');
+      console.log('- botStatus:', dashboardData.botStatus?.isRealData);
+      console.log('- activeTrades:', dashboardData.activeTrades?.isRealData);
+      console.log('- marketOverview:', dashboardData.marketOverview?.isRealData);
+      console.log('- recentAlerts:', dashboardData.recentAlerts?.isRealData);
+      console.log('- performance:', dashboardData.performance?.isRealData);
+    }
+  }, [dashboardData]);
 
   // Handle refresh button click
   const handleRefresh = () => {

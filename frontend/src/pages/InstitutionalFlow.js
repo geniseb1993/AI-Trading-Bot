@@ -1,535 +1,125 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { 
   Box, 
   Typography, 
-  Grid, 
-  Paper, 
-  Table, 
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  TextField,
-  Button,
-  CircularProgress,
-  Chip,
-  Divider,
-  Card,
-  CardContent,
   Tabs,
   Tab,
-  IconButton,
-  Tooltip,
-  Badge
+  Paper,
+  Grid, 
+  Chip,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Tooltip
 } from '@mui/material';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Refresh, 
-  Search, 
-  MoreVert,
-  Star,
-  StarBorder,
-  InfoOutlined,
-  Launch as LaunchIcon
-} from '@mui/icons-material';
-import axios from 'axios';
+import { InfoOutlined } from '@mui/icons-material';
+import InstitutionalFlowTable from '../components/InstitutionalFlowTable';
+import EnhancedInstitutionalFlow from '../components/EnhancedInstitutionalFlow';
+import PageWrapper from '../components/PageWrapper';
+import { useInstitutionalFlowData } from '../contexts/DataContext';
+import { institutionalFlowService } from '../services/api';
 
 const InstitutionalFlow = () => {
-  const [flowData, setFlowData] = useState([]);
-  const [loading, setLoading] = useState(false);
+  // Get shared state from context
+  const { loading, error, setLoading, setError } = useInstitutionalFlowData();
+  
+  // Local component state
   const [tabValue, setTabValue] = useState(0);
   const [timeFilter, setTimeFilter] = useState('today');
   const [sectorFilter, setSectorFilter] = useState('all');
-  const [favoriteSymbols, setFavoriteSymbols] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [flowData, setFlowData] = useState([]);
   const [isRealData, setIsRealData] = useState(false);
-  const [dataSource, setDataSource] = useState('mock');
+  const [dataSource, setDataSource] = useState('Mock Data');
 
   const tabOptions = ['Options Flow', 'Dark Pool', '13F Filings', 'Insider Trading'];
   
-  const timeFilters = [
-    { value: 'today', label: 'Today' },
-    { value: 'yesterday', label: 'Yesterday' },
-    { value: 'this_week', label: 'This Week' },
-    { value: 'this_month', label: 'This Month' },
-  ];
-  
-  const sectors = [
-    { value: 'all', label: 'All Sectors' },
-    { value: 'technology', label: 'Technology' },
-    { value: 'healthcare', label: 'Healthcare' },
-    { value: 'finance', label: 'Finance' },
-    { value: 'consumer', label: 'Consumer' },
-    { value: 'energy', label: 'Energy' },
-    { value: 'materials', label: 'Materials' },
-    { value: 'industrials', label: 'Industrials' },
-  ];
-
-  useEffect(() => {
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
     fetchInstitutionalFlowData();
-  }, [tabValue, timeFilter, sectorFilter]);
+  };
+  
+  const handleTimeFilterChange = (event) => {
+    setTimeFilter(event.target.value);
+    fetchInstitutionalFlowData();
+  };
+  
+  const handleSectorFilterChange = (event) => {
+    setSectorFilter(event.target.value);
+    fetchInstitutionalFlowData();
+  };
 
-  const fetchInstitutionalFlowData = async () => {
+  const fetchInstitutionalFlowData = useCallback(async () => {
     setLoading(true);
     try {
-      let response;
       const tabType = tabOptions[tabValue].toLowerCase().replace(' ', '-');
+      
+      console.log(`Fetching data for tab: ${tabType}, timeFilter: ${timeFilter}, sectorFilter: ${sectorFilter}`);
       
       // Use different API endpoints based on tab type
       if (tabType === 'options-flow' || tabType === 'dark-pool') {
-        // Use institutional-flow API for options flow and dark pool data
-        response = await axios.post('/api/institutional-flow/get-data', {
+        // Get data from service
+        const response = await institutionalFlowService.getFilteredData({
           type: tabType,
           timeframe: timeFilter,
           sector: sectorFilter
         });
         
-        // Check if the response is valid
-        if (response.data && response.data.success && Array.isArray(response.data.data)) {
-          setFlowData(response.data.data);
-          setIsRealData(response.data.isRealData === true);
-          setDataSource(response.data.isRealData ? 'Unusual Whales API' : 'mock');
+        if (response && response.success && Array.isArray(response.data)) {
+          setFlowData(response.data);
+          setIsRealData(response.isRealData === true);
+          setDataSource(response.isRealData ? 'Unusual Whales API' : 'mock');
         } else {
           throw new Error('Invalid response format');
         }
-      } 
-      else if (tabType === '13f-filings') {
-        // Use 13F filings API
-        const startDate = getDateRange(timeFilter);
-        response = await axios.get('/api/13f-filings', {
-          params: {
-            start_date: startDate,
-            sector: sectorFilter !== 'all' ? sectorFilter : undefined
-          }
+      } else if (tabType === '13f-filings') {
+        const response = await institutionalFlowService.getFilteredData({
+          type: '13f',
+          timeframe: timeFilter
         });
         
-        if (response.data && response.data.success) {
-          setFlowData(response.data.data);
-          setIsRealData(response.data.isRealData === true);
-          setDataSource(response.data.isRealData ? 'SEC API' : 'mock');
-        } else {
-          throw new Error('Invalid response format');
+        if (response && response.success && Array.isArray(response.data)) {
+          setFlowData(response.data);
+          setIsRealData(response.isRealData === true);
+          setDataSource(response.isRealData ? 'SEC Database' : 'mock');
+          } else {
+          throw new Error('Invalid response format for 13F filings');
         }
-      }
-      else if (tabType === 'insider-trading') {
-        // Use insider trading API
-        const startDate = getDateRange(timeFilter);
-        response = await axios.get('/api/insider-trading', {
-          params: {
-            start_date: startDate
-            // Filter by sector could be implemented here if needed
-          }
+      } else if (tabType === 'insider-trading') {
+        const response = await institutionalFlowService.getFilteredData({
+          type: 'insider',
+          timeframe: timeFilter,
+          sector: sectorFilter
         });
         
-        if (response.data && response.data.success) {
-          setFlowData(response.data.data);
-          setIsRealData(response.data.isRealData === true);
-          setDataSource(response.data.isRealData ? 'SEC API' : 'mock');
-        } else {
-          throw new Error('Invalid response format');
+        if (response && response.success && Array.isArray(response.data)) {
+          setFlowData(response.data);
+          setIsRealData(response.isRealData === true);
+          setDataSource(response.isRealData ? 'SEC Form 4 Data' : 'mock');
+          } else {
+          throw new Error('Invalid response format for insider trading');
         }
       }
-    } catch (error) {
-      console.error('Error fetching institutional flow data:', error);
-      // Generate mock data if API request fails
-      generateMockData();
+    } catch (err) {
+      console.error('Error fetching institutional flow data:', err);
+      setError(err.message || 'Failed to fetch institutional flow data');
+      setFlowData([]);
       setIsRealData(false);
-      setDataSource('mock');
+      setDataSource('Mock Data (Error)');
     } finally {
       setLoading(false);
     }
-  };
+  }, [tabValue, timeFilter, sectorFilter, setLoading, setError]);
 
-  // Helper function to get date range based on time filter
-  const getDateRange = (filter) => {
-    const today = new Date();
-    
-    switch (filter) {
-      case 'today':
-        return today.toISOString().split('T')[0];
-      case 'yesterday':
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        return yesterday.toISOString().split('T')[0];
-      case 'this_week':
-        const week = new Date(today);
-        week.setDate(week.getDate() - 7);
-        return week.toISOString().split('T')[0];
-      case 'this_month':
-        const month = new Date(today);
-        month.setMonth(month.getMonth() - 1);
-        return month.toISOString().split('T')[0];
-      default:
-        return today.toISOString().split('T')[0];
-    }
-  };
-
-  const generateMockData = () => {
-    const mockData = [];
-    const symbols = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'AMD', 'NFLX', 'JPM'];
-    const sectors = ['Technology', 'Healthcare', 'Finance', 'Consumer', 'Energy'];
-    const institutions = [
-      'BlackRock', 'Vanguard', 'Fidelity', 'State Street', 'JP Morgan', 
-      'Citadel', 'Renaissance Technologies', 'Two Sigma', 'AQR Capital', 'Point72'
-    ];
-    
-    // Generate valid direction values - this was causing the toUpperCase error
-    const validDirections = ['buy', 'sell'];
-    const validCallPutTypes = ['call', 'put'];
-    
-    for (let i = 0; i < 20; i++) {
-      const symbol = symbols[Math.floor(Math.random() * symbols.length)];
-      const sector = sectors[Math.floor(Math.random() * sectors.length)];
-      const institution = institutions[Math.floor(Math.random() * institutions.length)];
-      const direction = validDirections[Math.floor(Math.random() * validDirections.length)];
-      const date = new Date();
-      date.setHours(date.getHours() - Math.floor(Math.random() * 72));
-      
-      // Base object with common properties all mock items must have
-      const baseItem = {
-        id: i + 1,
-        timestamp: date.toISOString(),
-        symbol,
-        sector,
-        institution,
-        direction
-      };
-      
-      let mockItem = {};
-      
-      // Generate different data based on tab
-      if (tabValue === 0) { // Options Flow
-        mockItem = {
-          ...baseItem,
-          contract_type: validCallPutTypes[Math.floor(Math.random() * validCallPutTypes.length)],
-          strike: (Math.random() * 200 + 50).toFixed(2),
-          expiry: (() => {
-            const expiry = new Date();
-            expiry.setDate(expiry.getDate() + Math.floor(Math.random() * 90 + 1));
-            return expiry.toISOString().split('T')[0];
-          })(),
-          premium: (Math.random() * 1000000 + 50000).toFixed(2),
-          volume: Math.floor(Math.random() * 5000 + 100),
-          open_interest: Math.floor(Math.random() * 10000 + 500),
-          unusual: Math.random() > 0.7,
-        };
-      } else if (tabValue === 1) { // Dark Pool
-        mockItem = {
-          ...baseItem,
-          price: (Math.random() * 1000 + 10).toFixed(2),
-          volume: Math.floor(Math.random() * 1000000 + 10000),
-          value: (Math.random() * 10000000 + 100000).toFixed(2),
-          vwap: (Math.random() * 1000 + 10).toFixed(2),
-          market_share: (Math.random() * 15).toFixed(2) + '%',
-          contract_type: 'none', // Ensure this exists to avoid undefined errors
-        };
-      } else if (tabValue === 2) { // 13F Filings
-        mockItem = {
-          ...baseItem,
-          contract_type: 'none', // Ensure this exists to avoid undefined errors
-          shares: Math.floor(Math.random() * 10000000 + 100000),
-          value: (Math.random() * 100000000 + 1000000).toFixed(2),
-          change: (Math.random() * 40 - 20).toFixed(2) + '%',
-          filing_date: (() => {
-            const filing = new Date();
-            filing.setDate(filing.getDate() - Math.floor(Math.random() * 90));
-            return filing.toISOString().split('T')[0];
-          })(),
-          quarter: `Q${Math.floor(Math.random() * 4) + 1} ${new Date().getFullYear()}`,
-        };
-      } else { // Insider Trading
-        mockItem = {
-          ...baseItem,
-          contract_type: 'none', // Ensure this exists to avoid undefined errors
-          insider_name: `${['John', 'Jane', 'Michael', 'Sarah', 'Robert', 'Emily'][Math.floor(Math.random() * 6)]} ${['Smith', 'Johnson', 'Williams', 'Jones', 'Brown', 'Davis'][Math.floor(Math.random() * 6)]}`,
-          position: ['CEO', 'CFO', 'CTO', 'Director', 'VP', 'Board Member'][Math.floor(Math.random() * 6)],
-          shares: Math.floor(Math.random() * 100000 + 1000),
-          value: (Math.random() * 5000000 + 50000).toFixed(2),
-          price: (Math.random() * 1000 + 10).toFixed(2),
-          filing_date: (() => {
-            const filing = new Date();
-            filing.setDate(filing.getDate() - Math.floor(Math.random() * 30));
-            return filing.toISOString().split('T')[0];
-          })(),
-        };
-      }
-      
-      mockData.push(mockItem);
-    }
-    
-    setFlowData(mockData);
-  };
-
-  const handleTabChange = (event, newValue) => {
-    setTabValue(newValue);
-  };
-
-  const handleTimeFilterChange = (event) => {
-    setTimeFilter(event.target.value);
-  };
-
-  const handleSectorFilterChange = (event) => {
-    setSectorFilter(event.target.value);
-  };
-
-  const handleSearch = (event) => {
-    setSearchTerm(event.target.value);
-  };
-
-  const toggleFavorite = (symbol) => {
-    if (favoriteSymbols.includes(symbol)) {
-      setFavoriteSymbols(favoriteSymbols.filter(s => s !== symbol));
-    } else {
-      setFavoriteSymbols([...favoriteSymbols, symbol]);
-    }
-  };
-
-  const getFilteredData = () => {
-    if (!searchTerm.trim()) return flowData;
-    
-    return flowData.filter(item => 
-      item.symbol?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.institution && item.institution.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (item.insider_name && item.insider_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (item.companyName && item.companyName.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-  };
-
-  const renderTableHeader = () => {
-    switch (tabValue) {
-      case 0: // Options Flow
-        return (
-          <TableRow>
-            <TableCell>Time</TableCell>
-            <TableCell>Symbol</TableCell>
-            <TableCell>Direction</TableCell>
-            <TableCell>Type</TableCell>
-            <TableCell>Strike</TableCell>
-            <TableCell>Expiry</TableCell>
-            <TableCell align="right">Premium ($)</TableCell>
-            <TableCell align="right">Volume</TableCell>
-            <TableCell>Institution</TableCell>
-            <TableCell align="center">Actions</TableCell>
-          </TableRow>
-        );
-      case 1: // Dark Pool
-        return (
-          <TableRow>
-            <TableCell>Time</TableCell>
-            <TableCell>Symbol</TableCell>
-            <TableCell>Direction</TableCell>
-            <TableCell align="right">Price ($)</TableCell>
-            <TableCell align="right">Volume</TableCell>
-            <TableCell align="right">Value ($)</TableCell>
-            <TableCell>Institution</TableCell>
-            <TableCell>Market Share</TableCell>
-            <TableCell align="center">Actions</TableCell>
-          </TableRow>
-        );
-      case 2: // 13F Filings
-        return (
-          <TableRow>
-            <TableCell>Filing Date</TableCell>
-            <TableCell>Institution</TableCell>
-            <TableCell>Report Date</TableCell>
-            <TableCell>Form</TableCell>
-            <TableCell>Top Holdings</TableCell>
-            <TableCell align="right">Total Value ($)</TableCell>
-            <TableCell align="center">Actions</TableCell>
-          </TableRow>
-        );
-      case 3: // Insider Trading
-        return (
-          <TableRow>
-            <TableCell>Filing Date</TableCell>
-            <TableCell>Symbol</TableCell>
-            <TableCell>Insider</TableCell>
-            <TableCell>Position</TableCell>
-            <TableCell>Direction</TableCell>
-            <TableCell align="right">Shares</TableCell>
-            <TableCell align="right">Price ($)</TableCell>
-            <TableCell align="right">Value ($)</TableCell>
-            <TableCell align="center">Actions</TableCell>
-          </TableRow>
-        );
-      default:
-        return null;
-    }
-  };
-
-  const renderTableRow = (item) => {
-    // Add a safety check for undefined items
-    if (!item) return null;
-    
-    // Helper function to safely get string values
-    const safeStr = (value) => {
-      return value !== undefined && value !== null ? String(value) : '';
-    };
-    
-    // Helper function to safely get numeric values
-    const safeNum = (value) => {
-      return !isNaN(Number(value)) ? Number(value) : 0;
-    };
-    
-    switch (tabValue) {
-      case 0: // Options Flow
-        return (
-          <TableRow key={item.id} hover>
-            <TableCell>{item.timestamp ? new Date(item.timestamp).toLocaleTimeString() : 'N/A'}</TableCell>
-            <TableCell>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                {safeStr(item.symbol)}
-                {item.unusual && (
-                  <Chip 
-                    label="UNUSUAL" 
-                    color="error" 
-                    size="small" 
-                    sx={{ ml: 1 }}
-                  />
-                )}
-              </Box>
-            </TableCell>
-            <TableCell>
-              <Chip 
-                label={safeStr(item.direction).toUpperCase()} 
-                color={safeStr(item.direction) === 'buy' ? 'success' : 'error'}
-                size="small"
-                icon={safeStr(item.direction) === 'buy' ? <TrendingUp fontSize="small" /> : <TrendingDown fontSize="small" />}
-              />
-            </TableCell>
-            <TableCell>
-              <Chip 
-                label={safeStr(item.contract_type).toUpperCase()} 
-                color={safeStr(item.contract_type) === 'call' ? 'primary' : 'secondary'}
-                size="small"
-              />
-            </TableCell>
-            <TableCell>${safeStr(item.strike)}</TableCell>
-            <TableCell>{safeStr(item.expiry)}</TableCell>
-            <TableCell align="right">${safeNum(item.premium).toLocaleString()}</TableCell>
-            <TableCell align="right">{safeNum(item.volume).toLocaleString()}</TableCell>
-            <TableCell>{safeStr(item.institution)}</TableCell>
-            <TableCell align="center">
-              <IconButton size="small" onClick={() => toggleFavorite(safeStr(item.symbol))}>
-                {favoriteSymbols.includes(safeStr(item.symbol)) ? 
-                  <Star fontSize="small" color="warning" /> : 
-                  <StarBorder fontSize="small" />
-                }
-              </IconButton>
-            </TableCell>
-          </TableRow>
-        );
-      case 1: // Dark Pool
-        return (
-          <TableRow key={item.id} hover>
-            <TableCell>{item.timestamp ? new Date(item.timestamp).toLocaleTimeString() : 'N/A'}</TableCell>
-            <TableCell>{safeStr(item.symbol)}</TableCell>
-            <TableCell>
-              <Chip 
-                label={safeStr(item.direction).toUpperCase()} 
-                color={safeStr(item.direction) === 'buy' ? 'success' : 'error'}
-                size="small"
-                icon={safeStr(item.direction) === 'buy' ? <TrendingUp fontSize="small" /> : <TrendingDown fontSize="small" />}
-              />
-            </TableCell>
-            <TableCell align="right">${safeStr(item.price)}</TableCell>
-            <TableCell align="right">{safeNum(item.volume).toLocaleString()}</TableCell>
-            <TableCell align="right">${safeNum(item.value).toLocaleString()}</TableCell>
-            <TableCell>{safeStr(item.institution)}</TableCell>
-            <TableCell>{safeStr(item.market_share)}</TableCell>
-            <TableCell align="center">
-              <IconButton size="small" onClick={() => toggleFavorite(safeStr(item.symbol))}>
-                {favoriteSymbols.includes(safeStr(item.symbol)) ? 
-                  <Star fontSize="small" color="warning" /> : 
-                  <StarBorder fontSize="small" />
-                }
-              </IconButton>
-            </TableCell>
-          </TableRow>
-        );
-      case 2: // 13F Filings
-        return (
-          <TableRow key={item.id} hover>
-            <TableCell>{safeStr(item.filedAt || item.filing_date)}</TableCell>
-            <TableCell>{safeStr(item.companyName)}</TableCell>
-            <TableCell>{safeStr(item.reportDate || item.quarter)}</TableCell>
-            <TableCell>{safeStr(item.form || '13F-HR')}</TableCell>
-            <TableCell>
-              {Array.isArray(item.holdings) && item.holdings.length > 0 ? (
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                  {item.holdings.slice(0, 3).map((holding, idx) => (
-                    <Chip 
-                      key={idx}
-                      label={holding.name || holding} 
-                      size="small"
-                      variant="outlined"
-                    />
-                  ))}
-                  {item.holdings.length > 3 && (
-                    <Chip 
-                      label={`+${item.holdings.length - 3} more`} 
-                      size="small"
-                      variant="outlined"
-                    />
-                  )}
-                </Box>
-              ) : (
-                'No holdings data'
-              )}
-            </TableCell>
-            <TableCell align="right">
-              {typeof item.value === 'number' 
-                ? `$${item.value.toLocaleString()}`
-                : safeStr(item.value)
-              }
-            </TableCell>
-            <TableCell align="center">
-              <IconButton size="small" onClick={() => window.open(item.url, '_blank')}>
-                <LaunchIcon fontSize="small" />
-              </IconButton>
-            </TableCell>
-          </TableRow>
-        );
-      case 3: // Insider Trading
-        return (
-          <TableRow key={item.id} hover>
-            <TableCell>{safeStr(item.filing_date)}</TableCell>
-            <TableCell>{safeStr(item.symbol)}</TableCell>
-            <TableCell>{safeStr(item.insider_name)}</TableCell>
-            <TableCell>{safeStr(item.position)}</TableCell>
-            <TableCell>
-              <Chip 
-                label={safeStr(item.direction).toUpperCase()} 
-                color={safeStr(item.direction) === 'buy' ? 'success' : 'error'}
-                size="small"
-                icon={safeStr(item.direction) === 'buy' ? <TrendingUp fontSize="small" /> : <TrendingDown fontSize="small" />}
-              />
-            </TableCell>
-            <TableCell align="right">{safeNum(item.shares).toLocaleString()}</TableCell>
-            <TableCell align="right">${safeStr(item.price)}</TableCell>
-            <TableCell align="right">${safeNum(item.value).toLocaleString()}</TableCell>
-            <TableCell align="center">
-              <IconButton size="small" onClick={() => toggleFavorite(safeStr(item.symbol))}>
-                {favoriteSymbols.includes(safeStr(item.symbol)) ? 
-                  <Star fontSize="small" color="warning" /> : 
-                  <StarBorder fontSize="small" />
-                }
-              </IconButton>
-            </TableCell>
-          </TableRow>
-        );
-      default:
-        return null;
-    }
-  };
+  useEffect(() => {
+    fetchInstitutionalFlowData();
+  }, [fetchInstitutionalFlowData]);
 
   return (
+    <PageWrapper 
+      title="Institutional Flow" 
+      domains={['institutionalFlow']}
+    >
     <Box sx={{ p: 3, minHeight: '100vh' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4">Institutional Flow</Typography>
@@ -561,92 +151,111 @@ const InstitutionalFlow = () => {
       </Paper>
       
       {/* Filters and Controls */}
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Grid container spacing={2} alignItems="center">
+        <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12} sm={6} md={3}>
-            <FormControl fullWidth size="small">
-              <InputLabel>Time Period</InputLabel>
+            <FormControl fullWidth>
+              <InputLabel>Time Filter</InputLabel>
               <Select
                 value={timeFilter}
-                label="Time Period"
+                label="Time Filter"
                 onChange={handleTimeFilterChange}
               >
-                {timeFilters.map(filter => (
-                  <MenuItem key={filter.value} value={filter.value}>{filter.label}</MenuItem>
-                ))}
+                <MenuItem value="today">Today</MenuItem>
+                <MenuItem value="yesterday">Yesterday</MenuItem>
+                <MenuItem value="this_week">This Week</MenuItem>
+                <MenuItem value="last_week">Last Week</MenuItem>
+                <MenuItem value="this_month">This Month</MenuItem>
+                <MenuItem value="last_month">Last Month</MenuItem>
               </Select>
             </FormControl>
           </Grid>
           
           <Grid item xs={12} sm={6} md={3}>
-            <FormControl fullWidth size="small">
+            <FormControl fullWidth>
               <InputLabel>Sector</InputLabel>
               <Select
                 value={sectorFilter}
                 label="Sector"
                 onChange={handleSectorFilterChange}
               >
-                {sectors.map(sector => (
-                  <MenuItem key={sector.value} value={sector.value}>{sector.label}</MenuItem>
-                ))}
+                <MenuItem value="all">All Sectors</MenuItem>
+                <MenuItem value="technology">Technology</MenuItem>
+                <MenuItem value="healthcare">Healthcare</MenuItem>
+                <MenuItem value="financials">Financials</MenuItem>
+                <MenuItem value="consumer">Consumer</MenuItem>
+                <MenuItem value="communications">Communications</MenuItem>
+                <MenuItem value="industrials">Industrials</MenuItem>
+                <MenuItem value="energy">Energy</MenuItem>
+                <MenuItem value="utilities">Utilities</MenuItem>
+                <MenuItem value="materials">Materials</MenuItem>
+                <MenuItem value="real_estate">Real Estate</MenuItem>
               </Select>
             </FormControl>
           </Grid>
-          
-          <Grid item xs={12} sm={6} md={4}>
-            <TextField
-              fullWidth
-              size="small"
-              label="Search by Symbol/Institution/Name"
-              value={searchTerm}
-              onChange={handleSearch}
-              InputProps={{
-                startAdornment: <Search color="action" sx={{ mr: 1 }} />,
-              }}
-            />
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={2}>
-            <Button
-              fullWidth
-              variant="contained"
-              startIcon={<Refresh />}
-              onClick={fetchInstitutionalFlowData}
-            >
-              Refresh
-            </Button>
-          </Grid>
         </Grid>
-      </Paper>
       
-      {/* Main Data Table */}
-      <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+        {/* Main Content */}
         {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-            <CircularProgress />
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
+            <Typography>Loading institutional flow data...</Typography>
+          </Box>
+        ) : error ? (
+          <Box sx={{ p: 3, bgcolor: 'error.light', borderRadius: 1 }}>
+            <Typography color="error">{error}</Typography>
           </Box>
         ) : (
-          <TableContainer sx={{ maxHeight: 'calc(100vh - 300px)' }}>
-            <Table stickyHeader>
-              <TableHead>
-                {renderTableHeader()}
-              </TableHead>
-              <TableBody>
-                {getFilteredData().length > 0 ? (
-                  getFilteredData().map(item => renderTableRow(item))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={10} align="center">
-                      No data found. Try adjusting your filters or search terms.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <>
+            {/* Options Flow Table */}
+            {tabValue === 0 && (
+              <InstitutionalFlowTable 
+                data={flowData} 
+                isRealData={isRealData} 
+                source={dataSource}
+                type="options"
+              />
+            )}
+            
+            {/* Dark Pool Table */}
+            {tabValue === 1 && (
+              <InstitutionalFlowTable 
+                data={flowData} 
+                isRealData={isRealData} 
+                source={dataSource}
+                type="darkpool"
+              />
+            )}
+            
+            {/* 13F Filings Table */}
+            {tabValue === 2 && (
+              <InstitutionalFlowTable 
+                data={flowData} 
+                isRealData={isRealData} 
+                source={dataSource}
+                type="13f"
+              />
+            )}
+            
+            {/* Insider Trading Table */}
+            {tabValue === 3 && (
+              <InstitutionalFlowTable 
+                data={flowData} 
+                isRealData={isRealData} 
+                source={dataSource}
+                type="insider"
+              />
+            )}
+            
+            {/* Advanced Analysis Section (shown below tables for all tabs) */}
+            <Box sx={{ mt: 4 }}>
+              <Typography variant="h5" gutterBottom>
+                Enhanced Institutional Flow Analysis
+              </Typography>
+              <EnhancedInstitutionalFlow />
+            </Box>
+          </>
         )}
-      </Paper>
     </Box>
+    </PageWrapper>
   );
 };
 

@@ -24,7 +24,8 @@ import {
   Alert,
   Stack,
   Switch,
-  FormControlLabel
+  FormControlLabel,
+  TableCell
 } from '@mui/material';
 import { 
   TrendingUp, 
@@ -103,6 +104,17 @@ const DataSourceInfo = ({ isRealData, dataSource }) => {
 
 // Component to render TradingView chart
 const TradingViewTab = ({ symbol, timeframe }) => {
+  // Add state to track mounting
+  const [mounted, setMounted] = useState(false);
+  
+  // Mark component as mounted after a short delay
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMounted(true);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, []);
+  
   // Map component timeframe to TradingView interval format
   const mapTimeframeToInterval = (tf) => {
     const mapping = {
@@ -135,12 +147,24 @@ const TradingViewTab = ({ symbol, timeframe }) => {
 
   return (
     <Box sx={{ height: 600, width: '100%', mt: 2 }}>
-      <TradingViewWidget 
-        symbol={formatSymbolForTradingView(symbol)}
-        interval={mapTimeframeToInterval(timeframe)}
-        height="100%"
-        width="100%"
-      />
+      {mounted ? (
+        <TradingViewWidget 
+          symbol={formatSymbolForTradingView(symbol)}
+          interval={mapTimeframeToInterval(timeframe)}
+          key={`tv-widget-${symbol}-${timeframe}-${Math.random().toString(36).substring(2, 9)}`}
+        />
+      ) : (
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            height: '100%' 
+          }}
+        >
+          <CircularProgress />
+        </Box>
+      )}
     </Box>
   );
 };
@@ -555,56 +579,6 @@ const MarketAnalysis = () => {
     setUseRealData(event.target.checked);
   };
 
-  // Fix the TradingViewTab component
-  const TradingViewTab = () => {
-    // Use a state to track mounting to prevent flicker
-    const [mounted, setMounted] = useState(false);
-    
-    // Mark component as mounted after a short delay
-    useEffect(() => {
-      const timer = setTimeout(() => {
-        setMounted(true);
-      }, 100);
-      return () => clearTimeout(timer);
-    }, []);
-    
-        return (
-      <Box 
-        sx={{ 
-          mt: 2, 
-          width: '100%', 
-          height: 'calc(100vh - 300px)', 
-          minHeight: '500px',
-          display: 'flex',
-          flexDirection: 'column',
-          position: 'relative'
-        }}
-      >
-        {mounted && (
-          <TradingViewWidget
-            symbol={formatSymbolForTradingView(selectedSymbol)}
-            interval={getTradingViewInterval()}
-            containerId={`tv_chart_${selectedSymbol}`}
-            height="100%"
-            width="100%"
-          />
-        )}
-        {!mounted && (
-          <Box 
-            sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              height: '100%' 
-            }}
-          >
-                    <CircularProgress />
-                  </Box>
-        )}
-                  </Box>
-    );
-  };
-  
   return (
     <Box sx={{ p: 2 }}>
       <Typography variant="h4" gutterBottom>Market Analysis</Typography>
@@ -729,7 +703,7 @@ const MarketAnalysis = () => {
                                   fontWeight: 'bold'
                                 }}
                               >
-                                {index.change >= 0 ? '+' : ''}{index.change.toFixed(2)}%
+                                {index.change >= 0 ? '+' : ''}{typeof index.change === 'number' ? index.change.toFixed(2) : 'N/A'}%
                               </Typography>
                             </Box>
                           </ListItem>
@@ -754,7 +728,7 @@ const MarketAnalysis = () => {
                                   fontWeight: 'bold'
                                 }}
                               >
-                                {sector.change >= 0 ? '+' : ''}{sector.change.toFixed(2)}%
+                                {sector.change >= 0 ? '+' : ''}{typeof sector.change === 'number' ? sector.change.toFixed(2) : 'N/A'}%
                               </Typography>
                             </Box>
                           </ListItem>

@@ -46,7 +46,7 @@ import ContentCard from '../components/ContentCard';
 import ContentGrid from '../components/ContentGrid';
 
 // Define API base URL based on environment
-const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
+const API_BASE_URL = process.env.REACT_APP_TRADINGVIEW_API_URL || 'http://localhost:5003/api';
 
 const TradingViewAlerts = () => {
   const theme = useTheme();
@@ -70,7 +70,7 @@ const TradingViewAlerts = () => {
     setError(null);
     
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/tradingview/alerts`);
+      const response = await axios.get(`${API_BASE_URL}/tradingview/alerts`);
       if (response.data && response.data.success) {
         setAlerts(response.data.alerts || []);
       } else {
@@ -80,7 +80,7 @@ const TradingViewAlerts = () => {
       console.error("Error fetching TradingView alerts:", err);
       setError(err.message || "An error occurred while fetching alerts");
       // Use mock data as fallback
-      setAlerts(generateMockAlerts());
+      generateMockAlerts();
     } finally {
       setLoading(false);
     }
@@ -254,7 +254,7 @@ const TradingViewAlerts = () => {
               <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 5 }}>
                 <CircularProgress />
               </Box>
-            ) : alerts.length === 0 ? (
+            ) : !alerts || alerts.length === 0 ? (
           <Box sx={{ p: 3 }}>
             <Alert severity="info" sx={{ backgroundColor: alpha(theme.palette.info.main, 0.1) }}>
                 No alerts configured. Click 'Create Alert' to add your first TradingView alert.

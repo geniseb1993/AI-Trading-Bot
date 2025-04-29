@@ -165,12 +165,29 @@ const CEODashboard = ({ data }) => {
         
         if (dashboardResponse.data && dashboardResponse.data.success) {
           console.log('CEO dashboard data received:', dashboardResponse.data);
-          setDashboardData(dashboardResponse.data);
-          return; // Exit if successful
+          
+          // Check if we have real data flag
+          if (dashboardResponse.data.isRealData === true) {
+            console.log('Using REAL data from API');
+            // Adding a real data indicator for clarity
+            const enhancedData = {
+              ...dashboardResponse.data,
+              dataSource: dashboardResponse.data.dataSource || "REAL MARKET DATA"
+            };
+            setDashboardData(enhancedData);
+            setLoading(false);
+            return;
+          } else {
+            console.log('API returned data but isRealData is not true, using data as is');
+            setDashboardData(dashboardResponse.data);
+            setLoading(false);
+            return;
+          }
         }
       } catch (error) {
         console.log('API call failed:', error.message);
-        // Continue to fallback
+        // Only fall back to mock data if we couldn't connect at all
+        setError('Could not connect to API. Using sample data instead.');
       }
       
       // If we reach here, use mock data
@@ -285,70 +302,86 @@ const CEODashboard = ({ data }) => {
 
   return (
     <Box sx={{ py: 2 }}>
-    <Box sx={{ mb: 3 }}>
-        <Typography variant="h5" component="h2" gutterBottom>
+      {/* Dashboard Header */}
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <Typography variant="h4" component="h1">
           CEO Command Center
+          {dashboardData.isRealData && (
+            <Chip 
+              label="REAL MARKET DATA" 
+              color="success" 
+              icon={<CheckCircle />} 
+              sx={{ ml: 2, fontWeight: 'bold' }}
+            />
+          )}
         </Typography>
-        {data ? (
-          <Chip 
-            label="Real Data" 
-            color="success" 
-            size="small" 
-            sx={{ mb: 1 }} 
-          />
-        ) : (
-          <Chip 
-            label="Sample Data" 
-            color="warning" 
-          size="small"
-            sx={{ mb: 1 }} 
-          />
-        )}
+        <Button
+          startIcon={<Refresh />}
+          onClick={handleRefresh}
+          variant="outlined"
+          disabled={loading}
+        >
+          Refresh
+        </Button>
       </Box>
-
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={4}>
-          <Paper 
-            elevation={0} 
-            sx={{ 
-              height: '100%', 
-              borderRadius: 2,
-              bgcolor: 'background.default',
-              border: `1px solid ${theme.palette.divider}`
-            }}
-          >
-            {renderPerformanceMetrics(dashboardData)}
-          </Paper>
+      
+      {/* Error alert if needed */}
+      {error && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+      
+      {/* Loading indicator */}
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={4}>
+            <Paper 
+              elevation={0} 
+              sx={{ 
+                height: '100%', 
+                borderRadius: 2,
+                bgcolor: 'background.default',
+                border: `1px solid ${theme.palette.divider}`
+              }}
+            >
+              {renderPerformanceMetrics(dashboardData)}
+            </Paper>
+          </Grid>
+          
+          <Grid item xs={12} md={4}>
+            <Paper 
+              elevation={0} 
+              sx={{ 
+                height: '100%', 
+                borderRadius: 2,
+                bgcolor: 'background.default',
+                border: `1px solid ${theme.palette.divider}`
+              }}
+            >
+              {renderRiskManagement(dashboardData, settings, handleSettingChange)}
+            </Paper>
+          </Grid>
+          
+          <Grid item xs={12} md={4}>
+            <Paper 
+              elevation={0} 
+              sx={{ 
+                height: '100%',
+                borderRadius: 2,
+                bgcolor: 'background.default',
+                border: `1px solid ${theme.palette.divider}`
+              }}
+            >
+              {renderTopTradeSetups(dashboardData, handleApproveSetup, handleRejectSetup)}
+            </Paper>
+          </Grid>
         </Grid>
-        
-        <Grid item xs={12} md={4}>
-          <Paper 
-            elevation={0} 
-            sx={{ 
-              height: '100%', 
-              borderRadius: 2,
-              bgcolor: 'background.default',
-              border: `1px solid ${theme.palette.divider}`
-            }}
-          >
-            {renderRiskManagement(dashboardData, settings, handleSettingChange)}
-          </Paper>
-        </Grid>
-        
-        <Grid item xs={12} md={4}>
-          <Paper 
-            elevation={0} 
-            sx={{ 
-              height: '100%',
-              borderRadius: 2,
-              bgcolor: 'background.default',
-              border: `1px solid ${theme.palette.divider}`
-            }}
-          >
-            {renderTopTradeSetups(dashboardData, handleApproveSetup, handleRejectSetup)}
-          </Paper>
-        </Grid>
-      </Grid>
+      )}
     </Box>
   );
 };

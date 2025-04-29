@@ -2,6 +2,39 @@
 
 An advanced AI-powered trading platform with institutional flow analysis, dark pool insights, and real-time market data.
 
+## API Connectivity
+
+The system includes several tools to diagnose and fix API connectivity issues between the frontend and the Dual Bot API server:
+
+### Diagnostic Tools
+
+1. **API Connectivity Test**:
+   ```
+   node test_dual_bot_connectivity.js
+   ```
+   Tests all essential endpoints to verify the API server is accessible.
+
+2. **API Connectivity Fixer**:
+   ```
+   node fix-api-connectivity.js
+   ```
+   Diagnoses issues with API connectivity and provides recommendations to fix them.
+
+3. **Python API Server Fix**:
+   ```
+   python fix-dual-bot-api.py
+   ```
+   Ensures the API server is running correctly and verifies frontend configuration.
+
+### Quick Fix for Common Issues
+
+1. Make sure the Dual Bot API server is running on port 5001:
+   ```
+   python dual_bot_api_server.py
+   ```
+
+2. For detailed troubleshooting instructions, see [API_CONNECTIVITY_README.md](API_CONNECTIVITY_README.md)
+
 ## Getting Started
 
 Follow these steps to set up and run the AI Trading Bot:
@@ -88,6 +121,70 @@ If you're experiencing issues:
 3. Try running the minimal server directly: `python minimal_flask_server.py`
 4. Look for error messages in the terminal windows
 
+## 🔧 Troubleshooting Common Issues
+
+### Audio Files Not Loading
+
+If you encounter errors with sound files not loading:
+
+1. Make sure the sound files exist in the correct location:
+   ```
+   frontend/public/sounds/access-granted-87075.mp3
+   frontend/public/sounds/access-denied-101308.mp3
+   ```
+
+2. Verify file sizes are correct (they should be larger than 1KB)
+
+3. Use the audio test page to diagnose issues:
+   ```
+   http://localhost:3000/audio-test.html
+   ```
+
+### API 500 Errors
+
+If you see HTTP 500 errors in the console:
+
+1. Make sure the Flask backend is running on port 5000
+2. Check that the CSV files exist in the `/api` directory:
+   - buy_signals.csv
+   - short_signals.csv
+   - backtest_results.csv
+
+3. Look for error messages in the Flask server console
+
+### Market Data Connection Issues
+
+If you're experiencing problems with market data not loading:
+
+1. Start the standalone market data server:
+   ```
+   python fix_market_data_endpoint_direct.py
+   ```
+   This will run a dedicated server for market data on port 5000.
+
+2. Verify the market data endpoint is working:
+   ```
+   python test_market_data_fix.py
+   ```
+   
+3. Update the frontend to recognize the correct data source:
+   ```
+   python fix_real_data_flag.py
+   ```
+
+For detailed information about this fix, see [MARKET_DATA_FIX_SUMMARY.md](MARKET_DATA_FIX_SUMMARY.md).
+
+### Backend Not Connecting
+
+If the frontend can't connect to the backend:
+
+1. Confirm the Flask server is running
+2. Check the setupProxy.js configuration
+3. Try running the app with HTTPS disabled:
+   ```
+   HTTPS=false npm start
+   ```
+
 ## Features
 
 - Real-time market data integration
@@ -134,48 +231,6 @@ npm start
 ```
 
 The React app will start on http://localhost:3000
-
-## 🔧 Troubleshooting Common Issues
-
-### Audio Files Not Loading
-
-If you encounter errors with sound files not loading:
-
-1. Make sure the sound files exist in the correct location:
-   ```
-   frontend/public/sounds/access-granted-87075.mp3
-   frontend/public/sounds/access-denied-101308.mp3
-   ```
-
-2. Verify file sizes are correct (they should be larger than 1KB)
-
-3. Use the audio test page to diagnose issues:
-   ```
-   http://localhost:3000/audio-test.html
-   ```
-
-### API 500 Errors
-
-If you see HTTP 500 errors in the console:
-
-1. Make sure the Flask backend is running on port 5000
-2. Check that the CSV files exist in the `/api` directory:
-   - buy_signals.csv
-   - short_signals.csv
-   - backtest_results.csv
-
-3. Look for error messages in the Flask server console
-
-### Backend Not Connecting
-
-If the frontend can't connect to the backend:
-
-1. Confirm the Flask server is running
-2. Check the setupProxy.js configuration
-3. Try running the app with HTTPS disabled:
-   ```
-   HTTPS=false npm start
-   ```
 
 ## 📋 Features
 
@@ -235,6 +290,13 @@ AI Trading Bot is a Python-based algorithmic trading system that uses technical 
 - **Real-time Market Data**: Stream live market data including bars, quotes, and trades
 - **TradingView Webhook Integration**: Receive and display custom alerts from TradingView
 - **API Configuration**: User-friendly interface for managing API keys and connection settings
+
+### Market Data Endpoint Fix (2025-04-27)
+- **Standalone Market Data Server**: Created a dedicated Flask server for market data endpoints
+- **Frontend Integration**: Updated frontend service to route market data requests to the dedicated server
+- **Testing Tools**: Added scripts to verify market data endpoint functionality
+- **Data Source Indicators**: Added markers in the frontend to indicate the source of market data
+- **For details, see [MARKET_DATA_FIX_SUMMARY.md](MARKET_DATA_FIX_SUMMARY.md)**
 
 ### Vault Authentication System (2025-04-02)
 - **Secure PIN Authentication**: Implemented a futuristic vault interface with 4-digit PIN protection
@@ -451,3 +513,29 @@ Or start components individually:
 Then access the dashboard at: http://localhost:3000/dual-bot
 
 For detailed information and troubleshooting, see the [Dual Bot Dashboard README](DUAL_BOT_DASHBOARD_README.md).
+
+## Fixed Data Loading Issues
+
+**Port Configuration and API Connectivity:**
+- Backend API server now consistently runs on port 5001
+- Frontend application now consistently runs on port 3001
+- CORS settings updated to support communication between these ports
+- API endpoints tested and working
+
+**How to Start the System:**
+1. Run the unified startup script:
+   ```
+   start-app-unified.bat   # Windows
+   ./start-app-unified.sh  # Linux/macOS
+   ```
+
+2. Access the application:
+   - Frontend: http://localhost:3001
+   - API Health Check: http://localhost:5001/api/health
+
+**If Data Loading Issues Persist:**
+1. Make sure both the API server (port 5001) and frontend (port 3001) are running
+2. Check browser console for any CORS or connection errors
+3. Try running the fix script manually: `python fix-dual-bot-api.py`
+
+For detailed instructions, see the [Unified Startup Guide](UNIFIED_STARTUP_README.md).

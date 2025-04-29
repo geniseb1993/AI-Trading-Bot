@@ -1,86 +1,87 @@
 import React from 'react';
 import { Chip, Tooltip, Box } from '@mui/material';
 import InfoIcon from '@mui/icons-material/Info';
+import PropTypes from 'prop-types';
 
 /**
- * DataLabel component displays a colored label to indicate if data is mock or real
- * 
- * @param {Object} props
- * @param {string} props.type - 'mock' or 'real'
- * @param {string} props.tooltip - Optional tooltip text
- * @param {Object} props.sx - Optional sx prop to override styles
- * @returns {JSX.Element}
+ * DataLabel component for displaying data source information
  */
-const DataLabel = ({ type = 'mock', tooltip = '', sx = {} }) => {
-  const isMock = type.toLowerCase() === 'mock';
-  const defaultTooltip = isMock 
-    ? 'This is sample data for demonstration purposes only' 
-    : 'This is real data from the connected data source';
-  
-  const chipColor = isMock ? 'warning' : 'success';
-  const label = isMock ? 'Sample Data' : 'Real Data';
-  
+const DataLabel = ({ type }) => {
+  let color = 'default';
+  let label = 'Unknown';
+
+  switch (type) {
+    case 'mock':
+      color = 'secondary';
+      label = 'Mock Data';
+      break;
+    case 'real':
+      color = 'success';
+      label = 'Real Data';
+      break;
+    case 'ai':
+      color = 'primary';
+      label = 'AI Generated';
+      break;
+    case 'synthetic':
+      color = 'warning';
+      label = 'Synthetic';
+      break;
+    default:
+      color = 'default';
+      label = 'Unknown';
+  }
+
   return (
-    <Tooltip title={tooltip || defaultTooltip}>
-      <Chip
-        size="small"
-        color={chipColor}
-        label={label}
-        icon={<InfoIcon fontSize="small" />}
-        sx={{ 
-          height: '22px', 
-          fontSize: '0.7rem', 
-          fontWeight: 'bold',
-          ...sx 
-        }}
-      />
-    </Tooltip>
+    <Chip
+      size="small"
+      color={color}
+      label={label}
+      variant="outlined"
+      sx={{ fontWeight: 'medium', fontSize: '0.7rem' }}
+    />
   );
 };
 
 /**
- * Container component that wraps content with a data label in the corner
- * 
- * @param {Object} props
- * @param {React.ReactNode} props.children - The content to display
- * @param {string} props.type - 'mock' or 'real'
- * @param {string} props.tooltip - Optional tooltip text
- * @param {string} props.position - Position of the label (topRight, topLeft, bottomRight, bottomLeft)
- * @param {Object} props.sx - Optional sx prop to override styles
- * @returns {JSX.Element}
+ * Container component that wraps content with a data label
  */
-export const DataLabelContainer = ({ 
-  children, 
-  type = 'mock', 
-  tooltip = '', 
-  position = 'topRight',
-  sx = {} 
-}) => {
-  // Calculate position styles
-  let positionStyles = {};
-  switch (position) {
-    case 'topLeft':
-      positionStyles = { top: 8, left: 8 };
-      break;
-    case 'bottomRight':
-      positionStyles = { bottom: 8, right: 8 };
-      break;
-    case 'bottomLeft':
-      positionStyles = { bottom: 8, left: 8 };
-      break;
-    case 'topRight':
-    default:
-      positionStyles = { top: 8, right: 8 };
-  }
-
+const DataLabelContainer = ({ children, type, tooltip = '', sx = {} }) => {
   return (
-    <Box sx={{ position: 'relative', ...sx }}>
-      {children}
-      <Box sx={{ position: 'absolute', ...positionStyles, zIndex: 10 }}>
-        <DataLabel type={type} tooltip={tooltip} />
+    <Box sx={{ position: 'relative', width: '100%', height: '100%', ...sx }}>
+      <Box
+        sx={{
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          zIndex: 10,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 0.5
+        }}
+      >
+        <Tooltip title={tooltip} arrow placement="left">
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            {tooltip && <InfoIcon fontSize="small" sx={{ color: 'text.secondary', mr: 0.5 }} />}
+            <DataLabel type={type} />
+          </Box>
+        </Tooltip>
       </Box>
+      {children}
     </Box>
   );
 };
 
-export default DataLabel; 
+DataLabel.propTypes = {
+  type: PropTypes.oneOf(['mock', 'real', 'ai', 'synthetic', 'unknown']).isRequired
+};
+
+DataLabelContainer.propTypes = {
+  children: PropTypes.node.isRequired,
+  type: PropTypes.oneOf(['mock', 'real', 'ai', 'synthetic', 'unknown']).isRequired,
+  tooltip: PropTypes.string,
+  sx: PropTypes.object
+};
+
+export default DataLabel;
+export { DataLabelContainer }; 

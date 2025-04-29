@@ -6,9 +6,79 @@ const path = require('path');
 const ENABLE_DEBUG_LOGGING = true;
 
 // Configuration
-const API_HOST = 'localhost';
-const API_PORT = 5000;
-const API_URL = `http://${API_HOST}:${API_PORT}`;
+const MAIN_API_HOST = 'localhost';
+const MAIN_API_PORT = 5001; // Main API server port
+const MAIN_API_URL = `http://${MAIN_API_HOST}:${MAIN_API_PORT}`;
+
+// Bot Management API configuration
+const BOT_MANAGEMENT_HOST = 'localhost';
+const BOT_MANAGEMENT_PORT = 5002; // Bot Management server port
+const BOT_MANAGEMENT_URL = `http://${BOT_MANAGEMENT_HOST}:${BOT_MANAGEMENT_PORT}`;
+
+// Routes that should be routed to the bot management server
+const botManagementRoutes = [
+  '/api/bot/status',
+  '/api/bot/start/',
+  '/api/bot/stop/',
+  '/api/status',
+  '/api/dual-bot/status',
+  '/api/ai-activity/logs',
+  '/api/ai-activity/activity-types'
+];
+
+// Routes that should be explicitly routed to the main API server
+const mainApiRoutes = [
+  '/api/configuration/',
+  '/api/configuration/get-api-configs',
+  '/api/configuration/update-api-configs',
+  '/api/configuration/test-connection',
+  '/api/market-data/',
+  '/api/tradingview/',
+  '/api/options-data/',
+  '/api/institutional-flow',
+  '/api/institutional-flow/',
+  '/api/13f-filings',
+  '/api/insider-trading'
+];
+
+// Helper function to check if a path should be routed to the bot management server
+const shouldRouteToBotManagement = (path) => {
+  for (const route of botManagementRoutes) {
+    if (path.startsWith(route)) {
+      return true;
+    }
+  }
+  return false;
+};
+
+// Helper function to check if a path should be explicitly routed to the main API server
+const shouldRouteToMainApi = (path) => {
+  for (const route of mainApiRoutes) {
+    if (path.startsWith(route)) {
+      return true;
+    }
+  }
+  return false;
+};
+
+// Add headers middleware to handle CORS issues
+const addHeaders = (req, res, next) => {
+  // For API requests, ensure CORS headers are properly set
+  if (req.path.startsWith('/api')) {
+    res.setHeader('Access-Control-Allow-Origin', req.headers.origin || 'http://localhost:3001');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept,X-Requested-With,X-API-Key');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    
+    // Handle preflight OPTIONS requests
+    if (req.method === 'OPTIONS') {
+      res.statusCode = 200;
+      res.end();
+      return;
+    }
+  }
+  next();
+};
 
 // Log function that writes to file and console
 const logApiRequest = (req, res, message) => {
@@ -34,7 +104,10 @@ const logApiRequest = (req, res, message) => {
 // API request logger middleware
 const requestLogger = (req, res, next) => {
   if (req.path.startsWith('/api')) {
-    logApiRequest(req, res, 'API Request');
+    const isBotManagementRoute = shouldRouteToBotManagement(req.path);
+    const targetServer = isBotManagementRoute ? 'Bot Management Server' : 'Main API Server';
+    
+    logApiRequest(req, res, `API Request (Target: ${targetServer})`);
     
     // Capture the original end method
     const originalEnd = res.end;
@@ -51,7 +124,7 @@ const requestLogger = (req, res, next) => {
       }
       
       if (ENABLE_DEBUG_LOGGING) {
-        const logEntry = `[${new Date().toISOString()}] API Response\n  URL: ${req.url}\n  Status: ${res.statusCode}\n  Body: ${responseBody}\n\n`;
+        const logEntry = `[${new Date().toISOString()}] API Response (${targetServer})\n  URL: ${req.url}\n  Status: ${res.statusCode}\n  Body: ${responseBody}\n\n`;
         console.log(logEntry);
         
         try {
@@ -69,17 +142,195 @@ const requestLogger = (req, res, next) => {
   next();
 };
 
+// Create router middleware that routes requests to the appropriate API server
+const createRouterMiddleware = () => {
+  return (req, res, next) => {
+    // Route bot management requests to the bot management server
+    if (shouldRouteToBotManagement(req.url)) {
+      console.log(`[Router] Routing to Bot Management Server: ${req.url}`);
+      
+      // Modify request to ensure it works with the bot management server
+      req.headers.host = `${BOT_MANAGEMENT_HOST}:${BOT_MANAGEMENT_PORT}`;
+      
+      // Call the bot management proxy
+      return botManagementProxy(req, res, next);
+    }
+    
+    // Route main API requests explicitly to the main API server
+    if (shouldRouteToMainApi(req.url)) {
+      console.log(`[Router] Explicitly routing to Main API Server: ${req.url}`);
+      req.headers.host = `${MAIN_API_HOST}:${MAIN_API_PORT}`;
+      return mainApiProxy(req, res, next);
+    }
+    
+    // Default to main API proxy for all other API requests
+    console.log(`[Router] Default routing to Main API Server: ${req.url}`);
+    req.headers.host = `${MAIN_API_HOST}:${MAIN_API_PORT}`;
+    return mainApiProxy(req, res, next);
+  };
+};
+
 module.exports = function(app) {
   // Add request logger middleware
   app.use(requestLogger);
   
-  // Health check middleware - verify API connection
+  // Add CORS headers middleware
+  app.use(addHeaders);
+  
+  // Health check middleware - verify both API connections
   app.use('/api/health-check', (req, res) => {
-    // Create a basic HTTP request to check if API is running
+    // Check both API servers and return status
+    checkApiHealth(MAIN_API_URL, 'main')
+      .then(mainStatus => {
+        return checkApiHealth(BOT_MANAGEMENT_URL, 'bot-management')
+          .then(botStatus => {
+            res.json({
+              status: 'connected',
+              main_api: mainStatus,
+              bot_management_api: botStatus
+            });
+          });
+      })
+      .catch(error => {
+        res.status(503).json({
+          status: 'disconnected',
+          message: 'Cannot connect to API servers',
+          error: error.message
+        });
+      });
+  });
+  
+  // Create proxy for main API
+  const mainApiProxy = createProxyMiddleware({
+    target: MAIN_API_URL,
+    changeOrigin: true,
+    pathRewrite: { '^/api': '/api' },
+    secure: false,
+    logLevel: 'debug',
+    onProxyReq: (proxyReq, req, res) => {
+      // Add any custom headers if needed
+      proxyReq.setHeader('X-Forwarded-Proto', 'http');
+      proxyReq.setHeader('Origin', 'http://localhost:3001');
+      
+      // Fix the path to remove duplicate /api if needed
+      const originalPath = proxyReq.path;
+      if (originalPath.startsWith('/api/api/')) {
+        const fixedPath = originalPath.replace('/api/api/', '/api/');
+        proxyReq.path = fixedPath;
+        console.log(`[Proxy] Fixed path from ${originalPath} to ${fixedPath}`);
+      }
+      
+      // Log the proxy request
+      logApiRequest(req, res, `🔄 Proxying API Request to Main API: ${proxyReq.path}`);
+    },
+    onProxyRes: (proxyRes, req, res) => {
+      // Add CORS headers to the response if they don't exist
+      if (!proxyRes.headers['access-control-allow-origin']) {
+        proxyRes.headers['access-control-allow-origin'] = req.headers.origin || 'http://localhost:3001';
+      }
+      if (!proxyRes.headers['access-control-allow-credentials']) {
+        proxyRes.headers['access-control-allow-credentials'] = 'true';
+      }
+      
+      // Log successful proxy response
+      logApiRequest(req, res, `✅ Main API Response (${proxyRes.statusCode})`);
+    },
+    onError: (err, req, res) => {
+      console.error('Main API Proxy Error:', err);
+      logApiRequest(req, res, `❌ Main API Error: ${err.message}`);
+      
+      handleProxyError(err, req, res, MAIN_API_URL, 'Main API');
+    }
+  });
+  
+  // Create proxy for bot management API
+  const botManagementProxy = createProxyMiddleware({
+    target: BOT_MANAGEMENT_URL,
+    changeOrigin: true,
+    pathRewrite: { '^/api': '/api' },
+    secure: false,
+    logLevel: 'debug',
+    onProxyReq: (proxyReq, req, res) => {
+      // Add any custom headers if needed
+      proxyReq.setHeader('X-Forwarded-Proto', 'http');
+      proxyReq.setHeader('Origin', 'http://localhost:3001');
+      
+      // Fix the path to remove duplicate /api if needed
+      const originalPath = proxyReq.path;
+      if (originalPath.startsWith('/api/api/')) {
+        const fixedPath = originalPath.replace('/api/api/', '/api/');
+        proxyReq.path = fixedPath;
+        console.log(`[Proxy] Fixed path from ${originalPath} to ${fixedPath}`);
+      }
+      
+      // Log the proxy request
+      logApiRequest(req, res, `🔄 Proxying API Request to Bot Management: ${proxyReq.path}`);
+    },
+    onProxyRes: (proxyRes, req, res) => {
+      // Add CORS headers to the response if they don't exist
+      if (!proxyRes.headers['access-control-allow-origin']) {
+        proxyRes.headers['access-control-allow-origin'] = req.headers.origin || 'http://localhost:3001';
+      }
+      if (!proxyRes.headers['access-control-allow-credentials']) {
+        proxyRes.headers['access-control-allow-credentials'] = 'true';
+      }
+      
+      // Log successful proxy response
+      logApiRequest(req, res, `✅ Bot Management API Response (${proxyRes.statusCode})`);
+    },
+    onError: (err, req, res) => {
+      console.error('Bot Management API Proxy Error:', err);
+      logApiRequest(req, res, `❌ Bot Management API Error: ${err.message}`);
+      
+      handleProxyError(err, req, res, BOT_MANAGEMENT_URL, 'Bot Management API');
+    }
+  });
+  
+  // Use the router middleware for all API routes
+  const routerMiddleware = createRouterMiddleware();
+  app.use('/api', routerMiddleware);
+};
+
+// Helper function to handle proxy errors
+function handleProxyError(err, req, res, apiUrl, serverName) {
+  // Send a more detailed error response
+  res.writeHead(502, {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': req.headers.origin || 'http://localhost:3001',
+    'Access-Control-Allow-Credentials': 'true'
+  });
+  
+  let errorMessage = `Could not connect to the ${serverName} server`;
+  let errorDetail = err.message;
+  
+  // More specific error messages based on the error
+  if (err.code === 'ECONNREFUSED') {
+    errorMessage = `${serverName} server is not running or refusing connections`;
+    errorDetail = `Connection refused to ${apiUrl}. Please ensure the ${serverName} server is running.`;
+  } else if (err.code === 'ETIMEDOUT') {
+    errorMessage = `Connection to ${serverName} server timed out`;
+  } else if (err.code === 'ENOTFOUND') {
+    errorMessage = `Could not resolve ${serverName} server hostname`;
+  }
+  
+  res.end(JSON.stringify({ 
+    success: false, 
+    status: 'error',
+    message: errorMessage,
+    error: errorDetail,
+    api_url: apiUrl
+  }));
+}
+
+// Helper function to check API health
+function checkApiHealth(apiUrl, serverType) {
+  return new Promise((resolve, reject) => {
     const http = require('http');
+    const urlParts = new URL(apiUrl);
+    
     const apiReq = http.request({
-      host: API_HOST,
-      port: API_PORT,
+      host: urlParts.hostname,
+      port: urlParts.port,
       path: '/api/health',
       method: 'GET',
       timeout: 2000
@@ -91,96 +342,44 @@ module.exports = function(app) {
       apiRes.on('end', () => {
         try {
           const response = JSON.parse(data);
-          res.json({
+          resolve({
             status: 'connected',
             api_status: response.status,
-            api_url: API_URL
+            api_url: apiUrl
           });
         } catch (e) {
-          res.status(500).json({
+          resolve({
             status: 'error',
             message: 'Invalid response from API',
-            error: e.message
+            error: e.message,
+            api_url: apiUrl
           });
         }
       });
     });
     
     apiReq.on('error', (e) => {
-      console.error('API Health Check Error:', e.message);
-      res.status(503).json({
+      console.error(`${serverType} API Health Check Error:`, e.message);
+      resolve({
         status: 'disconnected',
-        message: 'Cannot connect to API server',
+        message: `Cannot connect to ${serverType} API server`,
         error: e.message,
-        api_url: API_URL
+        api_url: apiUrl
       });
     });
     
     apiReq.on('timeout', () => {
       apiReq.abort();
-      res.status(504).json({
+      resolve({
         status: 'timeout',
-        message: 'API server connection timeout',
-        api_url: API_URL
+        message: `${serverType} API server connection timeout`,
+        api_url: apiUrl
       });
     });
     
     apiReq.end();
   });
-  
-  // Main API proxy configuration
-  const proxyOptions = {
-    target: API_URL,
-    changeOrigin: true,
-    pathRewrite: { '^/api': '/api' },
-    secure: false,
-    logLevel: 'debug',
-    onProxyReq: (proxyReq, req, res) => {
-      // Add any custom headers if needed
-      proxyReq.setHeader('X-Forwarded-Proto', 'http');
-      
-      // Log the proxy request
-      logApiRequest(req, res, '🔄 Proxying API Request');
-    },
-    onProxyRes: (proxyRes, req, res) => {
-      // Log successful proxy response
-      logApiRequest(req, res, `✅ API Response (${proxyRes.statusCode})`);
-    },
-    onError: (err, req, res) => {
-      console.error('Proxy Error:', err);
-      logApiRequest(req, res, `❌ API Error: ${err.message}`);
-      
-      // Send a more detailed error response
-      res.writeHead(502, {
-        'Content-Type': 'application/json',
-      });
-      
-      let errorMessage = 'Could not connect to the API server';
-      let errorDetail = err.message;
-      
-      // More specific error messages based on the error
-      if (err.code === 'ECONNREFUSED') {
-        errorMessage = 'API server is not running or refusing connections';
-        errorDetail = `Connection refused to ${API_URL}. Please ensure the API server is running.`;
-      } else if (err.code === 'ETIMEDOUT') {
-        errorMessage = 'Connection to API server timed out';
-      } else if (err.code === 'ENOTFOUND') {
-        errorMessage = 'Could not resolve API server hostname';
-      }
-      
-      res.end(JSON.stringify({ 
-        success: false, 
-        status: 'error',
-        message: errorMessage,
-        error: errorDetail,
-        api_url: API_URL
-      }));
-    }
-  };
-  
-  // Apply the proxy middleware to all /api routes
-  app.use('/api', createProxyMiddleware(proxyOptions));
-};
+}
 
 // Generate mock signal data for a symbol if needed for fallbacks
 function generateMockSignalData(symbol) {
