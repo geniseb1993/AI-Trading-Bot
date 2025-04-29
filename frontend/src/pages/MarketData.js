@@ -60,8 +60,11 @@ import TradingViewWidget from '../components/TradingViewWidget';
 
 // Define API base URL based on environment
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
 =======
+=======
+>>>>>>> Stashed changes
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
 // TradingView API URL with fallbacks to multiple potential ports
@@ -76,6 +79,9 @@ const safeToFixed = (value, digits = 2) => {
   if (value === null || value === undefined) return 'N/A';
   return typeof value === 'number' ? value.toFixed(digits) : String(value);
 };
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 const MarketData = () => {
@@ -139,6 +145,7 @@ const MarketData = () => {
     
     try {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
       const response = await axios.get(`${API_BASE_URL}/api/market-data/${symbol}?timeframe=${timeframe}&days=${days}`);
       if (response.data && response.data.success) {
         console.log('Received market data:', response.data);
@@ -150,6 +157,8 @@ const MarketData = () => {
           sector_performance: [],
           upcoming_events: []
 =======
+=======
+>>>>>>> Stashed changes
       const apiUrl = `${API_BASE_URL}/api/market-data/${symbol}?timeframe=${timeframe}&days=${days}`;
       console.log(`Fetching market data from: ${apiUrl}`);
       
@@ -249,6 +258,9 @@ const MarketData = () => {
           },
           sector_performance: overview.sector_performance || [],
           upcoming_events: overview.upcoming_events || []
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         });
         setIsRealData(response.data.isRealData === true);
@@ -285,6 +297,9 @@ const MarketData = () => {
       }
       
       setError(`Failed to fetch market data: ${errorMessage}`);
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
       setMarketData([]); // Clear any existing data
       

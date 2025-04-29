@@ -1894,6 +1894,9 @@ def stop_bot_endpoint(bot_type):
             'error': str(e)
         }), 500
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 # After all routes are registered at the end of file
 if __name__ == '__main__':
