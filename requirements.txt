@@ -47,3 +47,7 @@ peewee==3.17.9
 PyYAML==6.0.1
 
 pytest-cov==6.1.1
+
+# Deployment dependencies
+gunicorn>=21.2.0
+whitenoise>=6.6.0  # For serving static files
