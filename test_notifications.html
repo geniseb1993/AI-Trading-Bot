@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifications Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px 15px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .status {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Notifications Test Page</h1>
+    
+    <div class="card">
+        <h2>Desktop Notifications</h2>
+        <p>Test native browser notifications (no API required)</p>
+        <button id="testDesktopBtn">Test Desktop Notification</button>
+        <div id="desktopStatus" class="status"></div>
+        <div id="desktopPermission"></div>
+    </div>
+    
+    <div class="card">
+        <h2>Voice Notifications</h2>
+        <p>Test browser speech synthesis (no API required)</p>
+        <button id="testVoiceBtn">Test Voice Notification</button>
+        <input type="text" id="voiceText" value="This is a test of the voice notification system" style="width: 80%; margin-top: 10px;">
+        <div id="voiceStatus" class="status"></div>
+    </div>
+    
+    <div class="card">
+        <h2>API Status</h2>
+        <p>Check if the notification API server is running</p>
+        <button id="checkApiBtn">Check API Status</button>
+        <div id="apiStatus" class="status"></div>
+    </div>
+    
+    <div class="card">
+        <h2>Console Log</h2>
+        <pre id="consoleLog"></pre>
+    </div>
+
+    <script>
+        // Console log capturing
+        const consoleLog = document.getElementById('consoleLog');
+        const originalConsoleLog = console.log;
+        const originalConsoleError = console.error;
+        const originalConsoleWarn = console.warn;
+        
+        console.log = function() {
+            const args = Array.from(arguments);
+            originalConsoleLog.apply(console, args);
+            consoleLog.textContent += '✓ LOG: ' + args.join(' ') + '\n';
+            consoleLog.scrollTop = consoleLog.scrollHeight;
+        };
+        
+        console.error = function() {
+            const args = Array.from(arguments);
+            originalConsoleError.apply(console, args);
+            consoleLog.textContent += '✗ ERROR: ' + args.join(' ') + '\n';
+            consoleLog.scrollTop = consoleLog.scrollHeight;
+        };
+        
+        console.warn = function() {
+            const args = Array.from(arguments);
+            originalConsoleWarn.apply(console, args);
+            consoleLog.textContent += '⚠ WARN: ' + args.join(' ') + '\n';
+            consoleLog.scrollTop = consoleLog.scrollHeight;
+        };
+        
+        // Update desktop notification permission status
+        function updatePermissionStatus() {
+            const permElement = document.getElementById('desktopPermission');
+            
+            if (!("Notification" in window)) {
+                permElement.textContent = "Status: Notifications not supported in this browser";
+                permElement.className = "error";
+                return;
+            }
+            
+            permElement.textContent = "Permission status: " + Notification.permission;
+            if (Notification.permission === "granted") {
+                permElement.className = "success";
+            } else if (Notification.permission === "denied") {
+                permElement.className = "error";
+            } else {
+                permElement.className = "";
+            }
+        }
+        
+        // Desktop notification test
+        document.getElementById('testDesktopBtn').addEventListener('click', async () => {
+            const statusElement = document.getElementById('desktopStatus');
+            statusElement.textContent = "Testing...";
+            
+            try {
+                if (!("Notification" in window)) {
+                    statusElement.textContent = "Error: This browser does not support desktop notifications";
+                    statusElement.className = "error";
+                    console.error("This browser does not support desktop notifications");
+                    return;
+                }
+                
+                if (Notification.permission === "granted") {
+                    new Notification("Test Notification", {
+                        body: "This is a test notification from the test page",
+                        icon: '/favicon.ico'
+                    });
+                    statusElement.textContent = "Success: Notification sent!";
+                    statusElement.className = "success";
+                    console.log("Desktop notification sent successfully");
+                } 
+                else if (Notification.permission !== "denied") {
+                    console.log("Requesting notification permission...");
+                    const permission = await Notification.requestPermission();
+                    
+                    if (permission === "granted") {
+                        new Notification("Test Notification", {
+                            body: "This is a test notification from the test page",
+                            icon: '/favicon.ico'
+                        });
+                        statusElement.textContent = "Success: Permission granted and notification sent!";
+                        statusElement.className = "success";
+                        console.log("Permission granted, desktop notification sent successfully");
+                    } else {
+                        statusElement.textContent = "Error: Permission denied";
+                        statusElement.className = "error";
+                        console.error("Notification permission denied");
+                    }
+                } 
+                else {
+                    statusElement.textContent = "Error: Permission denied previously. Check browser settings.";
+                    statusElement.className = "error";
+                    console.error("Notification permission already denied");
+                }
+                
+                updatePermissionStatus();
+            } catch (error) {
+                statusElement.textContent = "Error: " + error.message;
+                statusElement.className = "error";
+                console.error("Desktop notification error:", error);
+            }
+        });
+        
+        // Voice notification test
+        document.getElementById('testVoiceBtn').addEventListener('click', () => {
+            const statusElement = document.getElementById('voiceStatus');
+            const messageText = document.getElementById('voiceText').value || "This is a test of the voice notification system";
+            
+            statusElement.textContent = "Testing...";
+            
+            try {
+                if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance(messageText);
+                    utterance.rate = 1.0;
+                    utterance.volume = 0.8;
+                    
+                    // Log when speech starts and ends
+                    utterance.onstart = () => {
+                        console.log("Speech started");
+                    };
+                    
+                    utterance.onend = () => {
+                        console.log("Speech ended");
+                    };
+                    
+                    utterance.onerror = (event) => {
+                        console.error("Speech error:", event.error);
+                        statusElement.textContent = "Error: " + event.error;
+                        statusElement.className = "error";
+                    };
+                    
+                    window.speechSynthesis.speak(utterance);
+                    statusElement.textContent = "Success: Voice notification playing";
+                    statusElement.className = "success";
+                    console.log("Voice notification sent using browser speech synthesis");
+                } else {
+                    statusElement.textContent = "Error: Speech synthesis not supported in this browser";
+                    statusElement.className = "error";
+                    console.error("Speech synthesis not supported in this browser");
+                }
+            } catch (error) {
+                statusElement.textContent = "Error: " + error.message;
+                statusElement.className = "error";
+                console.error("Voice notification error:", error);
+            }
+        });
+        
+        // Check API status
+        document.getElementById('checkApiBtn').addEventListener('click', async () => {
+            const statusElement = document.getElementById('apiStatus');
+            statusElement.textContent = "Checking API...";
+            
+            try {
+                const response = await fetch('http://localhost:5000/api/test');
+                if (response.ok) {
+                    const data = await response.json();
+                    statusElement.textContent = "Success: API is running! Response: " + JSON.stringify(data);
+                    statusElement.className = "success";
+                    console.log("API check successful:", data);
+                } else {
+                    statusElement.textContent = "Error: API returned status " + response.status;
+                    statusElement.className = "error";
+                    console.error("API error:", response.statusText);
+                }
+            } catch (error) {
+                statusElement.textContent = "Error: API is not running or cannot be reached";
+                statusElement.className = "error";
+                console.error("API connection error:", error);
+            }
+        });
+        
+        // Initialize
+        updatePermissionStatus();
+        console.log("Test page loaded and ready");
+    </script>
+</body>
+</html> 
