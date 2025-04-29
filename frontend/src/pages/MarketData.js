@@ -63,9 +63,9 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
 // TradingView API URL with fallbacks to multiple potential ports
 const TRADINGVIEW_API_URLS = [
-  'http://localhost:5002',  // Primary port for TradingView server
-  'http://localhost:5003',  // Alternative port sometimes used
-  `${API_BASE_URL}`         // Fallback to main API if needed
+  'http://localhost:5003',  // Primary port for TradingView server
+  `${API_BASE_URL}`,        // Fallback to main API if needed
+  'http://localhost:5002'   // Bot Management Server - try last as it doesn't have all endpoints
 ];
 
 // Utility function to safely format numbers with toFixed
@@ -133,119 +133,177 @@ const MarketData = () => {
     setLoading(true);
     setError(null);
     
-    // Ensure we're using port 5001, never 5000
-    const apiUrl = `http://localhost:5001/api/market-data/${symbol}?timeframe=${timeframe}&days=${days}`;
-    console.log(`Fetching market data from: ${apiUrl}`);
+    // Define multiple potential API endpoints to try
+    const apiEndpoints = [
+      `http://localhost:5001/api/market-data/${symbol}?timeframe=${timeframe}&days=${days}`,
+      `${API_BASE_URL}/api/market-data/${symbol}?timeframe=${timeframe}&days=${days}`,
+      `http://localhost:5003/api/market-data/${symbol}?timeframe=${timeframe}&days=${days}`
+    ];
     
-    try {
-      const response = await axios.get(apiUrl, {
-        timeout: 10000,  // 10 second timeout
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
+    let marketDataResponse = null;
+    let lastError = null;
+    
+    // Try each endpoint until one works
+    for (const apiUrl of apiEndpoints) {
+      console.log(`Trying to fetch market data from: ${apiUrl}`);
+      
+      try {
+        const response = await axios.get(apiUrl, {
+          timeout: 5000,  // 5 second timeout for faster fallback
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.data) {
+          console.log(`Market data response from ${apiUrl}:`, response.data);
+          marketDataResponse = response.data;
+          break;  // Found working endpoint, exit loop
         }
+      } catch (error) {
+        console.log(`Failed to fetch from ${apiUrl}: ${error.message}`);
+        lastError = error;
+        // Continue to next endpoint
+      }
+    }
+    
+    if (marketDataResponse) {
+      // Process successful response
+      let bars = marketDataResponse.bars || marketDataResponse.data || [];
+      console.log('Bars data:', bars);
+      
+      // Ensure bars is an array
+      if (!Array.isArray(bars)) {
+        bars = [];
+      }
+      
+      // Process and clean the data for better display in the table
+      const processedBars = bars.map(bar => {
+        // Standardize time/date fields
+        const time = bar.time || bar.datetime || bar.date || new Date().toISOString();
+        
+        // Ensure numeric values are actual numbers with fallbacks
+        return {
+          ...bar,
+          time: time,
+          open: typeof bar.open === 'number' ? bar.open : (parseFloat(bar.open) || 0),
+          high: typeof bar.high === 'number' ? bar.high : (parseFloat(bar.high) || 0),
+          low: typeof bar.low === 'number' ? bar.low : (parseFloat(bar.low) || 0),
+          close: typeof bar.close === 'number' ? bar.close : (parseFloat(bar.close) || 0),
+          volume: typeof bar.volume === 'number' ? bar.volume : (parseInt(bar.volume) || 0)
+        };
       });
       
-      console.log('Market data response:', response.data);
+      setMarketData(processedBars);
       
-      if (response.data) {
-        // Success - even if response doesn't have a success field
-        let bars = response.data.bars || response.data.data || [];
-        console.log('Bars data:', bars);
+      // Extract market overview if available
+      const overview = marketDataResponse.market_overview || {};
+      console.log('Market overview:', overview);
+      
+      // Create default overview if not present
+      const defaultOverview = {
+        stats: {
+          '52_week_high': 0,
+          '52_week_low': 0,
+          'avg_volume': 0,
+          'volatility': 0,
+          'performance_ytd': 0,
+          'performance_1m': 0,
+          'performance_3m': 0,
+          'performance_1y': 0
+        },
+        technical_indicators: {
+          'rsi': 0,
+          'macd': 0,
+          'bollinger_bands': {
+            'upper': 0,
+            'middle': 0,
+            'lower': 0
+          },
+          'moving_averages': {
+            'sma_20': 0,
+            'sma_50': 0,
+            'sma_200': 0
+          }
+        },
+        market_sentiment: {},
+        sector_performance: [],
+        upcoming_events: []
+      };
+      
+      // Safely merge available data with defaults, handling nested objects properly
+      setMarketOverview({
+        ...defaultOverview,
+        ...overview,
+        stats: {
+          ...defaultOverview.stats,
+          ...(overview.stats || {})
+        },
+        technical_indicators: {
+          ...defaultOverview.technical_indicators,
+          ...(overview.technical_indicators || {}),
+          bollinger_bands: {
+            ...defaultOverview.technical_indicators.bollinger_bands,
+            ...(overview.technical_indicators?.bollinger_bands || {})
+          },
+          moving_averages: {
+            ...defaultOverview.technical_indicators.moving_averages,
+            ...(overview.technical_indicators?.moving_averages || {})
+          }
+        },
+        sector_performance: overview.sector_performance || [],
+        upcoming_events: overview.upcoming_events || []
+      });
+      setIsRealData(marketDataResponse.isRealData === true);
+      setDataSource(marketDataResponse.source || 'unknown');
+    } else {
+      console.error('All market data endpoints failed:', lastError);
+      
+      // Generate mock data as fallback
+      console.log('Using mock market data as fallback');
+      
+      // Generate some basic mock data
+      const mockData = [];
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+      
+      // Start price for the mock data
+      let price = 100 + Math.random() * 200;
+      
+      // Generate points for each day
+      for (let i = 0; i < days; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
         
-        // Ensure bars is an array
-        if (!Array.isArray(bars)) {
-          bars = [];
-        }
+        // Random price change (-2% to +2%)
+        const change = (Math.random() * 4 - 2) / 100;
+        price = price * (1 + change);
         
-        // Process and clean the data for better display in the table
-        const processedBars = bars.map(bar => {
-          // Standardize time/date fields
-          const time = bar.time || bar.datetime || bar.date || new Date().toISOString();
-          
-          // Ensure numeric values are actual numbers with fallbacks
-          return {
-            ...bar,
-            time: time,
-            open: typeof bar.open === 'number' ? bar.open : (parseFloat(bar.open) || 0),
-            high: typeof bar.high === 'number' ? bar.high : (parseFloat(bar.high) || 0),
-            low: typeof bar.low === 'number' ? bar.low : (parseFloat(bar.low) || 0),
-            close: typeof bar.close === 'number' ? bar.close : (parseFloat(bar.close) || 0),
-            volume: typeof bar.volume === 'number' ? bar.volume : (parseInt(bar.volume) || 0)
-          };
+        // Add a data point
+        mockData.push({
+          time: date.toISOString(),
+          open: price * (1 - Math.random() * 0.01),
+          high: price * (1 + Math.random() * 0.01),
+          low: price * (1 - Math.random() * 0.01),
+          close: price,
+          volume: Math.floor(Math.random() * 1000000)
         });
-        
-        setMarketData(processedBars);
-        
-        // Extract market overview if available
-        const overview = response.data.market_overview || {};
-        console.log('Market overview:', overview);
-        
-        // Create default overview if not present
-        const defaultOverview = {
-          stats: {
-            '52_week_high': 0,
-            '52_week_low': 0,
-            'avg_volume': 0,
-            'volatility': 0,
-            'performance_ytd': 0,
-            'performance_1m': 0,
-            'performance_3m': 0,
-            'performance_1y': 0
-          },
-          technical_indicators: {
-            'rsi': 0,
-            'macd': 0,
-            'bollinger_bands': {
-              'upper': 0,
-              'middle': 0,
-              'lower': 0
-            },
-            'moving_averages': {
-              'sma_20': 0,
-              'sma_50': 0,
-              'sma_200': 0
-            }
-          },
-          market_sentiment: {},
-          sector_performance: [],
-          upcoming_events: []
-        };
-        
-        // Safely merge available data with defaults, handling nested objects properly
-        setMarketOverview({
-          ...defaultOverview,
-          ...overview,
-          stats: {
-            ...defaultOverview.stats,
-            ...(overview.stats || {})
-          },
-          technical_indicators: {
-            ...defaultOverview.technical_indicators,
-            ...(overview.technical_indicators || {}),
-            bollinger_bands: {
-              ...defaultOverview.technical_indicators.bollinger_bands,
-              ...(overview.technical_indicators?.bollinger_bands || {})
-            },
-            moving_averages: {
-              ...defaultOverview.technical_indicators.moving_averages,
-              ...(overview.technical_indicators?.moving_averages || {})
-            }
-          },
-          sector_performance: overview.sector_performance || [],
-          upcoming_events: overview.upcoming_events || []
-        });
-        setIsRealData(response.data.isRealData === true);
-        setDataSource(response.data.source || 'unknown');
-      } else {
-        throw new Error('Invalid response format');
       }
-    } catch (error) {
-      console.error('Failed to fetch market data:', error);
-      setError(`Failed to load market data: ${error.message}`);
-    } finally {
-      setLoading(false);
+      
+      setMarketData(mockData);
+      setIsRealData(false);
+      setDataSource('mock');
+      
+      // Also fetch market analysis to get some overview data
+      fetchMarketAnalysis();
+      
+      // Still set error for user feedback
+      setError(`Failed to load market data: ${lastError?.message || 'Unknown error'}`);
     }
+    
+    setLoading(false);
   };
 
   const handleSymbolChange = (event) => {
@@ -310,8 +368,10 @@ const MarketData = () => {
           
           if (response.data && response.data.success) {
             analysisData = response.data.analysis || {};
-            console.log('Market analysis response from ' + baseUrl + ':', analysisData);
+            console.log(`Market analysis GET response from ${baseUrl}:`, analysisData);
             break; // Exit the loop once we get data
+          } else {
+            console.log(`Response from ${baseUrl} did not contain expected data format`);
           }
         } catch (error) {
           // If we get a 405 METHOD NOT ALLOWED error, try POST instead
@@ -328,14 +388,20 @@ const MarketData = () => {
               
               if (postResponse.data && postResponse.data.success) {
                 analysisData = postResponse.data.analysis || {};
-                console.log('Market analysis POST response from ' + baseUrl + ':', analysisData);
+                console.log(`Market analysis POST response from ${baseUrl}:`, analysisData);
                 break; // Exit the loop once we get data
+              } else {
+                console.log(`POST to ${baseUrl} succeeded but did not contain expected data format`);
               }
             } catch (postError) {
-              console.log(`POST request to ${baseUrl} failed:`, postError.message);
+              console.log(`POST request to ${baseUrl} failed: ${postError.message}`);
             }
+          } else if (error.code === 'ECONNREFUSED') {
+            console.log(`Connection refused for ${baseUrl} - server might be down`);
+          } else if (error.response) {
+            console.log(`API at ${baseUrl} returned error status: ${error.response.status}`);
           } else {
-            console.log(`API at ${baseUrl} not available:`, error.message);
+            console.log(`API at ${baseUrl} request failed: ${error.message}`);
           }
           apiError = error;
           // Continue to next URL
@@ -344,7 +410,7 @@ const MarketData = () => {
       
       // If we didn't get data from any API, use mock data
       if (!analysisData) {
-        console.log('All API attempts failed, using mock data');
+        console.log('All API attempts failed, using mock data instead');
         analysisData = generateMockMarketAnalysis();
       }
       

@@ -40,6 +40,209 @@ def init_services(app_config):
     
     logger.info("Enhanced institutional flow services initialized")
 
+@bp.route('/get-data', methods=['POST'])
+def get_filtered_flow_data():
+    """
+    Get filtered institutional flow data based on request parameters
+    
+    Expected JSON:
+    {
+        "type": "options-flow" or "dark-pool" or "13f" or "insider",  # Required
+        "timeframe": "today", "yesterday", "this_week", etc.,         # Optional, default "today"
+        "sector": "all", "technology", "healthcare", etc.             # Optional, default "all"
+    }
+    
+    Returns:
+        JSON with filtered flow data
+    """
+    try:
+        # Get request parameters
+        data = request.get_json() or {}
+        
+        # Validate required fields
+        if 'type' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Missing required field: type'
+            }), 400
+            
+        flow_type = data.get('type', '').lower()
+        timeframe = data.get('timeframe', 'today').lower()
+        sector = data.get('sector', 'all').lower()
+        
+        # Map timeframe to days_back
+        days_map = {
+            'today': 1,
+            'yesterday': 2,
+            'this_week': 7,
+            'last_week': 14,
+            'this_month': 30,
+            'last_month': 60
+        }
+        days_back = days_map.get(timeframe, 7)  # Default to 7 days
+        
+        logger.info(f"Filtered flow data requested: type={flow_type}, timeframe={timeframe}, sector={sector}")
+        
+        # Generate appropriate mock data based on flow type
+        result_data = []
+        
+        if flow_type == 'options-flow' or flow_type == 'options':
+            # Get mock options flow data - OPTIMIZED: using fewer days back and limiting items
+            mock_data = generate_mock_flow_data(days_back=min(days_back, 3), item_multiplier=0.4)
+            options_data = mock_data.get('options_flow', [])
+            
+            # Filter by sector if needed
+            if sector != 'all':
+                # This would normally filter by sector
+                # For mock data, we'll just take a subset
+                options_data = options_data[:len(options_data)//2]
+                
+            result_data = options_data
+            
+        elif flow_type == 'dark-pool':
+            # Get mock dark pool data - OPTIMIZED: using fewer days back and limiting items
+            mock_data = generate_mock_flow_data(days_back=min(days_back, 3), item_multiplier=0.4)
+            dark_pool_data = mock_data.get('dark_pool', [])
+            
+            # Filter by sector if needed
+            if sector != 'all':
+                # This would normally filter by sector
+                dark_pool_data = dark_pool_data[:len(dark_pool_data)//2]
+                
+            result_data = dark_pool_data
+            
+        elif flow_type == '13f':
+            # Generate mock 13F filings data - OPTIMIZED: limiting items
+            result_data = generate_mock_13f_data(min(days_back, 3))
+            
+        elif flow_type == 'insider':
+            # Generate mock insider trading data - OPTIMIZED: limiting items
+            result_data = generate_mock_insider_data(min(days_back, 3), sector)
+        
+        return jsonify({
+            'success': True,
+            'timestamp': datetime.now().isoformat(),
+            'type': flow_type,
+            'timeframe': timeframe,
+            'days_back': days_back,
+            'sector': sector,
+            'isRealData': False,  # Always mock data for now
+            'source': 'mock',
+            'data': result_data
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting filtered flow data: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# Helper function to generate mock 13F data
+def generate_mock_13f_data(days_back):
+    """Generate mock 13F filings data"""
+    institutions = [
+        "BlackRock", "Vanguard", "Fidelity", "State Street", "JP Morgan", 
+        "Renaissance Technologies", "Millennium Management", "Two Sigma", 
+        "AQR Capital", "Point72", "Citadel", "Bridgewater Associates"
+    ]
+    
+    popular_stocks = [
+        "AAPL", "MSFT", "NVDA", "TSLA", "AMZN", "GOOGL", "META", "AMD", 
+        "INTC", "SPY", "QQQ", "DIS", "JPM", "BAC", "WMT", "JNJ"
+    ]
+    
+    result = []
+    now = datetime.now()
+    
+    # OPTIMIZED: reduced number of items
+    for _ in range(min(days_back * 2, 15)):  # Reduced from days_back * 4, max 40 to days_back * 2, max 15
+        institution = random.choice(institutions)
+        symbol = random.choice(popular_stocks)
+        
+        # Random date within days_back
+        filing_date = now - timedelta(days=random.randint(1, days_back))
+        
+        # Position details
+        shares = random.randint(10000, 10000000)
+        value = shares * random.uniform(10, 500)  # Market value in dollars
+        previous_shares = int(shares * random.uniform(0.5, 1.5))
+        change = shares - previous_shares
+        change_percent = (change / previous_shares) * 100 if previous_shares > 0 else 100
+        
+        result.append({
+            'institution': institution,
+            'symbol': symbol,
+            'shares': shares,
+            'value': round(value, 2),
+            'previous_shares': previous_shares,
+            'change': change,
+            'change_percent': round(change_percent, 2),
+            'filing_date': filing_date.strftime("%Y-%m-%d"),
+            'quarter_end': (filing_date - timedelta(days=45)).strftime("%Y-%m-%d")
+        })
+    
+    return result
+
+# Helper function to generate mock insider trading data
+def generate_mock_insider_data(days_back, sector="all"):
+    """Generate mock insider trading data"""
+    insiders = [
+        {"name": "John Smith", "title": "CEO", "company": "AAPL", "sector": "technology"},
+        {"name": "Jane Johnson", "title": "CFO", "company": "MSFT", "sector": "technology"},
+        {"name": "Robert Williams", "title": "Director", "company": "TSLA", "sector": "consumer"},
+        {"name": "Sarah Brown", "title": "CTO", "company": "AMZN", "sector": "consumer"},
+        {"name": "Michael Davis", "title": "CEO", "company": "JPM", "sector": "financials"},
+        {"name": "Emily Wilson", "title": "Director", "company": "PFE", "sector": "healthcare"},
+        {"name": "David Miller", "title": "CFO", "company": "XOM", "sector": "energy"},
+        {"name": "Jennifer Garcia", "title": "CEO", "company": "CVS", "sector": "healthcare"},
+        {"name": "Richard Martinez", "title": "CTO", "company": "GOOGL", "sector": "technology"},
+        {"name": "Susan Anderson", "title": "Director", "company": "WMT", "sector": "consumer"},
+        {"name": "Thomas Taylor", "title": "CFO", "company": "NVDA", "sector": "technology"},
+        {"name": "Lisa Rodriguez", "title": "CEO", "company": "META", "sector": "communications"}
+    ]
+    
+    result = []
+    now = datetime.now()
+    
+    # Filter insiders by sector if needed
+    filtered_insiders = insiders
+    if sector != "all":
+        filtered_insiders = [i for i in insiders if i["sector"] == sector]
+        
+    # If filter resulted in empty list, use all insiders
+    if not filtered_insiders:
+        filtered_insiders = insiders
+    
+    # OPTIMIZED: reduced number of items
+    for _ in range(min(days_back * 2, 12)):  # Reduced from days_back * 3, max 30 to days_back * 2, max 12
+        insider = random.choice(filtered_insiders)
+        
+        # Random date within days_back
+        trade_date = now - timedelta(days=random.randint(1, days_back))
+        
+        # Transaction details
+        transaction_type = "BUY" if random.random() > 0.4 else "SELL"  # Slightly more buys than sells
+        shares = random.randint(1000, 100000)
+        price = random.uniform(10, 500)
+        value = shares * price
+        
+        result.append({
+            'name': insider["name"],
+            'title': insider["title"],
+            'company': insider["company"],
+            'symbol': insider["company"],  # Same as company for mock data
+            'transaction_type': transaction_type,
+            'shares': shares,
+            'price': round(price, 2),
+            'value': round(value, 2),
+            'trade_date': trade_date.strftime("%Y-%m-%d"),
+            'filing_date': (trade_date + timedelta(days=random.randint(1, 5))).strftime("%Y-%m-%d"),
+            'sector': insider["sector"]
+        })
+    
+    return result
+
 @bp.route('/enhanced-analysis', methods=['POST'])
 def enhanced_flow_analysis():
     """
@@ -86,8 +289,11 @@ def enhanced_flow_analysis():
             'smart_money_moves': []
         }
         
+        # OPTIMIZED: limit days_back for faster response
+        limited_days_back = min(days_back, 7)
+        
         # Get flow data from API/service
-        flow_data = get_flow_data(symbols, days_back)
+        flow_data = get_flow_data(symbols, limited_days_back)
         
         # Check if we got real or mock data
         result['is_real_data'] = flow_data.get('is_real_data', False)
@@ -96,7 +302,7 @@ def enhanced_flow_analysis():
         # Get market data for each symbol
         market_data = {}
         for symbol in symbols:
-            market_data[symbol] = get_market_data(symbol, days_back)
+            market_data[symbol] = get_market_data(symbol, limited_days_back)
         
         # Analyze each symbol
         for symbol in symbols:
@@ -160,8 +366,11 @@ def get_flow_data_endpoint():
         
         logger.info(f"Raw flow data requested for {len(symbols)} symbols, {days} days back, type={data_type}")
         
+        # OPTIMIZED: limit days for faster response
+        limited_days = min(days, 5)
+        
         # Get flow data
-        flow_data = get_flow_data(symbols, days)
+        flow_data = get_flow_data(symbols, limited_days)
         
         # Filter by type if specified
         if data_type != 'all':
@@ -210,8 +419,11 @@ def get_smart_money_moves_endpoint():
         
         logger.info(f"Smart money moves requested, {days} days back, min_confidence={min_confidence}")
         
+        # OPTIMIZED: limit days for faster response
+        limited_days = min(days, 5)
+        
         # Get flow data (all symbols)
-        flow_data = get_flow_data([], days)
+        flow_data = get_flow_data([], limited_days)
         
         # Detect smart money moves
         smart_money_moves = []
@@ -294,13 +506,14 @@ def get_market_data(symbol, days_back=30):
     mock_data = generate_mock_market_data(symbol, days_back)
     return mock_data
 
-def generate_mock_flow_data(symbols=None, days_back=7):
+def generate_mock_flow_data(symbols=None, days_back=7, item_multiplier=1.0):
     """
     Generate mock institutional flow data for development/testing
     
     Args:
         symbols: List of symbols or None for all available
         days_back: Number of days to generate data for
+        item_multiplier: Multiplier to control number of items generated (1.0 = normal, <1.0 = fewer)
         
     Returns:
         Dict: Mock flow data
@@ -320,7 +533,7 @@ def generate_mock_flow_data(symbols=None, days_back=7):
     now = datetime.now()
     timestamps = []
     for i in range(days_back):
-        for _ in range(random.randint(1, 5)):  # 1-5 events per day
+        for _ in range(random.randint(1, 3)):  # OPTIMIZED: 1-3 events per day (was 1-5)
             hours_back = i * 24 + random.randint(0, 23)
             timestamps.append(now - timedelta(hours=hours_back))
     
@@ -337,8 +550,13 @@ def generate_mock_flow_data(symbols=None, days_back=7):
         "Point72", "Millennium", "Bridgewater"
     ]
     
+    # OPTIMIZED: Calculate number of items based on multiplier and symbols
+    options_count = max(5, int(len(symbols) * 3 * item_multiplier))  # Reduced from 5 per symbol to 3
+    dark_pool_count = max(4, int(len(symbols) * 2 * item_multiplier))  # Reduced from 4 per symbol to 2
+    block_trades_count = max(3, int(len(symbols) * 2 * item_multiplier))  # Reduced from 3 per symbol to 2
+    
     # Generate options flow
-    for _ in range(len(symbols) * 5):  # ~5 options events per symbol
+    for _ in range(options_count):
         symbol = random.choice(symbols)
         timestamp = random.choice(timestamps)
         
@@ -367,7 +585,7 @@ def generate_mock_flow_data(symbols=None, days_back=7):
         })
     
     # Generate dark pool
-    for _ in range(len(symbols) * 4):  # ~4 dark pool events per symbol
+    for _ in range(dark_pool_count):
         symbol = random.choice(symbols)
         timestamp = random.choice(timestamps)
         
@@ -390,7 +608,7 @@ def generate_mock_flow_data(symbols=None, days_back=7):
         })
     
     # Generate block trades
-    for _ in range(len(symbols) * 3):  # ~3 block trades per symbol
+    for _ in range(block_trades_count):
         symbol = random.choice(symbols)
         timestamp = random.choice(timestamps)
         
@@ -436,7 +654,10 @@ def generate_mock_market_data(symbol, days_back=30):
     # Generate dates
     end_date = pd.Timestamp.now().normalize()
     start_date = end_date - pd.Timedelta(days=days_back)
-    dates = pd.date_range(start=start_date, end=end_date, freq='B')  # Business days
+    
+    # OPTIMIZED: Use fewer dates for faster processing
+    limited_days = min(days_back, 10)
+    dates = pd.date_range(start=end_date - pd.Timedelta(days=limited_days), end=end_date, freq='B')  # Business days
     
     # Initialize price
     price = base_price

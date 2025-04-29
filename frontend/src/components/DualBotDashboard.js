@@ -534,11 +534,14 @@ const DualBotDashboard = () => {
             
             {riskAssessment && (
               <Card sx={{ 
-                bgcolor: riskAssessment.approved ? alpha('#e6f4ea', 0.9) : alpha('#fce8e6', 0.9)
+                bgcolor: riskAssessment.approved ? alpha('#e6f4ea', 0.9) : alpha('#fce8e6', 0.9),
+                color: 'text.primary', 
+                border: '1px solid',
+                borderColor: riskAssessment.approved ? 'success.light' : 'error.light',
               }}>
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <Typography variant="h6" color={riskAssessment.approved ? "success.main" : "error.main"}>
+                    <Typography variant="h6" color={riskAssessment.approved ? "success.main" : "error.main"} sx={{ fontWeight: 'bold' }}>
                       Risk Assessment
                     </Typography>
                     <Chip 
@@ -566,7 +569,7 @@ const DualBotDashboard = () => {
                   
                   {riskAssessment.concerns && (
                     <Alert severity="warning" sx={{ mb: 2 }}>
-                      <Typography variant="body2" sx={{ color: 'text.primary' }}>{riskAssessment.concerns}</Typography>
+                      <Typography variant="body2" sx={{ color: 'warning.dark', fontWeight: 'medium' }}>{riskAssessment.concerns}</Typography>
                     </Alert>
                   )}
                   
@@ -575,15 +578,22 @@ const DualBotDashboard = () => {
                   </Typography>
                   
                   {/* Enhanced Risk Assessment Details */}
-                  <Paper elevation={0} sx={{ bgcolor: 'background.paper', p: 2, mt: 2 }}>
-                    <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 'bold' }}>
+                  <Paper elevation={1} sx={{ 
+                    bgcolor: 'background.paper', 
+                    p: 2, 
+                    mt: 2,
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                    border: '1px solid',
+                    borderColor: 'divider',
+                  }}>
+                    <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 'bold', color: 'text.primary' }}>
                       Detailed Risk Assessment
                     </Typography>
                     
                     <Grid container spacing={2}>
                       <Grid item xs={6}>
-                        <Typography variant="body2" color="text.secondary">Risk Category</Typography>
-                        <Typography variant="body1">
+                        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 'medium' }}>Risk Category</Typography>
+                        <Typography variant="body1" sx={{ color: 'text.primary', fontWeight: 'medium' }}>
                           {riskAssessment.risk_level || 
                             (riskAssessment.risk_score > 8 ? "HIGH" : 
                             riskAssessment.risk_score > 5 ? "MEDIUM" : "LOW")}
@@ -591,15 +601,15 @@ const DualBotDashboard = () => {
                       </Grid>
                       
                       <Grid item xs={6}>
-                        <Typography variant="body2" color="text.secondary">Confidence Level</Typography>
-                        <Typography variant="body1">
-                          {(riskAssessment.confidence * 100).toFixed(0)}%
+                        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 'medium' }}>Confidence Level</Typography>
+                        <Typography variant="body1" sx={{ color: 'text.primary', fontWeight: 'medium' }}>
+                          {riskAssessment.confidence ? `${(riskAssessment.confidence * 100).toFixed(0)}%` : 'NaN%'}
                         </Typography>
                       </Grid>
                       
                       <Grid item xs={12}>
-                        <Typography variant="body2" color="text.secondary">Key Market Indicators</Typography>
-                        <Typography variant="body1">
+                        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 'medium' }}>Key Market Indicators</Typography>
+                        <Typography variant="body1" sx={{ color: 'text.primary', fontWeight: 'medium' }}>
                           {riskAssessment.market_conditions} 
                           {riskAssessment.market_indicators && ` with ${riskAssessment.market_indicators}`}
                         </Typography>
@@ -608,7 +618,7 @@ const DualBotDashboard = () => {
                       {/* Risk Factors Section */}
                       {riskAssessment.risk_factors && (
                         <Grid item xs={12}>
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Risk Factors</Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontWeight: 'medium' }}>Risk Factors</Typography>
                           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                             {Object.entries(riskAssessment.risk_factors).map(([factor, value]) => (
                               <Chip 
@@ -620,7 +630,11 @@ const DualBotDashboard = () => {
                                     ? 'warning' 
                                     : 'default'
                                 }
-                                sx={{ textTransform: 'capitalize' }}
+                                sx={{ 
+                                  textTransform: 'capitalize',
+                                  color: 'text.primary',
+                                  fontWeight: 'medium',
+                                }}
                               />
                             ))}
                           </Box>
@@ -630,12 +644,12 @@ const DualBotDashboard = () => {
                       {/* Position Sizing */}
                       {riskAssessment.position_sizing && (
                         <Grid item xs={12}>
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Position Sizing</Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontWeight: 'medium' }}>Position Sizing</Typography>
                           <Box sx={{ display: 'flex', gap: 2 }}>
-                            <Typography variant="body1">
+                            <Typography variant="body1" sx={{ color: 'text.primary', fontWeight: 'medium' }}>
                               <strong>Recommended:</strong> {riskAssessment.position_sizing.recommended_size}
                             </Typography>
-                            <Typography variant="body1">
+                            <Typography variant="body1" sx={{ color: 'text.primary', fontWeight: 'medium' }}>
                               <strong>Max Risk:</strong> {riskAssessment.position_sizing.max_risk_percent}
                             </Typography>
                           </Box>
@@ -645,11 +659,11 @@ const DualBotDashboard = () => {
                       {/* Alternative Strategies */}
                       {riskAssessment.alternative_strategies && riskAssessment.alternative_strategies.length > 0 && (
                         <Grid item xs={12}>
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Alternative Strategies</Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontWeight: 'medium' }}>Alternative Strategies</Typography>
                           <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
                             {riskAssessment.alternative_strategies.map((strategy, index) => (
                               <li key={index}>
-                                <Typography variant="body2">{strategy}</Typography>
+                                <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 'medium' }}>{strategy}</Typography>
                               </li>
                             ))}
                           </ul>
@@ -657,8 +671,8 @@ const DualBotDashboard = () => {
                       )}
                       
                       <Grid item xs={12} sx={{ mt: 1 }}>
-                        <Typography variant="body2" color="text.secondary">Final Recommendation</Typography>
-                        <Typography variant="body1" fontWeight="medium" color={riskAssessment.approved ? "success.main" : "error.main"}>
+                        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 'medium' }}>Final Recommendation</Typography>
+                        <Typography variant="body1" fontWeight="bold" color={riskAssessment.approved ? "success.dark" : "error.dark"}>
                           {riskAssessment.approved ? 
                             "Proceed with trade as recommended" : 
                             "Avoid this trade or reduce position size significantly"}
