@@ -6,7 +6,7 @@
     "health": "ok",
     "error_count": 0,
     "active_positions": 0,
-    "last_active": "2025-04-29T12:57:09.102951"
+    "last_active": "2025-04-29T18:03:23.527706"
   },
   "rsi_bot": {
     "status": "inactive",
@@ -15,7 +15,7 @@
     "health": "ok",
     "error_count": 0,
     "active_positions": 0,
-    "last_active": "2025-04-29T12:57:09.102951"
+    "last_active": "2025-04-29T18:03:23.527706"
   },
   "dual_bot": {
     "status": "paused",
@@ -24,6 +24,6 @@
     "health": "ok",
     "error_count": 0,
     "active_positions": 0,
-    "last_active": "2025-04-29T12:57:09.102951"
+    "last_active": "2025-04-29T18:03:23.527706"
   }
 }

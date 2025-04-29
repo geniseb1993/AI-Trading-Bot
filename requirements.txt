@@ -44,7 +44,7 @@ psutil==5.9.8
 pydantic==2.11.3
 python-dateutil==2.9.0.post0
 peewee==3.17.9
-PyYAML==6.0.1
+PyYAML==6.0
 
 pytest-cov==6.1.1
 
