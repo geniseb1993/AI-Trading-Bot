@@ -7,7 +7,7 @@ numpy>=1.23.0
 
 # API clients
 openai>=1.0.0
-alpaca-trade-api>=3.0.0
+alpaca-trade-api==3.2.0
 IEXfinance>=0.5.0
 
 # Data handling
@@ -44,7 +44,7 @@ psutil==5.9.8
 pydantic==2.11.3
 python-dateutil==2.9.0.post0
 peewee==3.17.9
-PyYAML==6.0
+PyYAML==6.0.1
 
 pytest-cov==6.1.1
 
