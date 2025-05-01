@@ -53,7 +53,8 @@ def setup_static_files():
     logger.info(f"Created index.html at {index_path}")
     
     # Create CSS file
-    with open(css_dir / 'main.css', 'w') as f:
+    css_file_path = css_dir / 'main.css'
+    with open(css_file_path, 'w') as f:
         f.write("""
 /* Main CSS file for Vicki AI Trading Bot */
 body {
@@ -111,10 +112,11 @@ a:hover {
     text-decoration: underline;
 }
 """)
-    logger.info("Created main.css file")
+    logger.info(f"Created CSS file at {css_file_path}")
     
     # Create JS file
-    with open(js_dir / 'main.js', 'w') as f:
+    js_file_path = js_dir / 'main.js'
+    with open(js_file_path, 'w') as f:
         f.write("""
 // Main JavaScript file for Vicki AI Trading Bot
 console.log('Vicki AI Trading Bot interface loaded');
@@ -245,7 +247,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 1000);
 });
 """)
-    logger.info("Created main.js file")
+    logger.info(f"Created JS file at {js_file_path}")
     
     # Create a sample image in the images directory
     try:

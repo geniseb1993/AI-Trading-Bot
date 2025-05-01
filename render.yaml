@@ -6,10 +6,16 @@ services:
     buildCommand: >
       pip install -r requirements.txt &&
       mkdir -p static/css static/js static/images &&
-      python setup_static_files.py
+      ls -la &&
+      python setup_static_files.py &&
+      ls -la static/css static/js &&
+      cat index.html
     startCommand: >
       python ensure_directories.py &&
+      mkdir -p static/css static/js static/images &&
       python setup_static_files.py &&
+      ls -la static/css static/js &&
+      cat index.html &&
       gunicorn wsgi:app --workers=4 --threads=2 --timeout=120 --bind=0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
@@ -26,6 +32,8 @@ services:
       - key: USE_MOCK_ALPACA
         value: true
       - key: SERVE_FRONTEND
+        value: true
+      - key: PATH_DEBUG
         value: true
       # Add your environment variables from the dashboard
       - key: OPENAI_API_KEY

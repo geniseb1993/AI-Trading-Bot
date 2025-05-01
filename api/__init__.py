@@ -17,8 +17,17 @@ def create_app(test_config=None):
     # Check for required static files
     check_required_files()
     
-    # Create and configure the app
-    app = Flask(__name__, instance_relative_config=True)
+    # Get the project root directory
+    project_root = os.path.abspath(os.path.dirname(__file__) + '/..')
+    static_folder = os.path.join(project_root, 'static')
+    
+    # Create and configure the app - explicitly set the static folder
+    app = Flask(__name__, 
+                static_folder=static_folder,
+                static_url_path='/static')
+    
+    app.logger.setLevel(logging.INFO)
+    app.logger.info(f"Using static folder: {static_folder}")
     
     # Enable CORS with better configuration
     CORS(app, resources={
@@ -35,6 +44,23 @@ def create_app(test_config=None):
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
+    
+    # Register a before_request handler to check static files
+    @app.before_request
+    def check_files_before_request():
+        # Only run check for static file requests
+        if request.path.startswith('/static/'):
+            try:
+                # Import here to avoid circular imports
+                from check_static_files import check_static_files, emergency_create_static_files
+                
+                # Check static files first
+                if not check_static_files():
+                    # If normal check fails, try emergency creation
+                    app.logger.warning("Static file check failed, using emergency creation")
+                    emergency_create_static_files()
+            except Exception as e:
+                app.logger.error(f"Error checking static files: {str(e)}")
     
     # Add emergency function to directly write frontend files
     def create_frontend_files():
@@ -249,6 +275,58 @@ document.addEventListener('DOMContentLoaded', function() {
                 'traceback': str(logging.traceback.format_exc())
             }
 
+    # Add a static-specific diagnostic endpoint
+    @app.route('/api/static-diagnostic', methods=['GET'])
+    def static_file_diagnostic():
+        """Diagnostic endpoint specifically for static files"""
+        try:
+            project_root = os.path.abspath(os.path.dirname(__file__) + '/..')
+            
+            result = {
+                'project_root': project_root,
+                'cwd': os.getcwd(),
+                'static_files': {},
+                'static_folder': app.static_folder,
+                'static_url_path': app.static_url_path
+            }
+            
+            # Check specific files
+            static_files = [
+                'index.html',
+                os.path.join('static', 'css', 'main.css'),
+                os.path.join('static', 'js', 'main.js')
+            ]
+            
+            for file_path in static_files:
+                full_path = os.path.join(project_root, file_path)
+                exists = os.path.exists(full_path)
+                
+                result['static_files'][file_path] = {
+                    'exists': exists,
+                    'path': full_path,
+                    'size': os.path.getsize(full_path) if exists else 0,
+                    'url': f"/{file_path}" if file_path == 'index.html' else f"/{file_path}"
+                }
+                
+                # If file doesn't exist, try to create it
+                if not exists:
+                    try:
+                        from check_static_files import emergency_create_static_files
+                        emergency_create_static_files()
+                        # Update result after creation
+                        if os.path.exists(full_path):
+                            result['static_files'][file_path]['exists'] = True
+                            result['static_files'][file_path]['size'] = os.path.getsize(full_path)
+                            result['static_files'][file_path]['created'] = True
+                    except Exception as e:
+                        result['static_files'][file_path]['error'] = str(e)
+            
+            return result
+        except Exception as e:
+            return {
+                'error': str(e)
+            }
+
     # Add static file routes with better fallbacks
     @app.route('/data/dashboard/<path:filename>')
     def serve_dashboard_data(filename):
@@ -310,8 +388,9 @@ document.addEventListener('DOMContentLoaded', function() {
         # Serve static files directly from the static directory
         @app.route('/static/<path:path>')
         def serve_static(path):
-            app.logger.info(f"Serving static file: {path}")
-            return send_from_directory('static', path)
+            project_root = os.path.abspath(os.path.dirname(__file__) + '/..')
+            app.logger.info(f"Serving static file: {path} from {project_root}/static")
+            return send_from_directory(os.path.join(project_root, 'static'), path)
         
         # Serve specific static files at the root level
         @app.route('/manifest.json')
@@ -369,6 +448,29 @@ document.addEventListener('DOMContentLoaded', function() {
             else:
                 app.logger.error(f"Index file not found at: {index_path}")
                 return "Application Error: Index file not found. Please check server logs.", 500
+
+        # Add explicit routes for main.css and main.js
+        @app.route('/static/css/main.css')
+        def serve_main_css():
+            project_root = os.path.abspath(os.path.dirname(__file__) + '/..')
+            css_path = os.path.join(project_root, 'static', 'css', 'main.css')
+            app.logger.info(f"Serving main.css from {css_path}")
+            if os.path.exists(css_path):
+                return send_file(css_path, mimetype='text/css')
+            else:
+                app.logger.error(f"main.css not found at {css_path}")
+                return "/* CSS file not found */", 404, {'Content-Type': 'text/css'}
+            
+        @app.route('/static/js/main.js')
+        def serve_main_js():
+            project_root = os.path.abspath(os.path.dirname(__file__) + '/..')
+            js_path = os.path.join(project_root, 'static', 'js', 'main.js')
+            app.logger.info(f"Serving main.js from {js_path}")
+            if os.path.exists(js_path):
+                return send_file(js_path, mimetype='application/javascript')
+            else:
+                app.logger.error(f"main.js not found at {js_path}")
+                return "// JavaScript file not found", 404, {'Content-Type': 'application/javascript'}
     else:
         # Root route - serve a simple dashboard with links to APIs (only if not serving the frontend)
         @app.route('/')
