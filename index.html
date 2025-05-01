@@ -25,11 +25,167 @@
             display: flex;
             flex-direction: column;
         }
+        .app-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            text-align: center;
+        }
+        .debug-info {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.8);
+            color: lime;
+            font-family: monospace;
+            padding: 10px;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+        }
     </style>
+    <script>
+        // Debug console output to page for troubleshooting
+        console.originalLog = console.log;
+        console.originalError = console.error;
+        console.originalWarn = console.warn;
+        
+        let debugEnabled = false;
+        
+        function appendToDebug(type, ...args) {
+            if (!debugEnabled) return;
+            
+            try {
+                const debugInfo = document.querySelector('.debug-info');
+                if (debugInfo) {
+                    const message = args.map(arg => {
+                        if (typeof arg === 'object') {
+                            try {
+                                return JSON.stringify(arg);
+                            } catch (e) {
+                                return String(arg);
+                            }
+                        }
+                        return String(arg);
+                    }).join(' ');
+                    
+                    const entry = document.createElement('div');
+                    entry.textContent = `[${type}] ${message}`;
+                    entry.style.color = type === 'error' ? 'red' : type === 'warn' ? 'yellow' : 'lime';
+                    debugInfo.appendChild(entry);
+                    debugInfo.scrollTop = debugInfo.scrollHeight;
+                }
+            } catch (e) {
+                // Silent fail for debug code
+            }
+        }
+        
+        console.log = function(...args) {
+            console.originalLog.apply(console, args);
+            appendToDebug('info', ...args);
+        };
+        
+        console.error = function(...args) {
+            console.originalError.apply(console, args);
+            appendToDebug('error', ...args);
+        };
+        
+        console.warn = function(...args) {
+            console.originalWarn.apply(console, args);
+            appendToDebug('warn', ...args);
+        };
+        
+        // Toggle debug info with Ctrl+Shift+D
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+                debugEnabled = !debugEnabled;
+                const debugInfo = document.querySelector('.debug-info');
+                if (debugInfo) {
+                    debugInfo.style.display = debugEnabled ? 'block' : 'none';
+                }
+            }
+        });
+        
+        window.addEventListener('load', function() {
+            console.log('Window loaded successfully');
+        });
+        
+        window.addEventListener('error', function(e) {
+            console.error('Global error:', e.message, 'at', e.filename, 'line', e.lineno);
+        });
+    </script>
 </head>
 <body>
-    <div id="root"></div>
-    <!-- Use the dashboard UI script -->
-    <script src="/static/js/main.js"></script>
+    <div id="root">
+        <div class="app-loading">
+            <h2 style="color: #ff00ff;">VICKI AI Trading Bot</h2>
+            <p>Loading application...</p>
+        </div>
+    </div>
+    <div class="debug-info"></div>
+    
+    <!-- Fallback script if main.js doesn't load or throws errors -->
+    <script>
+        window.fallbackTimer = setTimeout(function() {
+            console.warn('Fallback timer triggered - main scripts may not have loaded properly');
+            const root = document.getElementById('root');
+            if (root && (!root.children.length || (root.children.length === 1 && root.querySelector('.app-loading')))) {
+                console.log('Loading fallback UI');
+                
+                // Remove loading indicator
+                const loader = root.querySelector('.app-loading');
+                if (loader) {
+                    root.removeChild(loader);
+                }
+                
+                // Create minimal dashboard UI
+                root.innerHTML = `
+                <div style="display: flex; min-height: 100vh;">
+                    <!-- Sidebar -->
+                    <div style="width: 220px; background-color: #111; padding: 20px; border-right: 2px solid #ff00ff;">
+                        <div style="text-align: center; margin-bottom: 40px;">
+                            <img src="/static/images/logo.png" alt="Vicki Logo" style="width: 80px; height: 80px; border-radius: 50%;" 
+                                onerror="this.onerror=null; this.src='/static/images/vicky.png';">
+                            <h2 style="color: #ff00ff; margin-top: 10px;">VICKY</h2>
+                        </div>
+                        
+                        <div style="margin-bottom: 30px;">
+                            <div style="display: flex; align-items: center; padding: 10px; background-color: #1e1e2f; margin-bottom: 10px; cursor: pointer; border-left: 4px solid #ff00ff; color: white;">
+                                <span style="margin-right: 10px;">📊</span>
+                                <span>Dashboard</span>
+                            </div>
+                            <div style="display: flex; align-items: center; padding: 10px; margin-bottom: 10px; cursor: pointer; color: #aaa;">
+                                <span style="margin-right: 10px;">📈</span>
+                                <span>Live Market</span>
+                            </div>
+                            <div style="display: flex; align-items: center; padding: 10px; margin-bottom: 10px; cursor: pointer; color: #aaa;">
+                                <span style="margin-right: 10px;">🔍</span>
+                                <span>Signals</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Main Content -->
+                    <div style="flex: 1; padding: 20px;">
+                        <div style="background-color: #1c1c2e; border-radius: 10px; padding: 20px; margin-bottom: 20px;">
+                            <h2 style="color: #ddd; margin-top: 0;">Welcome to Vicki AI Trading Bot</h2>
+                            <p>Your AI-powered trading assistant is ready to help.</p>
+                            <div style="margin-top: 20px;">
+                                <a href="/api/health" style="display: inline-block; background-color: #ff00ff; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px; margin-right: 10px;">Check API Health</a>
+                                <a href="/api/bot/status" style="display: inline-block; background-color: transparent; border: 1px solid #ff00ff; color: #ff00ff; text-decoration: none; padding: 10px 20px; border-radius: 5px;">Bot Status</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            }
+        }, 5000); // Wait 5 seconds for the app to load
+    </script>
+    
+    <!-- Primary scripts -->
+    <script src="/static/js/main.js" onerror="console.error('Failed to load main.js');"></script>
 </body>
 </html>

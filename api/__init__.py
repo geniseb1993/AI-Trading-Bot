@@ -8,7 +8,7 @@ import datetime
 from logging.handlers import RotatingFileHandler
 
 # Flask and related
-from flask import Flask, request, jsonify, abort, send_from_directory, send_file, render_template_string, redirect, Response
+from flask import Flask, request, jsonify, abort, send_from_directory, send_file, render_template_string, redirect, Response, url_for
 from flask_cors import CORS
 
 def create_app(test_config=None):

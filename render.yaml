@@ -1,16 +1,17 @@
 services:
-  # Web Service
   - type: web
     name: ai-trading-bot-api
     env: python
     buildCommand: >
       pip install -r requirements.txt &&
-      chmod +x render_setup.sh &&
-      ./render_setup.sh
+      cd frontend &&
+      npm install &&
+      npm run build &&
+      cd .. &&
+      python render_fix.py &&
+      ls -la frontend/build/static/*
     startCommand: >
-      python ensure_directories.py &&
-      python prepare_render_deployment.py &&
-      gunicorn wsgi:app --workers=4 --threads=2 --timeout=120 --bind=0.0.0.0:$PORT
+      gunicorn wsgi:app --workers=2 --threads=4 --timeout=120 --bind=0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.9.0
@@ -20,34 +21,17 @@ services:
         value: 0
       - key: USE_MOCK_BROKER
         value: true
-      # Add environment variables to enable fallbacks
       - key: USE_MOCK_POLYGON
         value: true
       - key: USE_MOCK_ALPACA
         value: true
       - key: SERVE_FRONTEND
         value: true
-      - key: PATH_DEBUG
-        value: true
-      # Add your environment variables from the dashboard
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: ALPACA_API_KEY  
-        sync: false
-      - key: ALPACA_SECRET_KEY
-        sync: false
-      - key: POLYGON_API_KEY
-        sync: false
-      - key: NEWS_API_KEY
-        sync: false
-      - key: DISCORD_WEBHOOK_URL
-        sync: false
-      - key: TELEGRAM_BOT_TOKEN
-        sync: false
-      - key: TELEGRAM_CHAT_ID
-        sync: false
+      - key: LOG_LEVEL
+        value: DEBUG
+    healthCheckPath: /api/health
     autoDeploy: true
     disk:
       name: ai-trading-bot-data
       mountPath: /data
-      sizeGB: 1 
+      sizeGB: 1
