@@ -3,7 +3,12 @@ services:
   - type: web
     name: ai-trading-bot-api
     env: python
-    buildCommand: pip install -r requirements.txt
+    buildCommand: >
+      curl -fsSL https://deb.nodesource.com/setup_16.x | bash - &&
+      apt-get install -y nodejs &&
+      node -v && npm -v &&
+      cd frontend && npm install && npm run build && cd .. &&
+      pip install -r requirements.txt
     startCommand: python fix_indentation.py && python ensure_directories.py && gunicorn wsgi:app --workers=4 --threads=2 --timeout=120 --bind=0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
