@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Create blueprint
-ceo_dashboard_bp = Blueprint('ceo_dashboard', __name__)
+ceo_dashboard_bp = Blueprint('ceo_dashboard_api', __name__, url_prefix='/api/ceo-dashboard')
 
 # Constants
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data')
@@ -264,7 +264,6 @@ if not os.path.exists(SIGNALS_DIR):
         logger.error(f"Failed to create signals directory: {e}")
 
 # Routes
-@ceo_dashboard_bp.route('/api/ceo-dashboard', methods=['GET', 'OPTIONS'])
 @ceo_dashboard_bp.route('/ceo-dashboard', methods=['GET', 'OPTIONS'])
 def get_dashboard():
     """Get all CEO dashboard data in a single request"""
@@ -298,7 +297,6 @@ def get_dashboard():
         response = make_response(jsonify(error_response), 500)
         return add_cors_headers(response)
 
-@ceo_dashboard_bp.route('/api/ceo-settings', methods=['GET', 'POST', 'OPTIONS'])
 @ceo_dashboard_bp.route('/ceo-settings', methods=['GET', 'POST', 'OPTIONS'])
 def manage_settings():
     """Get or update CEO dashboard settings"""
@@ -358,7 +356,6 @@ def manage_settings():
         response = make_response(jsonify(error_response), 500)
         return add_cors_headers(response)
 
-@ceo_dashboard_bp.route('/api/approve-trade-setup', methods=['POST', 'OPTIONS'])
 @ceo_dashboard_bp.route('/approve-trade-setup', methods=['POST', 'OPTIONS'])
 def approve_trade_setup():
     """Approve a trade setup for execution"""
@@ -395,7 +392,6 @@ def approve_trade_setup():
         response = make_response(jsonify(error_response), 500)
         return add_cors_headers(response)
 
-@ceo_dashboard_bp.route('/api/reject-trade-setup', methods=['POST', 'OPTIONS'])
 @ceo_dashboard_bp.route('/reject-trade-setup', methods=['POST', 'OPTIONS'])
 def reject_trade_setup():
     """Reject a trade setup"""

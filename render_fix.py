@@ -60,14 +60,14 @@ def create_fallback_index_html(directory):
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            background-color: #f0f2f5;
-            color: #333;
+            background-color: #121212;
+            color: #e1e1e1;
         }
         .container {
             max-width: 800px;
             width: 90%;
             padding: 2rem;
-            background-color: white;
+            background-color: #1e1e1e;
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             text-align: center;
@@ -102,16 +102,64 @@ def create_fallback_index_html(directory):
         .api-link:hover {
             background-color: #3a80d2;
         }
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+            text-align: left;
+        }
+        .card {
+            background-color: #2d2d2d;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>AI Trading Bot</h1>
         <div class="status">Server Status: Online</div>
-        <p>The AI Trading Bot API is running. This is a fallback page displayed when the full frontend is not available.</p>
-        <p>The API server is operational and ready to process requests.</p>
-        <a href="/api/status" class="api-link">Check API Status</a>
+        <p>The AI Trading Bot API is running and ready to process requests.</p>
+        <div class="dashboard">
+            <div class="card">
+                <h3>API Status</h3>
+                <p>The server is operational and handling requests.</p>
+                <a href="/api/status" class="api-link">Check API Status</a>
+            </div>
+            <div class="card">
+                <h3>Trading Status</h3>
+                <p>Paper trading mode is active.</p>
+                <p>Using mock broker implementation.</p>
+            </div>
+        </div>
     </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('AI Trading Bot frontend initialized');
+            
+            // Check API status
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('API Status:', data);
+                    const statusElement = document.querySelector('.status');
+                    if (statusElement) {
+                        statusElement.textContent = `Server Status: ${data.status || 'Online'}`;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking API status:', error);
+                    const statusElement = document.querySelector('.status');
+                    if (statusElement) {
+                        statusElement.textContent = 'Server Status: Error';
+                        statusElement.style.backgroundColor = '#ffe0e0';
+                        statusElement.style.color = '#d32f2f';
+                    }
+                });
+        });
+    </script>
 </body>
 </html>"""
         write_file(file_path, html_content)
@@ -131,8 +179,8 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     margin: 0;
     padding: 0;
-    background-color: #f0f2f5;
-    color: #333;
+    background-color: #121212;
+    color: #e1e1e1;
 }
 
 .container {
@@ -142,7 +190,7 @@ body {
 }
 
 .card {
-    background-color: white;
+    background-color: #2d2d2d;
     border-radius: 8px;
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     padding: 20px;
@@ -154,7 +202,7 @@ body {
     justify-content: space-between;
     align-items: center;
     padding: 10px 20px;
-    background-color: white;
+    background-color: #1e1e1e;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
@@ -172,6 +220,13 @@ body {
 
 .btn:hover {
     background-color: #3a80d2;
+}
+
+.dashboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
 }
 """
         write_file(css_file, css_content)
@@ -237,7 +292,7 @@ def create_minimal_app_if_missing():
     if not os.path.exists('app.py'):
         logger.info("Creating minimal app.py")
         app_content = """#!/usr/bin/env python3
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, send_from_directory, render_template_string
 from flask_cors import CORS
 import os
 import logging
@@ -271,7 +326,66 @@ def health():
 def serve(path):
     if path and os.path.exists(os.path.join(app.static_folder, path)):
         return send_from_directory(app.static_folder, path)
-    return send_from_directory(app.static_folder, 'index.html')
+        
+    # Check if we have an index.html file
+    index_path = os.path.join(app.static_folder, 'index.html')
+    if os.path.exists(index_path):
+        return send_from_directory(app.static_folder, 'index.html')
+        
+    # Fallback to a simple HTML page
+    return render_template_string('''
+    <!DOCTYPE html>
+    <html>
+        <head>
+            <title>AI Trading Bot</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+                body {
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                    margin: 0;
+                    padding: 0;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 100vh;
+                    background-color: #121212;
+                    color: #e1e1e1;
+                }
+                .container {
+                    max-width: 800px;
+                    padding: 2rem;
+                    background-color: #1e1e1e;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                    text-align: center;
+                }
+                h1 {
+                    color: #4a90e2;
+                    margin-bottom: 1rem;
+                }
+                p {
+                    line-height: 1.6;
+                    margin-bottom: 1.5rem;
+                }
+                .status {
+                    padding: 0.5rem 1rem;
+                    background-color: #e7f3ff;
+                    border-radius: 4px;
+                    display: inline-block;
+                    font-weight: bold;
+                    color: #0062cc;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>AI Trading Bot</h1>
+                <div class="status">API Status: Running</div>
+                <p>The API server is operational and ready to process requests.</p>
+            </div>
+        </body>
+    </html>
+    ''')
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))
@@ -303,6 +417,40 @@ def fix_execution_model():
     
     return exec_model_dir
 
+def ensure_frontend_serving_files():
+    """Ensure all necessary files are in place for serving the frontend"""
+    # Copy index.html to root directory
+    root_index = 'index.html'
+    frontend_index = os.path.join('frontend', 'build', 'index.html')
+    
+    if os.path.exists(frontend_index) and not os.path.exists(root_index):
+        copy_file(frontend_index, root_index)
+    
+    # Copy CSS and JS files
+    css_source = os.path.join('frontend', 'build', 'static', 'css', 'main.css')
+    css_dest = os.path.join('static', 'css', 'main.css')
+    
+    js_source = os.path.join('frontend', 'build', 'static', 'js', 'main.js')
+    js_dest = os.path.join('static', 'js', 'main.js')
+    
+    if os.path.exists(css_source) and not os.path.exists(css_dest):
+        copy_file(css_source, css_dest)
+    
+    if os.path.exists(js_source) and not os.path.exists(js_dest):
+        copy_file(js_source, js_dest)
+
+def test_frontend_serving():
+    """Test if the frontend serving works by checking for index.html"""
+    frontend_index = os.path.join('frontend', 'build', 'index.html')
+    if not os.path.exists(frontend_index):
+        logger.warning("Frontend index.html not found, creating fallback")
+        create_fallback_index_html('frontend/build')
+        create_basic_css_file('frontend/build')
+        create_basic_js_file('frontend/build')
+        ensure_frontend_serving_files()
+        return False
+    return True
+
 def run_render_fix():
     """Main function to run all fixes"""
     logger.info("Starting render fix script")
@@ -320,6 +468,10 @@ def run_render_fix():
     
     # Create minimal app if necessary
     create_minimal_app_if_missing()
+    
+    # Ensure frontend serving works
+    test_frontend_serving()
+    ensure_frontend_serving_files()
     
     logger.info("Render fix script completed successfully")
     return True

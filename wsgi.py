@@ -36,6 +36,21 @@ try:
 except ImportError:
     logger.warning("Could not import install_mock_modules, some dependencies may be missing")
 
+# Ensure config files exist
+CONFIG_FILES = [
+    'config.json',
+    'broker_config.json',
+    'execution_model_config.json',
+    os.path.join('api', 'lib', 'market_data_config.json')
+]
+
+for config_file in CONFIG_FILES:
+    config_path = os.path.join(BASE_DIR, config_file)
+    os.makedirs(os.path.dirname(config_path), exist_ok=True)
+    
+    if not os.path.exists(config_path):
+        logger.warning(f"Config file {config_file} does not exist. Using default settings.")
+
 # Define a simple fallback Flask application
 def create_fallback_app():
     """Create a simple Flask application as a fallback"""
@@ -52,6 +67,14 @@ def create_fallback_app():
                 'mode': 'fallback',
                 'message': 'Fallback Flask app is running'
             })
+        
+        @app.route('/health')
+        def wsgi_health_check():
+            return jsonify({'status': 'healthy'})
+        
+        @app.route('/api/health')
+        def api_health_check():
+            return jsonify({'status': 'healthy'})
         
         # Serve static files from frontend/build
         @app.route('/', defaults={'path': ''})
@@ -184,12 +207,26 @@ except Exception as e:
 
 # Create a health check route to verify the app is running
 try:
-    @application.route('/health')
-    def health_check():
-        from flask import jsonify
-        return jsonify({'status': 'healthy'})
+    # Only add the health check if it doesn't already exist
+    if not hasattr(application, 'view_functions') or 'wsgi_health_check' not in application.view_functions:
+        @application.route('/health')
+        def wsgi_health_check():
+            from flask import jsonify
+            return jsonify({'status': 'healthy'})
 except Exception as e:
     logger.error(f"Failed to add health check route: {e}")
 
 # The WSGI entry point
 app = application
+
+# If running directly
+if __name__ == '__main__':
+    # Execute the render_fix script to create frontend files
+    try:
+        from render_fix import run_render_fix
+        run_render_fix()
+    except ImportError:
+        logger.warning("Could not import render_fix")
+    
+    port = int(os.environ.get('PORT', 8000))
+    app.run(host='0.0.0.0', port=port)

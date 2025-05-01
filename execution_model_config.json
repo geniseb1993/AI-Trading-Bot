@@ -1,0 +1,17 @@
+{
+  "mode": "paper",
+  "risk_level": "medium",
+  "max_positions": 10,
+  "position_sizing": "adaptive",
+  "max_portfolio_risk_percent": 5,
+  "max_position_risk_percent": 2,
+  "stop_loss_percent": 3,
+  "take_profit_percent": 5,
+  "trailing_stop_enabled": true,
+  "trailing_stop_percent": 1.5,
+  "drawdown_protection": {
+    "enabled": true,
+    "max_daily_drawdown_percent": 5,
+    "pause_trading_minutes": 120
+  }
+} 

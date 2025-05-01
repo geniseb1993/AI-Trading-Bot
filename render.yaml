@@ -8,13 +8,18 @@ services:
     buildCommand: |
       python -m pip install --upgrade pip
       pip install -r requirements.txt
+      mkdir -p frontend/build/static/css frontend/build/static/js frontend/build/static/images
+      mkdir -p static/css static/js static/images
+      mkdir -p mock_modules
       python install_mock_modules.py
       python check_requirements.py
       python render_fix.py
-    startCommand: gunicorn wsgi:app --log-file=-
+    startCommand: |
+      python render_fix.py
+      gunicorn wsgi:app --log-file=- --workers=1 --threads=8 --timeout=120
     envVars:
       - key: PORT
-        value: 8080
+        value: 10000
       - key: PYTHON_VERSION
         value: 3.10.0
       - key: SERVE_FRONTEND
@@ -27,6 +32,16 @@ services:
         value: wsgi.py
       - key: RENDER_DEPLOYMENT
         value: true
+      - key: USE_MOCK_BROKER
+        value: true
+      - key: USE_MOCK_DATA
+        value: true
+      - key: STATIC_FOLDER
+        value: frontend/build
+      - key: FLASK_STATIC_FOLDER
+        value: frontend/build
+      - key: FLASK_STATIC_URL_PATH
+        value: /
     healthCheckPath: /health
     # Automatic deploy from GitHub
     autoDeploy: true
