@@ -1,54 +1,40 @@
 # Core dependencies
-Flask>=3.0.0
-Flask-Cors>=5.0.0
-python-dotenv>=1.0.0
-pandas>=2.0.0
-numpy>=1.23.0
+Flask==3.0.0
+Flask-Cors==5.0.0
+python-dotenv==1.0.0
+gunicorn==21.2.0
+whitenoise==6.6.0  # For serving static files
 
-# API clients
-openai>=1.0.0
-alpaca-trade-api==0.51.0
-IEXfinance>=0.5.0
+# API clients - pinned to compatible versions
+alpaca-py==0.8.2  # Modern alternative to alpaca-trade-api
+openai==1.3.0
 
 # Data handling
-requests>=2.28.0
-websocket-client==0.59.0
-websockets==10.4
-yfinance>=0.2.30
+requests==2.31.0
+pandas==2.0.3
+numpy==1.24.3
+pytz==2023.3
+python-dateutil==2.8.2
+
+# For visualization and data analysis
+matplotlib==3.7.2
+plotly==5.15.0
+scikit-learn==1.3.0
 
 # Notifications
-twilio>=9.0.0
-plyer>=2.0.0  # For desktop notifications
-pygame>=2.6.0  # For voice notifications
-pyttsx3>=2.90  # For fallback voice notifications
-hume==0.7.0   # Specific version for compatibility
-
-# Visualization
-matplotlib>=3.7.0
-plotly>=5.14.0
-
-# Machine Learning
-scikit-learn>=1.2.0
-
-# Testing
-pytest>=7.3.0
+pygame==2.5.2  # For sound notifications
+pyttsx3==2.90  # For fallback voice notifications
 
 # Utilities
-tqdm>=4.64.0
-pytz>=2023.3
+tqdm==4.65.0
+psutil==5.9.5
+pydantic==2.0.3
+peewee==3.16.2
+PyYAML==6.0.1
 
-# For Windows environments
+# Testing
+pytest==7.4.0
+pytest-cov==4.1.0
+
+# Windows-specific (conditional)
 pywin32>=303; platform_system=="Windows"
-
-# Added from the code block
-psutil==5.9.8
-pydantic==2.11.3
-python-dateutil==2.9.0.post0
-peewee==3.17.9
-PyYAML==6.0  # Compatible with alpaca-trade-api 0.51.0
-
-pytest-cov==6.1.1
-
-# Deployment dependencies
-gunicorn>=21.2.0
-whitenoise>=6.6.0  # For serving static files
