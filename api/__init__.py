@@ -294,149 +294,37 @@ document.addEventListener('DOMContentLoaded', function() {
     
     # Serve the React frontend if enabled
     if serve_frontend:
-        app.logger.info("Frontend serving enabled - will serve React frontend from /frontend/build")
-        
-        # Serve static files more directly for the specific problematic files
-        @app.route('/static/css/main.8a689c36.css')
-        def serve_main_css():
-            """Directly serve the main CSS file"""
-            app.logger.info("Serving main CSS file directly")
-            css_path = os.path.join(os.getcwd(), 'frontend', 'build', 'static', 'css', 'main.8a689c36.css')
-            
-            # If file doesn't exist, create it
-            if not os.path.exists(css_path):
-                app.logger.warning("CSS file not found, creating it")
-                os.makedirs(os.path.dirname(css_path), exist_ok=True)
-                with open(css_path, 'w') as f:
-                    f.write("""
-/* Emergency CSS file created by direct route handler */
-body {
-    font-family: Arial, sans-serif;
-    background-color: #121212;
-    color: #ffffff;
-    margin: 0;
-    padding: 0;
-}
-#root {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-.app-container {
-    max-width: 1200px;
-    width: 100%;
-    padding: 20px;
-    box-sizing: border-box;
-}
-.placeholder-message {
-    text-align: center;
-    margin-top: 100px;
-    font-size: 1.5rem;
-}
-h1 {
-    color: #61dafb;
-}
-""")
-            
-            return send_file(css_path)
-            
-        @app.route('/static/js/main.75e22b8e.js')
-        def serve_main_js():
-            """Directly serve the main JS file"""
-            app.logger.info("Serving main JS file directly")
-            js_path = os.path.join(os.getcwd(), 'frontend', 'build', 'static', 'js', 'main.75e22b8e.js')
-            
-            # If file doesn't exist, create it
-            if not os.path.exists(js_path):
-                app.logger.warning("JS file not found, creating it")
-                os.makedirs(os.path.dirname(js_path), exist_ok=True)
-                with open(js_path, 'w') as f:
-                    f.write("""
-// Emergency JS file created by direct route handler
-console.log('Emergency JS file loaded through direct route');
-document.addEventListener('DOMContentLoaded', function() {
-    const root = document.getElementById('root');
-    if (root) {
-        root.innerHTML = `
-            <div class="app-container">
-                <div class="placeholder-message">
-                    <h1>Vicki AI Trading Bot</h1>
-                    <p>This is an emergency interface created by the direct route handler.</p>
-                    <p>The frontend build files were not properly created or are inaccessible.</p>
-                    <p>Please visit <a href="/api/health" style="color: #61dafb;">API Health Check</a> to ensure the API is working.</p>
-                    <div style="margin-top: 40px; text-align: left;">
-                        <h2>API Endpoints:</h2>
-                        <ul>
-                            <li><a href="/api/health" style="color: #61dafb;">Health Check</a></li>
-                            <li><a href="/api/bot/status" style="color: #61dafb;">Bot Status</a></li>
-                            <li><a href="/api/market-overview" style="color: #61dafb;">Market Overview</a></li>
-                            <li><a href="/api/portfolio-performance" style="color: #61dafb;">Portfolio Performance</a></li>
-                            <li><a href="/api/diagnostic" style="color: #61dafb;">Diagnostic Information</a></li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-});
-""")
-            
-            return send_file(js_path)
-        
-        # Serve static files from the React build directory with improved flexibility
+        app.logger.info("Frontend serving enabled - will serve React frontend")
+
+        # Serve static files directly from the static directory
         @app.route('/static/<path:path>')
         def serve_static(path):
             app.logger.info(f"Serving static file: {path}")
-            # Try multiple directories
-            static_dirs = [
-                os.path.join(os.getcwd(), 'frontend', 'build', 'static'),
-                os.path.join(os.getcwd(), 'frontend', 'public', 'static'),
-                os.path.join(os.getcwd(), 'static')
-            ]
-            
-            for static_dir in static_dirs:
-                file_path = os.path.join(static_dir, path)
-                if os.path.exists(file_path):
-                    app.logger.info(f"Found static file at: {file_path}")
-                    return send_file(file_path)
-            
-            # If specific CSS/JS files mentioned in errors, create placeholder
-            if path == 'css/main.8a689c36.css':
-                app.logger.warning(f"Creating placeholder CSS file: {path}")
-                css_content = "/* Placeholder CSS file - rebuild required */"
-                return Response(css_content, mimetype='text/css')
-                
-            if path == 'js/main.75e22b8e.js':
-                app.logger.warning(f"Creating placeholder JS file: {path}")
-                js_content = "console.log('Placeholder JS file - rebuild required');"
-                return Response(js_content, mimetype='application/javascript')
-                
-            app.logger.error(f"Static file not found: {path}")
-            return "File not found", 404
+            return send_from_directory('static', path)
         
-        # Serve manifest.json and other root files
+        # Serve specific static files at the root level
         @app.route('/manifest.json')
         def serve_manifest():
             app.logger.info("Serving manifest.json")
-            return send_from_directory(os.path.join(os.getcwd(), 'frontend', 'build'), 'manifest.json')
+            return send_from_directory('static', 'manifest.json')
 
         @app.route('/favicon.ico')
         def serve_favicon():
             app.logger.info("Serving favicon.ico")
-            return send_from_directory(os.path.join(os.getcwd(), 'frontend', 'build'), 'favicon.ico')
+            if os.path.exists(os.path.join(os.getcwd(), 'static', 'favicon.ico')):
+                return send_from_directory('static', 'favicon.ico')
+            # Fallback to any available icon
+            for icon_name in ['logo.png', 'vicky.png', 'velma.png']:
+                if os.path.exists(os.path.join(os.getcwd(), 'static', 'images', icon_name)):
+                    return send_from_directory(os.path.join('static', 'images'), icon_name)
+            return "No favicon found", 404
             
-        @app.route('/logo192.png')
-        def serve_logo192():
-            app.logger.info("Serving logo192.png")
-            return send_from_directory(os.path.join(os.getcwd(), 'frontend', 'build'), 'logo192.png')
-        
-        @app.route('/logo512.png')
-        def serve_logo512():
-            app.logger.info("Serving logo512.png") 
-            return send_from_directory(os.path.join(os.getcwd(), 'frontend', 'build'), 'logo512.png')
+        @app.route('/robots.txt')
+        def serve_robots():
+            app.logger.info("Serving robots.txt")
+            return send_from_directory('static', 'robots.txt')
             
-        # For all frontend routes (not starting with /api), serve the React index.html
+        # For all frontend routes (not starting with /api), serve the index.html
         @app.route('/', defaults={'path': ''})
         @app.route('/<path:path>')
         def serve_react(path):
@@ -444,38 +332,16 @@ document.addEventListener('DOMContentLoaded', function() {
             if path.startswith('api/'):
                 return {"error": "Not Found"}, 404
                 
-            # Try to serve the file directly if it exists
+            # Try to serve the file directly if it exists in static
             try:
-                frontend_path = os.path.join(os.getcwd(), 'frontend', 'build', path)
-                if os.path.exists(frontend_path) and not os.path.isdir(frontend_path):
-                    return send_file(frontend_path)
+                if os.path.exists(os.path.join(os.getcwd(), 'static', path)):
+                    return send_from_directory('static', path)
             except:
                 pass
                 
             # Otherwise serve index.html for client-side routing to handle
             app.logger.info(f"Serving React app for path: {path}")
-            index_path = os.path.join(os.getcwd(), 'frontend', 'build', 'index.html')
-            
-            # If index.html doesn't exist, create it
-            if not os.path.exists(index_path):
-                app.logger.warning("index.html not found, creating it")
-                os.makedirs(os.path.dirname(index_path), exist_ok=True)
-                with open(index_path, 'w') as f:
-                    f.write("""<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vicki AI Trading Bot</title>
-    <link rel="stylesheet" href="/static/css/main.8a689c36.css">
-</head>
-<body>
-    <div id="root"></div>
-    <script src="/static/js/main.75e22b8e.js"></script>
-</body>
-</html>""")
-            
-            return send_file(index_path)
+            return send_file('index.html')
     else:
         # Root route - serve a simple dashboard with links to APIs (only if not serving the frontend)
         @app.route('/')

@@ -4,18 +4,12 @@ services:
     name: ai-trading-bot-api
     env: python
     buildCommand: >
-      curl -fsSL https://deb.nodesource.com/setup_16.x | bash - &&
-      apt-get install -y nodejs &&
-      node -v && npm -v &&
-      cd frontend && npm install && npm run build && cd .. &&
       pip install -r requirements.txt &&
-      python fix_frontend_build.py
+      mkdir -p static/css static/js static/images &&
+      python setup_static_files.py
     startCommand: >
-      chmod +x scripts/setup-static-files.sh &&
-      ./scripts/setup-static-files.sh &&
-      python fix_indentation.py && 
-      python ensure_directories.py && 
-      python fix_frontend_build.py &&
+      python ensure_directories.py &&
+      python setup_static_files.py &&
       gunicorn wsgi:app --workers=4 --threads=2 --timeout=120 --bind=0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
