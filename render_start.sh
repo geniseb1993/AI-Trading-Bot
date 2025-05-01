@@ -1,6 +1,10 @@
 #!/bin/bash
 # Shell script for starting the application on Render
 
+# Run the indentation fixer script first
+echo "Running indentation fixer..."
+python fix_indentation.py
+
 # Run the deployment helper to check and fix common issues
 echo "Running deployment helper..."
 python deployment_helper.py

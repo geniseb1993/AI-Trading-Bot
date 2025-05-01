@@ -393,7 +393,7 @@ class MockBroker(BrokerInterface):
         self._orders[order_id] = order
         
         # Execute order (simulate fill process)
-            self._execute_order(order)
+        self._execute_order(order)
         
         # Save data
         self._save_data()
@@ -484,7 +484,7 @@ class MockBroker(BrokerInterface):
         
         # Fill the order if conditions are met
         if should_fill:
-                order.status = OrderStatus.FILLED
+            order.status = OrderStatus.FILLED
             order.filled_qty = order.qty
             order.filled_avg_price = fill_price
             order.filled_at = datetime.now()

@@ -122,7 +122,7 @@ class AlpacaBroker(BrokerInterface):
             # For now, we'll simulate a successful connection
             self.connected = True
             logger.info("Connected to Alpaca API")
-                return True
+            return True
         except Exception as e:
             logger.error(f"Failed to connect to Alpaca API: {e}")
             self.connected = False
@@ -132,7 +132,7 @@ class AlpacaBroker(BrokerInterface):
         """Disconnect from Alpaca API"""
         self.connected = False
         logger.info("Disconnected from Alpaca API")
-            return True
+        return True
     
     def is_connected(self) -> bool:
         """Check if connected to Alpaca API"""
@@ -341,7 +341,7 @@ class AlpacaBroker(BrokerInterface):
             # In a real implementation, we would call the Alpaca API here
             # For now, we'll simulate a successful cancellation
             logger.info(f"Cancelled order with Alpaca: {order_id}")
-                return True
+            return True
         except Exception as e:
             logger.error(f"Error cancelling order with Alpaca: {e}")
             return False
@@ -381,16 +381,16 @@ class AlpacaBroker(BrokerInterface):
         """Start the trading bot"""
         if self.is_running:
             logger.warning("Bot is already running")
-                return True
+            return True
             
         try:
-                self.stop_event.clear()
-                self.trading_thread = threading.Thread(target=self._trading_loop)
-                self.trading_thread.daemon = True
-                self.trading_thread.start()
+            self.stop_event.clear()
+            self.trading_thread = threading.Thread(target=self._trading_loop)
+            self.trading_thread.daemon = True
+            self.trading_thread.start()
             self.is_running = True
             logger.info("Bot started successfully")
-                    return True
+            return True
         except Exception as e:
             logger.error(f"Failed to start bot: {e}")
             return False
@@ -399,15 +399,15 @@ class AlpacaBroker(BrokerInterface):
         """Stop the trading bot"""
         if not self.is_running:
             logger.warning("Bot is not running")
-                return True
+            return True
             
         try:
-                self.stop_event.set()
-                if self.trading_thread and self.trading_thread.is_alive():
+            self.stop_event.set()
+            if self.trading_thread and self.trading_thread.is_alive():
                 self.trading_thread.join(timeout=5.0)
             self.is_running = False
             logger.info("Bot stopped successfully")
-                    return True
+            return True
         except Exception as e:
             logger.error(f"Failed to stop bot: {e}")
             return False
@@ -444,7 +444,7 @@ class AlpacaBroker(BrokerInterface):
             # Update portfolio performance
             self._update_portfolio_performance()
             
-                return True
+            return True
         except Exception as e:
             logger.error(f"Error running trading cycle: {e}")
             return False
@@ -607,7 +607,7 @@ class AlpacaBroker(BrokerInterface):
             if not active_trades:
                 return
                 
-                    trades_to_close = []
+            trades_to_close = []
             remaining_trades = []
             
             for trade in active_trades:
@@ -670,9 +670,9 @@ class AlpacaBroker(BrokerInterface):
                                 type="market"
                             )
                             logger.info(f"Closed position for {symbol} - {exit_type}")
-        except Exception as e:
+                        except Exception as e:
                             logger.error(f"Error closing position for {symbol}: {e}")
-            else:
+                    else:
                         remaining_trades.append(trade)
                 except Exception as e:
                     logger.error(f"Error checking exit conditions for {trade.get('symbol')}: {e}")
@@ -719,7 +719,7 @@ class AlpacaBroker(BrokerInterface):
             # In a real implementation, we would call the Alpaca API here
             # For now, we'll simulate a successful cancellation of all orders
             logger.info("Cancelled all orders with Alpaca")
-                return True
+            return True
         except Exception as e:
             logger.error(f"Error cancelling all orders with Alpaca: {e}")
             return False 
