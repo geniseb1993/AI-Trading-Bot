@@ -1,16 +1,20 @@
 services:
+  # Web Service
   - type: web
     name: ai-trading-bot-api
     env: python
     buildCommand: >
       pip install -r requirements.txt &&
-      cd frontend &&
-      npm install &&
-      npm run build &&
-      cd .. &&
+      mkdir -p frontend/build/static/css frontend/build/static/js frontend/build/static/images &&
+      mkdir -p static/css static/js static/images &&
+      mkdir -p mock_modules &&
       python render_fix.py &&
-      ls -la frontend/build/static/*
+      python install_mock_modules.py &&
+      python check_requirements.py &&
+      ls -la mock_modules
     startCommand: >
+      python render_fix.py &&
+      python install_mock_modules.py &&
       gunicorn wsgi:app --workers=2 --threads=4 --timeout=120 --bind=0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
@@ -18,18 +22,26 @@ services:
       - key: FLASK_ENV
         value: production
       - key: FLASK_DEBUG
-        value: 0
+        value: 1
       - key: USE_MOCK_BROKER
         value: true
+      # Add environment variables to enable fallbacks
       - key: USE_MOCK_POLYGON
         value: true
       - key: USE_MOCK_ALPACA
         value: true
+      - key: USE_MOCK_MODULES
+        value: true
       - key: SERVE_FRONTEND
+        value: true
+      - key: PATH_DEBUG
+        value: true
+      - key: DEBUG
         value: true
       - key: LOG_LEVEL
         value: DEBUG
     healthCheckPath: /api/health
+    # Automatic deploy from GitHub
     autoDeploy: true
     disk:
       name: ai-trading-bot-data

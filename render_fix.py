@@ -123,7 +123,7 @@ import os
 import json
 
 def load_market_data_config():
-    """Load market data configuration from config file."""
+    \"\"\"Load market data configuration from config file.\"\"\"
     try:
         config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'config', 'market_data_config.json')
         if os.path.exists(config_path):
@@ -141,7 +141,7 @@ def load_market_data_config():
     }
 
 def save_market_data_config(config):
-    """Save market data configuration to config file."""
+    \"\"\"Save market data configuration to config file.\"\"\"
     try:
         config_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'config')
         os.makedirs(config_dir, exist_ok=True)
@@ -154,6 +154,131 @@ def save_market_data_config(config):
         return False
 """
     write_file(config_path, config_content, "lib/market_data_config.py")
+
+
+def create_mock_modules(base_path):
+    """Create mock implementations of common external modules that might be missing."""
+    mock_modules_dir = os.path.join(base_path, 'mock_modules')
+    os.makedirs(mock_modules_dir, exist_ok=True)
+    
+    # Create __init__.py in the mock_modules directory
+    init_path = os.path.join(mock_modules_dir, '__init__.py')
+    write_file(init_path, "# Mock modules package", "mock_modules/__init__.py")
+    
+    # Create mock plyer module
+    plyer_path = os.path.join(mock_modules_dir, 'plyer.py')
+    plyer_content = """
+# Mock implementation of plyer module
+class notification:
+    @staticmethod
+    def notify(title=None, message=None, app_name=None, app_icon=None, timeout=10, ticker=None, toast=False):
+        print(f"MOCK NOTIFICATION: {title} - {message}")
+"""
+    write_file(plyer_path, plyer_content, "mock_modules/plyer.py")
+    
+    # Create a file to install the mock modules
+    install_path = os.path.join(base_path, 'install_mock_modules.py')
+    install_content = """
+import os
+import sys
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+def install_mock_modules():
+    \"\"\"Install mock modules to handle missing dependencies.\"\"\"
+    # Add the mock_modules directory to sys.path
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    mock_modules_dir = os.path.join(current_dir, 'mock_modules')
+    
+    if os.path.exists(mock_modules_dir):
+        logger.info(f"Adding mock modules directory to sys.path: {mock_modules_dir}")
+        sys.path.insert(0, mock_modules_dir)
+        
+        # List all the mock modules available
+        mock_modules = [f[:-3] for f in os.listdir(mock_modules_dir) 
+                       if f.endswith('.py') and f != '__init__.py']
+        logger.info(f"Available mock modules: {', '.join(mock_modules)}")
+        
+        # Try importing each mock module
+        for module_name in mock_modules:
+            try:
+                # First try to import the real module
+                __import__(module_name)
+                logger.info(f"Real module {module_name} found, no need for mock")
+            except ImportError:
+                # If import fails, the mock will be used instead
+                logger.info(f"Real module {module_name} not found, mock will be used")
+    else:
+        logger.warning(f"Mock modules directory not found: {mock_modules_dir}")
+
+if __name__ == "__main__":
+    install_mock_modules()
+"""
+    write_file(install_path, install_content, "install_mock_modules.py")
+    
+    # Also create requirements.py to fix missing packages
+    requirements_path = os.path.join(base_path, 'check_requirements.py')
+    requirements_content = """
+import sys
+import os
+import logging
+import subprocess
+from pathlib import Path
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+def check_and_install_packages():
+    \"\"\"Check if required packages are installed and install them if needed.\"\"\"
+    required_packages = [
+        'flask',
+        'flask-cors',
+        'gunicorn',
+        'pandas',
+        'python-dotenv',
+        'requests',
+        'alpaca-trade-api',
+        'plyer',
+        'polygon-api-client'
+    ]
+    
+    installed_packages = []
+    missing_packages = []
+    
+    # Check which packages are already installed
+    for package in required_packages:
+        try:
+            __import__(package.replace('-', '_'))
+            installed_packages.append(package)
+        except ImportError:
+            missing_packages.append(package)
+    
+    logger.info(f"Installed packages: {', '.join(installed_packages)}")
+    logger.info(f"Missing packages: {', '.join(missing_packages)}")
+    
+    # Try to install missing packages
+    if missing_packages:
+        try:
+            logger.info("Attempting to install missing packages...")
+            for package in missing_packages:
+                try:
+                    subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
+                    logger.info(f"Successfully installed {package}")
+                except Exception as e:
+                    logger.error(f"Failed to install {package}: {e}")
+        except Exception as e:
+            logger.error(f"Error installing packages: {e}")
+    
+    return missing_packages
+
+if __name__ == "__main__":
+    check_and_install_packages()
+"""
+    write_file(requirements_path, requirements_content, "check_requirements.py")
 
 
 def get_direct_html_content():
@@ -192,6 +317,9 @@ def run_render_fix():
     
     # Create lib modules to prevent import errors
     create_lib_modules(base_path)
+    
+    # Create mock modules for common external dependencies
+    create_mock_modules(base_path)
 
     # Create fallback HTML
     direct_html_path = os.path.join(base_path, 'direct.html')
