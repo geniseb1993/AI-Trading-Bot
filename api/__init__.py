@@ -1,12 +1,14 @@
 # api package initialization
 import os
 import logging
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, send_file
 from flask_cors import CORS
 
 def create_app(test_config=None):
     # Create and configure the app
-    app = Flask(__name__, instance_relative_config=True)
+    app = Flask(__name__, instance_relative_config=True,
+                static_folder='../static',
+                static_url_path='')
     
     # Enable CORS with better configuration
     CORS(app, resources={
@@ -93,11 +95,17 @@ def create_app(test_config=None):
         app.logger.info("Serving backtest results file")
         return send_from_directory(os.getcwd(), 'backtest_results.csv')
     
-    # Simple root endpoint
-    @app.route('/')
-    def root():
-        return {'service': 'AI Trading Bot API', 'status': 'running'}
+    # Serve frontend static files
+    @app.route('/', defaults={'path': ''})
+    @app.route('/<path:path>')
+    def serve_frontend(path):
+        if path and os.path.exists(os.path.join(app.static_folder, path)):
+            return send_from_directory(app.static_folder, path)
+        else:
+            # For any path not found, return index.html (SPA routing)
+            return send_from_directory(app.static_folder, 'index.html')
     
+    # API info endpoints
     @app.route('/api')
     def api_root():
         return {
