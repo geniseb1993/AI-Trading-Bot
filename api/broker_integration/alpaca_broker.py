@@ -27,7 +27,15 @@ from .broker_interface import (
     TimeInForce
 )
 from .mock_broker import MockBroker
-from .alpaca import AlpacaBroker as NewAlpacaBroker
+
+# Try importing alpaca modules, but provide fallbacks if not available
+try:
+    from .alpaca import AlpacaBroker as NewAlpacaBroker
+except ImportError:
+    logger = logging.getLogger(__name__)
+    logger.warning("Could not import AlpacaBroker from .alpaca")
+    NewAlpacaBroker = None
+
 try:
     from api.config import bot_config
 except ImportError:
@@ -41,11 +49,23 @@ except ImportError:
         logger.warning("Could not import bot_config, using default configuration")
         bot_config = {}
 
-import alpaca_trade_api as tradeapi
-from alpaca_trade_api.entity import Order as AlpacaOrder
-from alpaca_trade_api.entity import Position as AlpacaPosition
-from alpaca_trade_api.entity import Account as AlpacaAccount
-from alpaca_trade_api.rest import APIError
+# Try to import alpaca_trade_api, but provide fallbacks if not available
+try:
+    import alpaca_trade_api as tradeapi
+    from alpaca_trade_api.entity import Order as AlpacaOrder
+    from alpaca_trade_api.entity import Position as AlpacaPosition
+    from alpaca_trade_api.entity import Account as AlpacaAccount
+    from alpaca_trade_api.rest import APIError
+    ALPACA_TRADE_API_AVAILABLE = True
+except ImportError:
+    logger = logging.getLogger(__name__)
+    logger.warning("alpaca-trade-api package not found. Install with 'pip install alpaca-trade-api'")
+    # Define placeholder classes
+    class AlpacaOrder: pass
+    class AlpacaPosition: pass
+    class AlpacaAccount: pass
+    class APIError(Exception): pass
+    ALPACA_TRADE_API_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -102,17 +122,35 @@ class AlpacaBroker(BrokerInterface):
         
         self.connected = False
         self.api = None  # Will hold the Alpaca API client
+        self.is_running = False
+        self.stop_event = threading.Event()
+        self.trading_thread = None
+        
+        # Fallback to mock broker if alpaca_trade_api is not available
+        self.use_mock = not ALPACA_TRADE_API_AVAILABLE
+        if self.use_mock:
+            logger.warning("Using mock broker implementation since alpaca_trade_api is not available")
+            self.mock_broker = MockBroker(config)
+        
+        # Files for active trades and history
+        data_dir = os.path.join("data", "broker")
+        os.makedirs(data_dir, exist_ok=True)
+        self.active_trades_file = os.path.join(data_dir, "active_trades.json")
+        self.trade_history_file = os.path.join(data_dir, "trade_history.json")
         
         # Validate configuration
         self._validate_config()
     
     def _validate_config(self):
         """Validate broker configuration"""
-        if not self.api_key or not self.api_secret:
+        if not self.use_mock and (not self.api_key or not self.api_secret):
             logger.warning("Missing Alpaca API credentials")
     
     def connect(self) -> bool:
         """Connect to Alpaca API"""
+        if self.use_mock:
+            return self.mock_broker.connect()
+            
         if not self.api_key or not self.api_secret:
             logger.error("Cannot connect to Alpaca: missing API credentials")
             return False
@@ -130,16 +168,25 @@ class AlpacaBroker(BrokerInterface):
     
     def disconnect(self) -> bool:
         """Disconnect from Alpaca API"""
+        if self.use_mock:
+            return self.mock_broker.disconnect()
+            
         self.connected = False
         logger.info("Disconnected from Alpaca API")
         return True
     
     def is_connected(self) -> bool:
         """Check if connected to Alpaca API"""
+        if self.use_mock:
+            return self.mock_broker.is_connected()
+            
         return self.connected
     
     def get_account_info(self) -> Dict[str, Any]:
         """Get account information"""
+        if self.use_mock:
+            return self.mock_broker.get_account_info()
+            
         if not self.is_connected():
             logger.error("Not connected to Alpaca API")
             return {
@@ -167,6 +214,9 @@ class AlpacaBroker(BrokerInterface):
     
     def get_positions(self) -> List[Dict[str, Any]]:
         """Get all positions"""
+        if self.use_mock:
+            return self.mock_broker.get_positions()
+            
         if not self.is_connected():
             logger.error("Not connected to Alpaca API")
             return []
@@ -202,6 +252,9 @@ class AlpacaBroker(BrokerInterface):
     
     def get_position(self, symbol: str) -> Optional[Dict[str, Any]]:
         """Get position for a specific symbol"""
+        if self.use_mock:
+            return self.mock_broker.get_position(symbol)
+            
         if not self.is_connected():
             logger.error("Not connected to Alpaca API")
             return None
@@ -220,6 +273,9 @@ class AlpacaBroker(BrokerInterface):
     
     def get_orders(self, status: Optional[str] = None) -> List[Dict[str, Any]]:
         """Get orders with optional status filter"""
+        if self.use_mock:
+            return self.mock_broker.get_orders(status)
+            
         if not self.is_connected():
             logger.error("Not connected to Alpaca API")
             return []
@@ -263,6 +319,9 @@ class AlpacaBroker(BrokerInterface):
     
     def get_order(self, order_id: str) -> Optional[Dict[str, Any]]:
         """Get a specific order by ID"""
+        if self.use_mock:
+            return self.mock_broker.get_order(order_id)
+            
         if not self.is_connected():
             logger.error("Not connected to Alpaca API")
             return None
@@ -290,6 +349,17 @@ class AlpacaBroker(BrokerInterface):
         time_in_force: str = "day"
     ) -> Dict[str, Any]:
         """Place an order with Alpaca"""
+        if self.use_mock:
+            return self.mock_broker.place_order(
+                symbol=symbol,
+                qty=qty,
+                side=side,
+                type=type,
+                limit_price=limit_price,
+                stop_price=stop_price,
+                time_in_force=time_in_force
+            )
+            
         if not self.is_connected():
             logger.error("Not connected to Alpaca API")
             return {
@@ -333,6 +403,9 @@ class AlpacaBroker(BrokerInterface):
     
     def cancel_order(self, order_id: str) -> bool:
         """Cancel an order with Alpaca"""
+        if self.use_mock:
+            return self.mock_broker.cancel_order(order_id)
+            
         if not self.is_connected():
             logger.error("Not connected to Alpaca API")
             return False
@@ -348,6 +421,9 @@ class AlpacaBroker(BrokerInterface):
     
     def get_market_data(self, symbol: str) -> Dict[str, Any]:
         """Get market data for a symbol from Alpaca"""
+        if self.use_mock:
+            return self.mock_broker.get_market_data(symbol)
+            
         if not self.is_connected():
             logger.error("Not connected to Alpaca API")
             return {
@@ -375,10 +451,16 @@ class AlpacaBroker(BrokerInterface):
     
     def get_bot_status(self) -> bool:
         """Get status of the trading bot"""
+        if self.use_mock:
+            return self.mock_broker.get_bot_status()
+            
         return self.is_running
     
     def start_bot(self) -> bool:
         """Start the trading bot"""
+        if self.use_mock:
+            return self.mock_broker.start_bot()
+            
         if self.is_running:
             logger.warning("Bot is already running")
             return True
@@ -397,6 +479,9 @@ class AlpacaBroker(BrokerInterface):
     
     def stop_bot(self) -> bool:
         """Stop the trading bot"""
+        if self.use_mock:
+            return self.mock_broker.stop_bot()
+            
         if not self.is_running:
             logger.warning("Bot is not running")
             return True
@@ -428,6 +513,9 @@ class AlpacaBroker(BrokerInterface):
     
     def run_trading_cycle(self) -> bool:
         """Run a single trading cycle"""
+        if self.use_mock:
+            return self.mock_broker.run_trading_cycle()
+            
         try:
             # Make sure we're connected
             self._ensure_connected()
@@ -449,8 +537,16 @@ class AlpacaBroker(BrokerInterface):
             logger.error(f"Error running trading cycle: {e}")
             return False
     
+    def _ensure_connected(self) -> None:
+        """Ensure connected to Alpaca API"""
+        if not self.is_connected():
+            self.connect()
+    
     def get_active_trades(self) -> List[Dict[str, Any]]:
         """Get list of active trades"""
+        if self.use_mock:
+            return self.mock_broker.get_active_trades()
+            
         try:
             if os.path.exists(self.active_trades_file):
                 with open(self.active_trades_file, 'r') as f:
@@ -462,6 +558,9 @@ class AlpacaBroker(BrokerInterface):
     
     def get_trading_history(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
         """Get trading history"""
+        if self.use_mock:
+            return self.mock_broker.get_trading_history(limit)
+            
         try:
             if os.path.exists(self.trade_history_file):
                 with open(self.trade_history_file, 'r') as f:
@@ -477,6 +576,9 @@ class AlpacaBroker(BrokerInterface):
     
     def get_real_time_data(self) -> Dict[str, Any]:
         """Get real-time data for the dashboard"""
+        if self.use_mock:
+            return self.mock_broker.get_real_time_data()
+            
         positions = self.get_positions()
         account = self.get_account_info()
         active_trades = self.get_active_trades()
@@ -514,8 +616,8 @@ class AlpacaBroker(BrokerInterface):
         
         for symbol in sectors:
             self._add_mock_data(sector_performance, symbol)
-            
-            return {
+        
+        return {
             "account": {
                 "equity": account["equity"],
                 "cash": account["cash"],
@@ -530,9 +632,9 @@ class AlpacaBroker(BrokerInterface):
             "market_overview": market_overview,
             "sector_performance": sector_performance,
             "last_update": datetime.now().isoformat()
-            }
+        }
     
-    def _add_mock_data(self, data_dict: Dict[str, Any], symbol: str) -> None:
+    def _add_mock_data(self, data_dict: List[Dict[str, Any]], symbol: str) -> None:
         """Add mock market data for a symbol"""
         price = random.uniform(100, 500)
         change = random.uniform(-5, 5)
@@ -548,6 +650,11 @@ class AlpacaBroker(BrokerInterface):
     
     def _update_active_trade_prices(self) -> None:
         """Update prices for active trades"""
+        if self.use_mock:
+            if hasattr(self.mock_broker, '_update_active_trade_prices'):
+                self.mock_broker._update_active_trade_prices()
+            return
+            
         try:
             active_trades = self.get_active_trades()
             if not active_trades:
@@ -592,8 +699,8 @@ class AlpacaBroker(BrokerInterface):
                     updated = True
                 except Exception as e:
                     logger.error(f"Error updating trade prices for {trade.get('symbol')}: {e}")
-                    
-                    # Save updated trades
+            
+            # Save updated trades
             if updated:
                 with open(self.active_trades_file, 'w') as f:
                     json.dump(active_trades, f, indent=2)
@@ -602,6 +709,11 @@ class AlpacaBroker(BrokerInterface):
     
     def _check_exit_conditions(self) -> None:
         """Check exit conditions for active trades"""
+        if self.use_mock:
+            if hasattr(self.mock_broker, '_check_exit_conditions'):
+                self.mock_broker._check_exit_conditions()
+            return
+            
         try:
             active_trades = self.get_active_trades()
             if not active_trades:
@@ -662,7 +774,7 @@ class AlpacaBroker(BrokerInterface):
                         
                         # Try to close the position
                         try:
-                            side = OrderSide.SELL if trade.get("side") == "buy" else OrderSide.BUY
+                            side = "sell" if trade.get("side") == "buy" else "buy"
                             self.place_order(
                                 symbol=symbol,
                                 qty=quantity,
@@ -694,6 +806,11 @@ class AlpacaBroker(BrokerInterface):
     
     def _find_new_trades(self) -> None:
         """Find new trading opportunities"""
+        if self.use_mock:
+            if hasattr(self.mock_broker, '_find_new_trades'):
+                self.mock_broker._find_new_trades()
+            return
+            
         # This is a placeholder. In a real implementation, you would:
         # 1. Run your trading strategy models
         # 2. Analyze market conditions
@@ -703,6 +820,11 @@ class AlpacaBroker(BrokerInterface):
     
     def _update_portfolio_performance(self) -> None:
         """Update portfolio performance metrics"""
+        if self.use_mock:
+            if hasattr(self.mock_broker, '_update_portfolio_performance'):
+                self.mock_broker._update_portfolio_performance()
+            return
+            
         # This is a placeholder. In a real implementation, you would:
         # 1. Calculate daily and overall performance
         # 2. Update performance tracking data
@@ -711,6 +833,9 @@ class AlpacaBroker(BrokerInterface):
 
     def cancel_all_orders(self) -> bool:
         """Cancel all open orders with Alpaca"""
+        if self.use_mock:
+            return self.mock_broker.cancel_all_orders()
+            
         if not self.is_connected():
             logger.error("Not connected to Alpaca API")
             return False

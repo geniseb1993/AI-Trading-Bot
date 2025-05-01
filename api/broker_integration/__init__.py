@@ -26,13 +26,16 @@ def init_app(app: Flask) -> None:
         app: Flask application instance
     """
     # Import here to avoid circular imports
-    from .routes import init_app as init_routes
-    from .config import load_config
-    
-    # Initialize routes
-    init_routes(app)
-    
-    logger.info("Broker integration initialized")
+    try:
+        from .routes import init_app as init_routes
+        from .config import load_config
+        
+        # Initialize routes
+        init_routes(app)
+        
+        logger.info("Broker integration initialized")
+    except Exception as e:
+        logger.error(f"Error initializing broker integration: {str(e)}")
 
 # Register broker implementations
 def register_brokers() -> None:
@@ -40,44 +43,41 @@ def register_brokers() -> None:
     Register available broker implementations.
     This function imports and registers all available broker classes.
     """
+    available_brokers = {}
+    
     try:
-        # Import mock broker
+        # Import mock broker - this should always work
         from .mock_broker import MockBroker
-        
-        # Import Alpaca broker
+        available_brokers["mock"] = MockBroker
+    except Exception as e:
+        logger.error(f"Error importing mock broker: {str(e)}")
+    
+    try:
+        # Import Alpaca broker - may fail if alpaca-trade-api is not available
         from .alpaca_broker import AlpacaBroker
-        
+        available_brokers["alpaca"] = AlpacaBroker
+    except ImportError as e:
+        logger.warning(f"Could not import Alpaca broker: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error importing Alpaca broker: {str(e)}")
+    
+    try:
         # Import factory module and register brokers
         from .factory import register_broker
         
-        # Register brokers with the factory
-        register_broker("mock", MockBroker)
-        register_broker("alpaca", AlpacaBroker)
+        # Register available brokers with the factory
+        for name, broker in available_brokers.items():
+            register_broker(name, broker)
         
-        logger.info("Broker implementations registered successfully")
-    except ImportError as e:
-        logger.warning(f"Failed to register some broker implementations: {str(e)}")
+        logger.info(f"Registered {len(available_brokers)} broker implementations")
     except Exception as e:
         logger.error(f"Error registering broker implementations: {str(e)}")
 
 # Call register_brokers when the package is imported
-register_brokers()
-
-# Import key classes and functions
-from .base import BrokerBase
-from .mock import MockBroker
-from .alpaca import AlpacaBroker
-from .factory import get_broker, get_active_broker, register_broker
-from .config import load_config, save_config, get_active_broker_config
-
-# Register built-in broker implementations
-from .factory import BROKER_REGISTRY
-
-# Ensure Alpaca broker is registered if available
 try:
-    BROKER_REGISTRY["alpaca"] = AlpacaBroker
+    register_brokers()
 except Exception as e:
-    logger.warning(f"Could not register Alpaca broker: {str(e)}")
+    logger.error(f"Failed to register brokers: {str(e)}")
 
 # Version
 __version__ = "0.1.0"
