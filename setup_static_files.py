@@ -43,10 +43,26 @@ def setup_static_files():
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vicki AI Trading Bot</title>
+    <!-- Use the full path to the CSS file -->
     <link rel="stylesheet" href="/static/css/main.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+        }
+        #root {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+    </style>
 </head>
 <body>
     <div id="root"></div>
+    <!-- Use the dashboard UI script -->
     <script src="/static/js/main.js"></script>
 </body>
 </html>""")
@@ -248,6 +264,13 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 """)
     logger.info(f"Created JS file at {js_file_path}")
+    
+    # Copy dashboard_ui.js to static/js/main.js if it exists
+    dashboard_ui_path = base_dir / 'dashboard_ui.js'
+    if dashboard_ui_path.exists():
+        js_file_path = js_dir / 'main.js'
+        shutil.copy(dashboard_ui_path, js_file_path)
+        logger.info(f"Copied dashboard UI to {js_file_path}")
     
     # Create a sample image in the images directory
     try:

@@ -5,17 +5,16 @@ services:
     env: python
     buildCommand: >
       pip install -r requirements.txt &&
+      mkdir -p frontend/build/static/css frontend/build/static/js frontend/build/static/images &&
       mkdir -p static/css static/js static/images &&
-      ls -la &&
       python setup_static_files.py &&
-      ls -la static/css static/js &&
-      cat index.html
+      python copy_to_frontend_build.py &&
+      ls -la frontend/build/static/*
     startCommand: >
       python ensure_directories.py &&
-      mkdir -p static/css static/js static/images &&
       python setup_static_files.py &&
-      ls -la static/css static/js &&
-      cat index.html &&
+      python copy_to_frontend_build.py &&
+      ls -la frontend/build/static/* &&
       gunicorn wsgi:app --workers=4 --threads=2 --timeout=120 --bind=0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION

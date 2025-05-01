@@ -19,15 +19,25 @@ def create_app(test_config=None):
     
     # Get the project root directory
     project_root = os.path.abspath(os.path.dirname(__file__) + '/..')
-    static_folder = os.path.join(project_root, 'static')
     
-    # Create and configure the app - explicitly set the static folder
+    # Set up paths for React frontend
+    frontend_build_dir = os.path.join(project_root, 'frontend', 'build')
+    frontend_static_dir = os.path.join(frontend_build_dir, 'static')
+    
+    # Check if frontend build directory exists
+    has_frontend_build = os.path.exists(frontend_build_dir) and os.path.exists(frontend_static_dir)
+    
+    # Create and configure the app
+    # If frontend build exists, use it as static folder, otherwise use our static folder
+    static_folder = frontend_static_dir if has_frontend_build else os.path.join(project_root, 'static')
+    
     app = Flask(__name__, 
                 static_folder=static_folder,
                 static_url_path='/static')
     
     app.logger.setLevel(logging.INFO)
     app.logger.info(f"Using static folder: {static_folder}")
+    app.logger.info(f"Frontend build directory exists: {has_frontend_build}")
     
     # Enable CORS with better configuration
     CORS(app, resources={
@@ -424,29 +434,51 @@ document.addEventListener('DOMContentLoaded', function() {
             if path.startswith('api/'):
                 return {"error": "Not Found"}, 404
             
-            # Get the project root directory - one level up from the api directory
+            # Get the project root directory
             project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
             
-            # Log the paths for debugging
-            app.logger.info(f"Current working directory: {os.getcwd()}")
-            app.logger.info(f"Project root: {project_root}")
-            app.logger.info(f"Looking for static file: {path}")
+            # Set up paths for React frontend
+            frontend_build_dir = os.path.join(project_root, 'frontend', 'build')
+            frontend_static_dir = os.path.join(frontend_build_dir, 'static')
+            react_index_path = os.path.join(frontend_build_dir, 'index.html')
             
-            # First try to serve static files if the path exists
-            static_path = os.path.join(project_root, 'static', path)
-            if path and os.path.exists(static_path):
-                app.logger.info(f"Serving static file from: {static_path}")
-                # The directory is 'static' and the file is the path
-                return send_from_directory(os.path.join(project_root, 'static'), path)
+            # Check if frontend build directory exists
+            has_frontend_build = os.path.exists(frontend_build_dir) and os.path.exists(frontend_static_dir)
             
-            # Otherwise serve index.html for client-side routing
-            index_path = os.path.join(project_root, 'index.html')
-            app.logger.info(f"Serving React app index from: {index_path}")
+            app.logger.info(f"Serving React app for path: {path}")
+            app.logger.info(f"Frontend build directory exists: {has_frontend_build}")
             
-            if os.path.exists(index_path):
-                return send_file(index_path)
+            # First check if this is a specific static file request
+            if path:
+                # Try to serve from frontend/build/static first if it exists
+                if has_frontend_build and os.path.exists(os.path.join(frontend_static_dir, path)):
+                    app.logger.info(f"Serving frontend static file from: {frontend_static_dir}/{path}")
+                    return send_from_directory(frontend_static_dir, path)
+                
+                # Then try to serve from frontend/build directly
+                frontend_file_path = os.path.join(frontend_build_dir, path)
+                if has_frontend_build and os.path.exists(frontend_file_path):
+                    app.logger.info(f"Serving frontend file from: {frontend_file_path}")
+                    return send_file(frontend_file_path)
+                
+                # Then try to serve from /static
+                fallback_static_dir = os.path.join(project_root, 'static')
+                if os.path.exists(os.path.join(fallback_static_dir, path)):
+                    app.logger.info(f"Serving static file from fallback: {fallback_static_dir}/{path}")
+                    return send_from_directory(fallback_static_dir, path)
+            
+            # If no specific file is found, serve the React app's index.html
+            if has_frontend_build and os.path.exists(react_index_path):
+                app.logger.info(f"Serving React app index from: {react_index_path}")
+                return send_file(react_index_path)
+            
+            # Fallback to our custom index.html
+            fallback_index_path = os.path.join(project_root, 'index.html')
+            if os.path.exists(fallback_index_path):
+                app.logger.info(f"Serving fallback index from: {fallback_index_path}")
+                return send_file(fallback_index_path)
             else:
-                app.logger.error(f"Index file not found at: {index_path}")
+                app.logger.error(f"No index file found at either {react_index_path} or {fallback_index_path}")
                 return "Application Error: Index file not found. Please check server logs.", 500
 
         # Add explicit routes for main.css and main.js

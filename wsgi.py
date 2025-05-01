@@ -72,6 +72,22 @@ except Exception as e:
 # Ensure all necessary directories exist before starting the app
 ensure_directories()
 
+# Setup static files
+try:
+    from setup_static_files import setup_static_files
+    setup_static_files()
+    logger.info("Static files setup complete")
+except Exception as e:
+    logger.error(f"Error setting up static files: {str(e)}")
+
+# Copy files to frontend/build
+try:
+    from copy_to_frontend_build import copy_to_frontend_build
+    copy_to_frontend_build()
+    logger.info("Copied files to frontend/build successfully")
+except Exception as e:
+    logger.error(f"Error copying files to frontend/build: {str(e)}")
+
 # Create Flask application
 app = create_app()
 
