@@ -1,11 +1,22 @@
-# api package initialization
+# Standard imports
 import os
-import logging
+import sys
+import time
 import json
-from flask import Flask, send_from_directory, send_file, render_template_string, redirect, Response
+import logging
+import datetime
+from logging.handlers import RotatingFileHandler
+
+# Flask and related
+from flask import Flask, request, jsonify, abort, send_from_directory, send_file, render_template_string, redirect, Response
 from flask_cors import CORS
 
 def create_app(test_config=None):
+    """Create and configure the Flask application."""
+    
+    # Check for required static files
+    check_required_files()
+    
     # Create and configure the app
     app = Flask(__name__, instance_relative_config=True)
     
@@ -328,20 +339,36 @@ document.addEventListener('DOMContentLoaded', function() {
         @app.route('/', defaults={'path': ''})
         @app.route('/<path:path>')
         def serve_react(path):
+            from flask import current_app
+            
             # Skip API routes
             if path.startswith('api/'):
                 return {"error": "Not Found"}, 404
-                
-            # Try to serve the file directly if it exists in static
-            try:
-                if os.path.exists(os.path.join(os.getcwd(), 'static', path)):
-                    return send_from_directory('static', path)
-            except:
-                pass
-                
-            # Otherwise serve index.html for client-side routing to handle
-            app.logger.info(f"Serving React app for path: {path}")
-            return send_file('index.html')
+            
+            # Get the project root directory - one level up from the api directory
+            project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+            
+            # Log the paths for debugging
+            app.logger.info(f"Current working directory: {os.getcwd()}")
+            app.logger.info(f"Project root: {project_root}")
+            app.logger.info(f"Looking for static file: {path}")
+            
+            # First try to serve static files if the path exists
+            static_path = os.path.join(project_root, 'static', path)
+            if path and os.path.exists(static_path):
+                app.logger.info(f"Serving static file from: {static_path}")
+                # The directory is 'static' and the file is the path
+                return send_from_directory(os.path.join(project_root, 'static'), path)
+            
+            # Otherwise serve index.html for client-side routing
+            index_path = os.path.join(project_root, 'index.html')
+            app.logger.info(f"Serving React app index from: {index_path}")
+            
+            if os.path.exists(index_path):
+                return send_file(index_path)
+            else:
+                app.logger.error(f"Index file not found at: {index_path}")
+                return "Application Error: Index file not found. Please check server logs.", 500
     else:
         # Root route - serve a simple dashboard with links to APIs (only if not serving the frontend)
         @app.route('/')
@@ -485,3 +512,35 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     
     return app 
+
+def check_required_files():
+    """Check that all required static files exist, create them if needed."""
+    try:
+        # Get the project root directory
+        project_root = os.path.abspath(os.path.dirname(__file__) + '/..')
+        index_path = os.path.join(project_root, 'index.html')
+        static_dir = os.path.join(project_root, 'static')
+        
+        logger = logging.getLogger(__name__)
+        logger.info(f"Checking required files in {project_root}")
+        
+        # If index.html or static directory doesn't exist, run setup script
+        if not os.path.exists(index_path) or not os.path.exists(static_dir):
+            logger.warning("Missing required files. Running setup_static_files.py")
+            
+            # Import setup function
+            import sys
+            sys.path.append(project_root)
+            
+            try:
+                from setup_static_files import setup_static_files
+                setup_static_files()
+                logger.info("Successfully created static files")
+            except Exception as e:
+                logger.error(f"Error creating static files: {e}")
+        else:
+            logger.info("All required static files exist")
+            
+    except Exception as e:
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error checking required files: {e}") 

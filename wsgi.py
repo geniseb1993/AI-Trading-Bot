@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 WSGI entry point for the AI Trading Bot API.
 This file is used by Gunicorn to run the application in production.
