@@ -1,176 +1,195 @@
 #!/usr/bin/env python
 """
-WSGI entry point for the AI Trading Bot API.
-This file is used by Gunicorn to run the application in production.
+WSGI Application Entry Point
+
+This module serves as the WSGI entry point for Gunicorn and other WSGI servers.
+It also provides fallback mechanisms for handling missing dependencies.
 """
 
 import os
 import sys
 import logging
-from flask import request, send_file
+import importlib.util
 from pathlib import Path
 
-# Add current directory and api directory to Python path
-current_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, current_dir)
-sys.path.insert(0, os.path.join(current_dir, 'api'))
-
-# Add mock_modules directory to sys.path to handle missing dependencies
-mock_modules_dir = os.path.join(current_dir, 'mock_modules')
-if os.path.exists(mock_modules_dir):
-    sys.path.insert(0, mock_modules_dir)
-    
-# Set up logging
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('wsgi')
 
-# Try to install mock modules
+# Add the current directory to Python path
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, BASE_DIR)
+
+# Add mock_modules to the path
+MOCK_MODULES_DIR = os.path.join(BASE_DIR, 'mock_modules')
+if os.path.exists(MOCK_MODULES_DIR) and MOCK_MODULES_DIR not in sys.path:
+    logger.info(f"Adding mock_modules directory to Python path: {MOCK_MODULES_DIR}")
+    sys.path.insert(0, MOCK_MODULES_DIR)
+
+# Try to install mock modules if script exists
 try:
-    from install_mock_modules import install_mock_modules
-    install_mock_modules()
-    logger.info("Mock modules installed successfully")
-except Exception as e:
-    logger.warning(f"Failed to install mock modules: {e}")
+    import install_mock_modules
+    install_mock_modules.install_mock_modules()
+except ImportError:
+    logger.warning("Could not import install_mock_modules, some dependencies may be missing")
 
-# Try to check and install required packages
-try:
-    from check_requirements import check_and_install_packages
-    missing_packages = check_and_install_packages()
-    if missing_packages:
-        logger.warning(f"Some packages could not be installed: {', '.join(missing_packages)}")
-    else:
-        logger.info("All required packages are installed")
-except Exception as e:
-    logger.warning(f"Failed to check and install required packages: {e}")
-
-# Run render fix script to ensure all files and directories exist
-try:
-    from render_fix import run_render_fix
-    run_render_fix()
-    logger.info("Render fix script executed successfully")
-except Exception as e:
-    logger.warning(f"Failed to run render fix script: {e}")
-
-# Import the Flask app
-try:
-    from api import app
-except Exception as e:
-    logger.error(f"Failed to import app from api module: {e}")
-    # Create a simple fallback Flask app if the main app fails to load
-    from flask import Flask, jsonify
-    from flask_cors import CORS
-    
-    app = Flask(__name__)
-    CORS(app)
-    
-    @app.route('/')
-    def index():
-        return """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Vicki AI Trading Bot - Fallback Mode</title>
-            <style>
-                body { font-family: Arial, sans-serif; background-color: #121212; color: white; text-align: center; padding: 50px; }
-                .container { max-width: 800px; margin: 0 auto; background-color: #1a1a1a; padding: 30px; border-radius: 10px; }
-                h1 { color: #ff00ff; }
-                .error { color: #ff6b6b; margin: 20px 0; padding: 10px; background-color: #2d2d2d; border-radius: 5px; }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h1>Vicki AI Trading Bot</h1>
-                <p>The application is running in fallback mode due to an error loading the main app.</p>
-                <div class="error">
-                    <p>API endpoint still available at <a href="/api/health" style="color: #ff00ff;">/api/health</a></p>
-                </div>
-            </div>
-        </body>
-        </html>
-        """
-    
-    @app.route('/api/health')
-    def health():
-        return jsonify({
-            'status': 'ok',
-            'mode': 'fallback',
-            'message': 'API is running in fallback mode'
-        })
-    
-    logger.info("Created fallback Flask app")
-
-# -----------------------------
-# Logging Configuration
-# -----------------------------
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
-# -----------------------------
-# Optional Setup Scripts
-# -----------------------------
-def try_import_and_run(module_name, function_name):
+# Define a simple fallback Flask application
+def create_fallback_app():
+    """Create a simple Flask application as a fallback"""
     try:
-        module = __import__(module_name)
-        func = getattr(module, function_name)
-        func()
-        logger.info(f"{function_name} from {module_name} executed successfully.")
-    except (ImportError, AttributeError) as e:
-        logger.warning(f"{function_name} not run. Reason: {e}")
+        from flask import Flask, send_from_directory, jsonify, render_template_string
 
-try_import_and_run("check_static_files", "check_static_files")
-try_import_and_run("ensure_directories", "ensure_directories")
-try_import_and_run("setup_static_files", "setup_static_files")
-try_import_and_run("copy_to_frontend_build", "copy_to_frontend_build")
-
-# -----------------------------
-# Default ENV Config
-# -----------------------------
-if 'SERVE_FRONTEND' not in os.environ:
-    os.environ['SERVE_FRONTEND'] = 'true'
-    logger.info("Environment variable SERVE_FRONTEND was not set. Defaulting to 'true'.")
-
-# -----------------------------
-# Debug Hook (Not for Production)
-# -----------------------------
-@app.before_request
-def enable_debug_in_non_debug_mode():
-    if not app.debug:
-        app.debug = True
-
-# -----------------------------
-# Custom 404 to Serve React SPA
-# -----------------------------
-@app.errorhandler(404)
-def fallback_to_index(e):
-    path = request.path
-    logger.warning(f"404 for path: {path}")
-
-    if path.startswith('/static/'):
-        frontend_path = os.path.join('frontend', 'build', path[1:])
-        if os.path.exists(frontend_path):
-            logger.info(f"Serving fallback static file: {frontend_path}")
-            return send_file(frontend_path)
-
-    if os.environ.get('SERVE_FRONTEND', 'false').lower() == 'true':
-        index_paths = [
-            os.path.join('frontend', 'build', 'index.html'),
-            os.path.join('index.html'),
-        ]
-        for index_path in index_paths:
+        app = Flask(__name__, static_folder='frontend/build')
+        
+        # Define basic API endpoints
+        @app.route('/api/status')
+        def status():
+            return jsonify({
+                'status': 'running',
+                'mode': 'fallback',
+                'message': 'Fallback Flask app is running'
+            })
+        
+        # Serve static files from frontend/build
+        @app.route('/', defaults={'path': ''})
+        @app.route('/<path:path>')
+        def serve(path):
+            # Check if path exists in static folder
+            static_path = os.path.join(app.static_folder, path)
+            
+            if path and os.path.exists(static_path) and not os.path.isdir(static_path):
+                return send_from_directory(app.static_folder, path)
+                
+            # Check if we have an index.html file
+            index_path = os.path.join(app.static_folder, 'index.html')
+            
             if os.path.exists(index_path):
-                logger.info(f"Serving index.html from {index_path}")
-                return send_file(index_path)
+                return send_from_directory(app.static_folder, 'index.html')
+                
+            # Fallback to a simple HTML page
+            return render_template_string("""
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <title>AI Trading Bot</title>
+                    <meta name="viewport" content="width=device-width, initial-scale=1">
+                    <style>
+                        body {
+                            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                            margin: 0;
+                            padding: 0;
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            height: 100vh;
+                            background-color: #f0f2f5;
+                            color: #333;
+                        }
+                        .container {
+                            max-width: 800px;
+                            padding: 2rem;
+                            background-color: white;
+                            border-radius: 8px;
+                            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                            text-align: center;
+                        }
+                        h1 {
+                            color: #4a90e2;
+                            margin-bottom: 1rem;
+                        }
+                        p {
+                            line-height: 1.6;
+                            margin-bottom: 1.5rem;
+                        }
+                        .status {
+                            padding: 0.5rem 1rem;
+                            background-color: #e7f3ff;
+                            border-radius: 4px;
+                            display: inline-block;
+                            font-weight: bold;
+                            color: #0062cc;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <h1>AI Trading Bot</h1>
+                        <p>The application is currently running in fallback mode. The frontend assets might be missing or inaccessible.</p>
+                        <div class="status">API Status: Running</div>
+                    </div>
+                </body>
+            </html>
+            """)
+        
+        return app
+    except ImportError as e:
+        logger.error(f"Failed to create fallback app: {e}")
+        return None
 
-    return e
+# Try to import the main application
+try:
+    logger.info("Attempting to import main Flask application")
+    
+    # First, try to import from the api module
+    try:
+        from api.app import app
+        logger.info("Successfully imported app from api.app")
+    except ImportError as e:
+        logger.warning(f"Failed to import app from api.app: {e}")
+        
+        # Try app.py in root directory
+        try:
+            import app
+            application = app.app
+            logger.info("Successfully imported app from app module")
+        except ImportError:
+            logger.warning("Failed to import app from app module, attempting fallback")
+            
+            # Create fallback application
+            application = create_fallback_app()
+            
+            if application is None:
+                # Last resort fallback
+                from flask import Flask
+                application = Flask(__name__)
+                
+                @application.route('/')
+                def index():
+                    return "AI Trading Bot API is running (minimal fallback mode)"
+            
+            logger.info("Using fallback Flask application")
+    else:
+        application = app
 
-# -----------------------------
-# Local Run Entry Point
-# -----------------------------
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8000)), debug=True)
+except Exception as e:
+    logger.error(f"Critical error in WSGI initialization: {e}")
+    # Create a minimal Flask app as last resort
+    from flask import Flask, jsonify
+    application = Flask(__name__)
+    
+    @application.route('/')
+    def index():
+        return "AI Trading Bot API is running (emergency fallback mode)"
+    
+    @application.route('/api/status')
+    def status():
+        return jsonify({
+            'status': 'error',
+            'error': str(e),
+            'mode': 'emergency_fallback'
+        })
+
+# Create a health check route to verify the app is running
+try:
+    @application.route('/health')
+    def health_check():
+        from flask import jsonify
+        return jsonify({'status': 'healthy'})
+except Exception as e:
+    logger.error(f"Failed to add health check route: {e}")
+
+# The WSGI entry point
+app = application

@@ -1,46 +1,33 @@
 services:
-  # Web Service
+  # API service
   - type: web
     name: ai-trading-bot-api
     env: python
-    buildCommand: >
-      pip install -r requirements.txt &&
-      mkdir -p frontend/build/static/css frontend/build/static/js frontend/build/static/images &&
-      mkdir -p static/css static/js static/images &&
-      mkdir -p mock_modules &&
-      python render_fix.py &&
-      python install_mock_modules.py &&
-      python check_requirements.py &&
-      ls -la mock_modules
-    startCommand: >
-      python render_fix.py &&
-      python install_mock_modules.py &&
-      gunicorn wsgi:app --workers=2 --threads=4 --timeout=120 --bind=0.0.0.0:$PORT
+    region: oregon
+    plan: free
+    buildCommand: |
+      python -m pip install --upgrade pip
+      pip install -r requirements.txt
+      python install_mock_modules.py
+      python check_requirements.py
+      python render_fix.py
+    startCommand: gunicorn wsgi:app --log-file=-
     envVars:
+      - key: PORT
+        value: 8080
       - key: PYTHON_VERSION
-        value: 3.9.0
-      - key: FLASK_ENV
-        value: production
-      - key: FLASK_DEBUG
-        value: 1
-      - key: USE_MOCK_BROKER
-        value: true
-      # Add environment variables to enable fallbacks
-      - key: USE_MOCK_POLYGON
-        value: true
-      - key: USE_MOCK_ALPACA
-        value: true
-      - key: USE_MOCK_MODULES
-        value: true
+        value: 3.10.0
       - key: SERVE_FRONTEND
         value: true
-      - key: PATH_DEBUG
+      - key: MOCK_DEPENDENCIES
         value: true
-      - key: DEBUG
+      - key: FLASK_ENV
+        value: production
+      - key: FLASK_APP
+        value: wsgi.py
+      - key: RENDER_DEPLOYMENT
         value: true
-      - key: LOG_LEVEL
-        value: DEBUG
-    healthCheckPath: /api/health
+    healthCheckPath: /health
     # Automatic deploy from GitHub
     autoDeploy: true
     disk:

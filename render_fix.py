@@ -2,388 +2,327 @@
 """
 Render Fix Script
 
-This script sets up required directories and static files to ensure
-the web application can be served correctly in the Render deployment environment.
+This script prepares the environment for deployment on Render.
+It creates necessary directories and basic files to ensure the application can start.
 """
 
 import os
+import sys
 import logging
 import shutil
 from pathlib import Path
-import base64
-from io import BytesIO
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('render_fix')
 
+def ensure_directory(directory):
+    """Ensure a directory exists, creating it if necessary"""
+    if not os.path.exists(directory):
+        logger.info(f"Creating directory: {directory}")
+        os.makedirs(directory, exist_ok=True)
+    return directory
 
-def ensure_directories(base_path):
-    """Ensure that all required directories exist."""
-    dirs = [
-        'static/css',
-        'static/js',
-        'static/images',
-        'frontend/build/static/css',
-        'frontend/build/static/js',
-        'frontend/build/static/images',
-        'api/lib',  # Add lib directory
-    ]
-    for d in dirs:
-        full_path = os.path.join(base_path, d)
-        os.makedirs(full_path, exist_ok=True)
-        logger.info(f"Ensured directory: {full_path}")
-
-
-def write_file(filepath, content, description="file"):
-    """Write content to a file, handling errors."""
-    try:
-        with open(filepath, 'w') as f:
-            f.write(content)
-        logger.info(f"Created/updated {description}: {filepath}")
-    except Exception as e:
-        logger.error(f"Failed to write {description} at {filepath}: {e}")
-
-
-def copy_file(src, dst):
-    """Copy file from src to dst with logging."""
-    try:
-        shutil.copy2(src, dst)
-        logger.info(f"Copied file from {src} to {dst}")
-    except Exception as e:
-        logger.error(f"Failed to copy file from {src} to {dst}: {e}")
-
-
-def create_placeholder_image(filepath):
-    """Create a placeholder magenta circle PNG image if it does not exist."""
-    if os.path.exists(filepath):
-        return
-
-    placeholder_base64 = (
-        "iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAB3RJTUUH5QoaFiUw"
-        "2kH7uAAAABl0RVh0Q29tbWVudABDcmVhdGVkIHdpdGggR0lNUFeBDhcAAAGySURBVFjD7ZjNSgNBEIY/bCVJpNjaJJWk"
-        "UFJ9A/IG0kVJEEkhb8Qo1O+QUsLZEdsIIkFIk8WTSZMGz+w+V+cjdnJr+ybnZ2Zl5u74M+JiIjEyYFHAANnALaARmA7y"
-        "2AErQCtwFF4A74A3MBOSApD8R8An8Bs8Obd5jtxXMAdO9MIaCthT0uQEVrZ0AAMW1fipbJ5m+lX5FVDPl1AR1gOcHzUF"
-        "sh5qgPGltZgPl9M+S0AzGm8s2u79bAZGzZqAdgzj4QMdYlY5C1h6DFvMAA93lRQCrzgFbBPuAvWYtO91eZ4mgVs5xrLr"
-        "uYZM+B4qM1xAyS2U0lhBqApD9lzvTzJh3R+Cw+i5F7U8ZNHsxLEqU8BP+t52RMVz3Rx4ZwAAAABJRU5ErkJggg=="
-    )
-
-    try:
-        with open(filepath, 'wb') as img:
-            img.write(base64.b64decode(placeholder_base64))
-        logger.info(f"Created placeholder image: {filepath}")
-    except Exception as e:
-        logger.error(f"Failed to create placeholder image at {filepath}: {e}")
-
-
-def create_lib_modules(base_path):
-    """Create simple lib module files to prevent import errors."""
-    # Create __init__.py in the lib directory
-    lib_init_path = os.path.join(base_path, 'api', 'lib', '__init__.py')
-    write_file(lib_init_path, "# Lib package", "lib/__init__.py")
-    
-    # Create market_data.py module
-    market_data_path = os.path.join(base_path, 'api', 'lib', 'market_data.py')
-    market_data_content = """
-# Mock implementation of MarketDataSourceManager
-class MarketDataSourceManager:
-    def __init__(self, config=None):
-        self.active_source = config.get('active_source', 'mock') if config else 'mock'
-        self.sources = {'mock': MockDataSource()}
-        
-    def get_market_data(self, symbols, data_type='bars', timeframe='1Day', limit=100):
-        return {'bars': {symbol: [] for symbol in symbols}}
-        
-    def set_active_source(self, source):
-        if source in self.sources:
-            self.active_source = source
-            return True
-        return False
-
-class MockDataSource:
-    def __init__(self):
-        self.name = 'mock'
-        self.server_running = False
-        
-    def get_alerts(self):
-        return []
-        
-    def clear_webhooks(self):
-        pass
-"""
-    write_file(market_data_path, market_data_content, "lib/market_data.py")
-    
-    # Create market_data_config.py module
-    config_path = os.path.join(base_path, 'api', 'lib', 'market_data_config.py')
-    config_content = """
-import os
-import json
-
-def load_market_data_config():
-    \"\"\"Load market data configuration from config file.\"\"\"
-    try:
-        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'config', 'market_data_config.json')
-        if os.path.exists(config_path):
-            with open(config_path, 'r') as f:
-                return json.load(f)
-    except Exception:
-        pass
-    
-    # Return default config if file doesn't exist or has errors
-    return {
-        'active_source': 'mock',
-        'mock': {
-            'use_csv_data': True
-        }
-    }
-
-def save_market_data_config(config):
-    \"\"\"Save market data configuration to config file.\"\"\"
-    try:
-        config_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'config')
-        os.makedirs(config_dir, exist_ok=True)
-        
-        config_path = os.path.join(config_dir, 'market_data_config.json')
-        with open(config_path, 'w') as f:
-            json.dump(config, f, indent=2)
+def copy_file(source, destination):
+    """Copy a file if source exists"""
+    if os.path.exists(source):
+        logger.info(f"Copying {source} to {destination}")
+        shutil.copy2(source, destination)
         return True
-    except Exception:
-        return False
-"""
-    write_file(config_path, config_content, "lib/market_data_config.py")
+    return False
 
+def write_file(path, content):
+    """Write content to a file"""
+    logger.info(f"Writing to {path}")
+    with open(path, 'w') as f:
+        f.write(content)
 
-def create_mock_modules(base_path):
-    """Create mock implementations of common external modules that might be missing."""
-    mock_modules_dir = os.path.join(base_path, 'mock_modules')
-    os.makedirs(mock_modules_dir, exist_ok=True)
-    
-    # Create __init__.py in the mock_modules directory
-    init_path = os.path.join(mock_modules_dir, '__init__.py')
-    write_file(init_path, "# Mock modules package", "mock_modules/__init__.py")
-    
-    # Create mock plyer module
-    plyer_path = os.path.join(mock_modules_dir, 'plyer.py')
-    plyer_content = """
-# Mock implementation of plyer module
-class notification:
-    @staticmethod
-    def notify(title=None, message=None, app_name=None, app_icon=None, timeout=10, ticker=None, toast=False):
-        print(f"MOCK NOTIFICATION: {title} - {message}")
-"""
-    write_file(plyer_path, plyer_content, "mock_modules/plyer.py")
-    
-    # Create a file to install the mock modules
-    install_path = os.path.join(base_path, 'install_mock_modules.py')
-    install_content = """
-import os
-import sys
-import logging
-
-# Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-
-def install_mock_modules():
-    \"\"\"Install mock modules to handle missing dependencies.\"\"\"
-    # Add the mock_modules directory to sys.path
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    mock_modules_dir = os.path.join(current_dir, 'mock_modules')
-    
-    if os.path.exists(mock_modules_dir):
-        logger.info(f"Adding mock modules directory to sys.path: {mock_modules_dir}")
-        sys.path.insert(0, mock_modules_dir)
-        
-        # List all the mock modules available
-        mock_modules = [f[:-3] for f in os.listdir(mock_modules_dir) 
-                       if f.endswith('.py') and f != '__init__.py']
-        logger.info(f"Available mock modules: {', '.join(mock_modules)}")
-        
-        # Try importing each mock module
-        for module_name in mock_modules:
-            try:
-                # First try to import the real module
-                __import__(module_name)
-                logger.info(f"Real module {module_name} found, no need for mock")
-            except ImportError:
-                # If import fails, the mock will be used instead
-                logger.info(f"Real module {module_name} not found, mock will be used")
-    else:
-        logger.warning(f"Mock modules directory not found: {mock_modules_dir}")
-
-if __name__ == "__main__":
-    install_mock_modules()
-"""
-    write_file(install_path, install_content, "install_mock_modules.py")
-    
-    # Also create requirements.py to fix missing packages
-    requirements_path = os.path.join(base_path, 'check_requirements.py')
-    requirements_content = """
-import sys
-import os
-import logging
-import subprocess
-from pathlib import Path
-
-# Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-
-def check_and_install_packages():
-    \"\"\"Check if required packages are installed and install them if needed.\"\"\"
-    required_packages = [
-        'flask',
-        'flask-cors',
-        'gunicorn',
-        'pandas',
-        'python-dotenv',
-        'requests',
-        'alpaca-trade-api',
-        'plyer',
-        'polygon-api-client'
-    ]
-    
-    installed_packages = []
-    missing_packages = []
-    
-    # Check which packages are already installed
-    for package in required_packages:
-        try:
-            __import__(package.replace('-', '_'))
-            installed_packages.append(package)
-        except ImportError:
-            missing_packages.append(package)
-    
-    logger.info(f"Installed packages: {', '.join(installed_packages)}")
-    logger.info(f"Missing packages: {', '.join(missing_packages)}")
-    
-    # Try to install missing packages
-    if missing_packages:
-        try:
-            logger.info("Attempting to install missing packages...")
-            for package in missing_packages:
-                try:
-                    subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
-                    logger.info(f"Successfully installed {package}")
-                except Exception as e:
-                    logger.error(f"Failed to install {package}: {e}")
-        except Exception as e:
-            logger.error(f"Error installing packages: {e}")
-    
-    return missing_packages
-
-if __name__ == "__main__":
-    check_and_install_packages()
-"""
-    write_file(requirements_path, requirements_content, "check_requirements.py")
-
-
-def get_direct_html_content():
-    """Return the content of the fallback HTML page."""
-    return """
-<!DOCTYPE html>
+def create_fallback_index_html(directory):
+    """Create a fallback index.html file in the specified directory"""
+    file_path = os.path.join(directory, 'index.html')
+    if not os.path.exists(file_path):
+        logger.info(f"Creating fallback index.html at {file_path}")
+        html_content = """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Vicki AI Trading Bot</title>
-    <link rel="stylesheet" href="/static/css/main.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Trading Bot</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            width: 90%;
+            padding: 2rem;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 {
+            color: #4a90e2;
+            margin-bottom: 1rem;
+        }
+        p {
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+        }
+        .status {
+            padding: 0.5rem 1rem;
+            background-color: #e7f3ff;
+            border-radius: 4px;
+            display: inline-block;
+            font-weight: bold;
+            color: #0062cc;
+            margin-bottom: 1rem;
+        }
+        .api-link {
+            display: inline-block;
+            margin-top: 1rem;
+            padding: 0.5rem 1rem;
+            background-color: #4a90e2;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .api-link:hover {
+            background-color: #3a80d2;
+        }
+    </style>
 </head>
 <body>
-    <div class="app">
-        <div class="sidebar">
-            <h2>Sidebar</h2>
-        </div>
-        <div class="main-content">
-            <h1>Welcome to Vicki AI</h1>
-            <button class="btn">Launch</button>
-        </div>
+    <div class="container">
+        <h1>AI Trading Bot</h1>
+        <div class="status">Server Status: Online</div>
+        <p>The AI Trading Bot API is running. This is a fallback page displayed when the full frontend is not available.</p>
+        <p>The API server is operational and ready to process requests.</p>
+        <a href="/api/status" class="api-link">Check API Status</a>
     </div>
-    <script src="/static/js/main.js"></script>
 </body>
-</html>
-"""
+</html>"""
+        write_file(file_path, html_content)
+        return file_path
+    return None
 
+def create_basic_css_file(directory):
+    """Create a basic CSS file in the specified directory"""
+    css_dir = os.path.join(directory, 'static', 'css')
+    ensure_directory(css_dir)
+    
+    css_file = os.path.join(css_dir, 'main.css')
+    if not os.path.exists(css_file):
+        logger.info(f"Creating basic CSS file at {css_file}")
+        css_content = """/* Basic styles for AI Trading Bot */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f0f2f5;
+    color: #333;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.card {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    background-color: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.btn {
+    display: inline-block;
+    padding: 8px 16px;
+    border-radius: 4px;
+    background-color: #4a90e2;
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+}
+
+.btn:hover {
+    background-color: #3a80d2;
+}
+"""
+        write_file(css_file, css_content)
+        return css_file
+    return None
+
+def create_basic_js_file(directory):
+    """Create a basic JavaScript file in the specified directory"""
+    js_dir = os.path.join(directory, 'static', 'js')
+    ensure_directory(js_dir)
+    
+    js_file = os.path.join(js_dir, 'main.js')
+    if not os.path.exists(js_file):
+        logger.info(f"Creating basic JS file at {js_file}")
+        js_content = """// Basic JavaScript for AI Trading Bot
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('AI Trading Bot frontend initialized');
+    
+    // Check API status
+    fetch('/api/status')
+        .then(response => response.json())
+        .then(data => {
+            console.log('API Status:', data);
+            const statusElement = document.querySelector('.status');
+            if (statusElement) {
+                statusElement.textContent = `Server Status: ${data.status || 'Online'}`;
+            }
+        })
+        .catch(error => {
+            console.error('Error checking API status:', error);
+            const statusElement = document.querySelector('.status');
+            if (statusElement) {
+                statusElement.textContent = 'Server Status: Error';
+                statusElement.style.backgroundColor = '#ffe0e0';
+                statusElement.style.color = '#d32f2f';
+            }
+        });
+});
+"""
+        write_file(js_file, js_content)
+        return js_file
+    return None
+
+def ensure_frontend_directories():
+    """Ensure all required frontend directories exist"""
+    frontend_dirs = [
+        'frontend/build',
+        'frontend/build/static',
+        'frontend/build/static/css',
+        'frontend/build/static/js',
+        'frontend/build/static/images',
+        'static',
+        'static/css',
+        'static/js',
+        'static/images',
+    ]
+    
+    for directory in frontend_dirs:
+        ensure_directory(directory)
+
+def create_minimal_app_if_missing():
+    """Create a minimal app.py file if it doesn't exist"""
+    if not os.path.exists('app.py'):
+        logger.info("Creating minimal app.py")
+        app_content = """#!/usr/bin/env python3
+from flask import Flask, jsonify, send_from_directory
+from flask_cors import CORS
+import os
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Create Flask app
+app = Flask(__name__, static_folder='frontend/build')
+CORS(app)
+
+@app.route('/api/status')
+def status():
+    return jsonify({
+        'status': 'running',
+        'mode': 'minimal',
+        'message': 'Minimal Flask app is running'
+    })
+
+@app.route('/health')
+def health():
+    return jsonify({'status': 'healthy'})
+
+# Serve React app
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve(path):
+    if path and os.path.exists(os.path.join(app.static_folder, path)):
+        return send_from_directory(app.static_folder, path)
+    return send_from_directory(app.static_folder, 'index.html')
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 8000))
+    app.run(host='0.0.0.0', port=port)
+"""
+        write_file('app.py', app_content)
+
+def create_mock_directory():
+    """Create the mock_modules directory if it doesn't exist"""
+    mock_dir = ensure_directory('mock_modules')
+    
+    # Create __init__.py to make it a proper package
+    init_file = os.path.join(mock_dir, '__init__.py')
+    if not os.path.exists(init_file):
+        logger.info(f"Creating {init_file}")
+        write_file(init_file, '# Mock modules package\n')
+    
+    return mock_dir
+
+def fix_execution_model():
+    """Create a basic execution model module if it's missing"""
+    exec_model_dir = ensure_directory('execution_model')
+    
+    # Create __init__.py
+    init_file = os.path.join(exec_model_dir, '__init__.py')
+    if not os.path.exists(init_file):
+        logger.info(f"Creating {init_file}")
+        write_file(init_file, '# Execution model package\n')
+    
+    return exec_model_dir
 
 def run_render_fix():
-    """Main entry to create all required files and structure."""
-    base_path = os.path.dirname(os.path.abspath(__file__))
-    logger.info(f"Starting Render Fix in: {base_path}")
-
-    # Ensure directories exist
-    ensure_directories(base_path)
+    """Main function to run all fixes"""
+    logger.info("Starting render fix script")
     
-    # Create lib modules to prevent import errors
-    create_lib_modules(base_path)
+    # Ensure directories
+    ensure_frontend_directories()
+    create_mock_directory()
+    fix_execution_model()
     
-    # Create mock modules for common external dependencies
-    create_mock_modules(base_path)
-
-    # Create fallback HTML
-    direct_html_path = os.path.join(base_path, 'direct.html')
-    write_file(direct_html_path, get_direct_html_content(), 'direct.html')
-
-    # Copy to index.html targets
-    index_targets = [
-        os.path.join(base_path, 'index.html'),
-        os.path.join(base_path, 'frontend', 'build', 'index.html')
-    ]
-    for target in index_targets:
-        copy_file(direct_html_path, target)
-
-    # Create main.css
-    css_content = """
-body { background-color: #121212; color: #ffffff; font-family: Arial, sans-serif; margin: 0; padding: 0; }
-.app { display: flex; min-height: 100vh; }
-.sidebar { width: 220px; background-color: #111; padding: 20px; border-right: 2px solid #ff00ff; }
-.main-content { flex: 1; padding: 20px; }
-.card { background-color: #1c1c2e; border-radius: 10px; padding: 20px; margin-bottom: 20px; }
-.btn { background-color: #ff00ff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
-"""
-    for path in ['static/css/main.css', 'frontend/build/static/css/main.css']:
-        write_file(os.path.join(base_path, path), css_content, 'main.css')
-
-    # Create main.js
-    js_content = "document.addEventListener('DOMContentLoaded', () => console.log('Vicki AI UI Loaded'));"
-    for path in ['static/js/main.js', 'frontend/build/static/js/main.js']:
-        write_file(os.path.join(base_path, path), js_content, 'main.js')
-
-    # Create manifest.json
-    manifest_content = """{
-  "short_name": "Vicki",
-  "name": "Vicki AI Trading Bot",
-  "icons": [
-    {
-      "src": "/static/images/logo.png",
-      "type": "image/png",
-      "sizes": "192x192"
-    }
-  ],
-  "start_url": "/",
-  "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#121212"
-}"""
-    for path in [
-        'static/manifest.json',
-        'frontend/build/manifest.json',
-        'frontend/build/static/manifest.json'
-    ]:
-        write_file(os.path.join(base_path, path), manifest_content, 'manifest.json')
-
-    # Create placeholder images
-    for path in [
-        'static/images/logo.png',
-        'static/images/vicky.png',
-        'frontend/build/static/images/logo.png',
-        'frontend/build/static/images/vicky.png',
-    ]:
-        create_placeholder_image(os.path.join(base_path, path))
-
-    logger.info("Render Fix complete.")
-
+    # Create fallback files
+    create_fallback_index_html('frontend/build')
+    create_fallback_index_html('.')
+    create_basic_css_file('frontend/build')
+    create_basic_js_file('frontend/build')
+    
+    # Create minimal app if necessary
+    create_minimal_app_if_missing()
+    
+    logger.info("Render fix script completed successfully")
+    return True
 
 if __name__ == "__main__":
     run_render_fix()

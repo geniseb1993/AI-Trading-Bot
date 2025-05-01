@@ -1,36 +1,39 @@
-# Core dependencies
+# Core dependencies (required)
 flask>=2.0.0
 flask-cors>=3.0.0
 python-dotenv>=0.15.0
-gunicorn>=20.0.0
-whitenoise==6.6.0  # For serving static files
-
-# API clients - pinned to compatible versions
-alpaca-py==0.8.2  # Modern alternative to alpaca-trade-api
-openai==1.3.0
-polygon-api-client==1.14.2  # Added for dual bot functionality
-
-# Data handling
+gunicorn>=20.0.4
 requests>=2.25.0
 pandas>=1.3.0
 numpy>=1.20.0
-pytz==2023.3
-python-dateutil==2.8.2
+pytz>=2023.3
+python-dateutil>=2.8.2
 
-# For visualization and data analysis
-matplotlib==3.7.1  # Compatible with pandas 1.5.3
-plotly==5.15.0
-scikit-learn==1.2.2  # Adjusted for compatibility
+# Whitenoise for serving static files in production
+whitenoise>=6.0.0
 
-# Notifications
-pygame==2.5.2  # For sound notifications
-pyttsx3==2.90  # For fallback voice notifications
+# Optional dependencies (will be mocked if not available)
+# Comment out or remove dependencies that cause issues in your environment
+# Data sources
+alpaca-py>=0.8.2 ; platform_system != "Render"  # Modern alternative to alpaca-trade-api
+polygon-api-client>=1.14.2 ; platform_system != "Render"  # For market data
+
+# AI components
+openai>=1.3.0 ; platform_system != "Render" 
+
+# UI and notifications
+pygame>=2.5.0 ; platform_system != "Render"
+pyttsx3>=2.90 ; platform_system != "Render" 
+
+# Data analysis and visualization
+matplotlib>=3.7.0 ; platform_system != "Render"
+plotly>=5.15.0 ; platform_system != "Render"
+scikit-learn>=1.2.2 ; platform_system != "Render"
 
 # Utilities
-tqdm==4.65.0
-psutil==5.9.5
-pydantic==1.10.8  # Downgraded for compatibility
-peewee==3.16.2
+tqdm>=4.65.0
+pydantic>=1.10.0 
+peewee>=3.16.0
 PyYAML>=6.0
 
 # Testing
@@ -47,3 +50,6 @@ markupsafe>=2.0.0
 # Add database functionality
 # sqlalchemy>=1.4.0
 # peewee>=3.14.0
+
+# Note: The platform_system != "Render" condition will skip installation on Render
+# The mock_modules system will create mock implementations for these packages
