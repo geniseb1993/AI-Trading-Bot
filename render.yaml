@@ -10,7 +10,11 @@ services:
       cd frontend && npm install && npm run build && cd .. &&
       pip install -r requirements.txt &&
       python fix_frontend_build.py
-    startCommand: python fix_indentation.py && python ensure_directories.py && gunicorn wsgi:app --workers=4 --threads=2 --timeout=120 --bind=0.0.0.0:$PORT
+    startCommand: >
+      python fix_indentation.py && 
+      python ensure_directories.py && 
+      python fix_frontend_build.py &&
+      gunicorn wsgi:app --workers=4 --threads=2 --timeout=120 --bind=0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.9.0

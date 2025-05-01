@@ -107,6 +107,69 @@ def copy_assets():
                 shutil.copy2(file_path, dst_path)
                 logger.info(f"Copied {file_path} to {dst_path}")
 
+def create_placeholder_static_files():
+    """Create placeholder static files for common paths that might be missing"""
+    # Create placeholder CSS files
+    css_dir = os.path.join(BUILD_DIR, 'static', 'css')
+    os.makedirs(css_dir, exist_ok=True)
+    
+    # Add placeholder for specific CSS file mentioned in error
+    css_file = os.path.join(css_dir, 'main.8a689c36.css')
+    if not os.path.exists(css_file):
+        logger.info(f"Creating placeholder CSS file: {css_file}")
+        with open(css_file, 'w') as f:
+            f.write("""
+/* Placeholder CSS file created by fix_frontend_build.py */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #121212;
+    color: #ffffff;
+}
+.placeholder-message {
+    text-align: center;
+    margin-top: 100px;
+    font-size: 1.5rem;
+}
+.app-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+""")
+    
+    # Create placeholder JS files
+    js_dir = os.path.join(BUILD_DIR, 'static', 'js')
+    os.makedirs(js_dir, exist_ok=True)
+    
+    # Add placeholder for specific JS file mentioned in error
+    js_file = os.path.join(js_dir, 'main.75e22b8e.js')
+    if not os.path.exists(js_file):
+        logger.info(f"Creating placeholder JS file: {js_file}")
+        with open(js_file, 'w') as f:
+            f.write("""
+// Placeholder JavaScript file created by fix_frontend_build.py
+console.log('Loading placeholder JavaScript file');
+document.addEventListener('DOMContentLoaded', function() {
+    // Create elements to show user that this is a placeholder
+    const app = document.getElementById('root');
+    if (app) {
+        const message = document.createElement('div');
+        message.className = 'placeholder-message';
+        message.innerHTML = `
+            <h1>Vicki AI Trading Bot</h1>
+            <p>This is a placeholder interface. The actual frontend build was not found.</p>
+            <p>Please check the deployment configuration and build process.</p>
+        `;
+        app.appendChild(message);
+        
+        // Apply some basic styling
+        document.body.style.backgroundColor = '#121212';
+        document.body.style.color = '#ffffff';
+        document.body.style.fontFamily = 'Arial, sans-serif';
+    }
+});
+""")
+
 def fix_manifest():
     """Fix paths in manifest.json"""
     manifest_path = os.path.join(BUILD_DIR, 'manifest.json')
@@ -278,6 +341,9 @@ def main():
     
     # Copy assets from public directories to build
     copy_assets()
+    
+    # Create placeholder static files for missing resources
+    create_placeholder_static_files()
     
     # Fix manifest.json
     fix_manifest()

@@ -94,6 +94,7 @@ def ensure_directories():
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vicki AI Trading Bot</title>
+    <link rel="stylesheet" href="/static/css/main.8a689c36.css">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -126,26 +127,77 @@ def ensure_directories():
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Vicki AI Trading Bot</h1>
-        <div class="message">
-            <p>The frontend build appears to be missing.</p>
-            <p>Please rebuild the frontend or check the deployment configuration.</p>
-        </div>
-        <div class="error">
-            <p>Error: Frontend build files not found!</p>
-            <p>API endpoints are still accessible at /api/*</p>
+    <div id="root">
+        <div class="container">
+            <h1>Vicki AI Trading Bot</h1>
+            <div class="message">
+                <p>The frontend build appears to be missing.</p>
+                <p>Please rebuild the frontend or check the deployment configuration.</p>
+            </div>
+            <div class="error">
+                <p>Error: Frontend build files not found!</p>
+                <p>API endpoints are still accessible at /api/*</p>
+            </div>
         </div>
     </div>
+    <script src="/static/js/main.75e22b8e.js"></script>
 </body>
 </html>
             """)
-        # Also create static directory with an empty CSS file to avoid errors
-        static_dir = frontend_build_dir / "static" / "css"
-        os.makedirs(static_dir, exist_ok=True)
         
-        with open(static_dir / "main.css", 'w') as f:
-            f.write("/* Placeholder CSS */")
+        # Create placeholder static files
+        # CSS file
+        css_dir = frontend_build_dir / "static" / "css"
+        os.makedirs(css_dir, exist_ok=True)
+        
+        with open(css_dir / "main.8a689c36.css", 'w') as f:
+            f.write("""
+/* Placeholder CSS file created by ensure_directories.py */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #121212;
+    color: #ffffff;
+}
+.placeholder-message {
+    text-align: center;
+    margin-top: 100px;
+    font-size: 1.5rem;
+}
+.app-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+""")
+            
+        # JS file
+        js_dir = frontend_build_dir / "static" / "js"
+        os.makedirs(js_dir, exist_ok=True)
+        
+        with open(js_dir / "main.75e22b8e.js", 'w') as f:
+            f.write("""
+// Placeholder JavaScript file created by ensure_directories.py
+console.log('Loading placeholder JavaScript file');
+document.addEventListener('DOMContentLoaded', function() {
+    // Create elements to show user that this is a placeholder
+    const app = document.getElementById('root');
+    if (app) {
+        const message = document.createElement('div');
+        message.className = 'placeholder-message';
+        message.innerHTML = `
+            <h1>Vicki AI Trading Bot</h1>
+            <p>This is a placeholder interface. The actual frontend build was not found.</p>
+            <p>Please check the deployment configuration and build process.</p>
+        `;
+        app.appendChild(message);
+        
+        // Apply some basic styling
+        document.body.style.backgroundColor = '#121212';
+        document.body.style.color = '#ffffff';
+        document.body.style.fontFamily = 'Arial, sans-serif';
+    }
+});
+""")
     
     # Create a manifest.json if it doesn't exist
     manifest_path = frontend_build_dir / "manifest.json"
