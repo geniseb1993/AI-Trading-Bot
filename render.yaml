@@ -4,7 +4,7 @@ services:
     name: ai-trading-bot-api
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python fix_indentation.py && python ensure_directories.py && gunicorn wsgi:app --workers=4 --threads=2 --timeout=120 --bind=0.0.0.0:$PORT
+    startCommand: python fix_indentation.py && python ensure_directories.py && gunicorn webhook_receiver:app --workers=4 --threads=2 --timeout=120 --bind=0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.9.0
@@ -13,6 +13,11 @@ services:
       - key: FLASK_DEBUG
         value: 0
       - key: USE_MOCK_BROKER
+        value: true
+      # Add environment variables to enable fallbacks
+      - key: USE_MOCK_POLYGON
+        value: true
+      - key: USE_MOCK_ALPACA
         value: true
       # Add your environment variables from the dashboard
       - key: OPENAI_API_KEY

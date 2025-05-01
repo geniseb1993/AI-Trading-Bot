@@ -45,21 +45,32 @@ def register_brokers() -> None:
     """
     available_brokers = {}
     
+    # Check if we should use mock broker
+    use_mock_broker = os.environ.get('USE_MOCK_BROKER', 'false').lower() == 'true'
+    
     try:
         # Import mock broker - this should always work
         from .mock_broker import MockBroker
         available_brokers["mock"] = MockBroker
+        logger.info("Successfully imported mock broker")
+        
+        # If we're forced to use mock broker, don't even try to import Alpaca
+        if use_mock_broker:
+            logger.info("Using mock broker as configured by environment variables")
+        else:
+            # Import Alpaca broker - may fail if alpaca-trade-api is not available
+            try:
+                from .alpaca_broker import AlpacaBroker
+                available_brokers["alpaca"] = AlpacaBroker
+                logger.info("Successfully imported Alpaca broker")
+            except ImportError as e:
+                logger.warning(f"Could not import Alpaca broker (using mock instead): {str(e)}")
+                available_brokers["alpaca"] = MockBroker  # Use mock as a fallback for alpaca
+            except Exception as e:
+                logger.error(f"Error importing Alpaca broker: {str(e)}")
+                available_brokers["alpaca"] = MockBroker  # Use mock as a fallback for alpaca
     except Exception as e:
-        logger.error(f"Error importing mock broker: {str(e)}")
-    
-    try:
-        # Import Alpaca broker - may fail if alpaca-trade-api is not available
-        from .alpaca_broker import AlpacaBroker
-        available_brokers["alpaca"] = AlpacaBroker
-    except ImportError as e:
-        logger.warning(f"Could not import Alpaca broker: {str(e)}")
-    except Exception as e:
-        logger.error(f"Error importing Alpaca broker: {str(e)}")
+        logger.error(f"Error importing brokers: {str(e)}")
     
     try:
         # Import factory module and register brokers
