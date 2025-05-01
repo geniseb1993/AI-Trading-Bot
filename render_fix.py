@@ -30,6 +30,7 @@ def ensure_directories(base_path):
         'frontend/build/static/css',
         'frontend/build/static/js',
         'frontend/build/static/images',
+        'api/lib',  # Add lib directory
     ]
     for d in dirs:
         full_path = os.path.join(base_path, d)
@@ -78,6 +79,83 @@ def create_placeholder_image(filepath):
         logger.error(f"Failed to create placeholder image at {filepath}: {e}")
 
 
+def create_lib_modules(base_path):
+    """Create simple lib module files to prevent import errors."""
+    # Create __init__.py in the lib directory
+    lib_init_path = os.path.join(base_path, 'api', 'lib', '__init__.py')
+    write_file(lib_init_path, "# Lib package", "lib/__init__.py")
+    
+    # Create market_data.py module
+    market_data_path = os.path.join(base_path, 'api', 'lib', 'market_data.py')
+    market_data_content = """
+# Mock implementation of MarketDataSourceManager
+class MarketDataSourceManager:
+    def __init__(self, config=None):
+        self.active_source = config.get('active_source', 'mock') if config else 'mock'
+        self.sources = {'mock': MockDataSource()}
+        
+    def get_market_data(self, symbols, data_type='bars', timeframe='1Day', limit=100):
+        return {'bars': {symbol: [] for symbol in symbols}}
+        
+    def set_active_source(self, source):
+        if source in self.sources:
+            self.active_source = source
+            return True
+        return False
+
+class MockDataSource:
+    def __init__(self):
+        self.name = 'mock'
+        self.server_running = False
+        
+    def get_alerts(self):
+        return []
+        
+    def clear_webhooks(self):
+        pass
+"""
+    write_file(market_data_path, market_data_content, "lib/market_data.py")
+    
+    # Create market_data_config.py module
+    config_path = os.path.join(base_path, 'api', 'lib', 'market_data_config.py')
+    config_content = """
+import os
+import json
+
+def load_market_data_config():
+    """Load market data configuration from config file."""
+    try:
+        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'config', 'market_data_config.json')
+        if os.path.exists(config_path):
+            with open(config_path, 'r') as f:
+                return json.load(f)
+    except Exception:
+        pass
+    
+    # Return default config if file doesn't exist or has errors
+    return {
+        'active_source': 'mock',
+        'mock': {
+            'use_csv_data': True
+        }
+    }
+
+def save_market_data_config(config):
+    """Save market data configuration to config file."""
+    try:
+        config_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'config')
+        os.makedirs(config_dir, exist_ok=True)
+        
+        config_path = os.path.join(config_dir, 'market_data_config.json')
+        with open(config_path, 'w') as f:
+            json.dump(config, f, indent=2)
+        return True
+    except Exception:
+        return False
+"""
+    write_file(config_path, config_content, "lib/market_data_config.py")
+
+
 def get_direct_html_content():
     """Return the content of the fallback HTML page."""
     return """
@@ -109,7 +187,11 @@ def run_render_fix():
     base_path = os.path.dirname(os.path.abspath(__file__))
     logger.info(f"Starting Render Fix in: {base_path}")
 
+    # Ensure directories exist
     ensure_directories(base_path)
+    
+    # Create lib modules to prevent import errors
+    create_lib_modules(base_path)
 
     # Create fallback HTML
     direct_html_path = os.path.join(base_path, 'direct.html')

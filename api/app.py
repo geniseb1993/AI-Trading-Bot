@@ -26,6 +26,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Add the current directory to the path for lib imports
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 # Create Flask app first
 app = Flask(__name__)
 CORS(app, resources={
@@ -84,8 +88,65 @@ except Exception as e:
         logger.error(f"Error registering dashboard routes: {e}")
 
 # Add market data integration
-from lib.market_data import MarketDataSourceManager
-from lib.market_data_config import load_market_data_config, save_market_data_config
+try:
+    from lib.market_data import MarketDataSourceManager
+    from lib.market_data_config import load_market_data_config, save_market_data_config
+    logger.info("Successfully imported market data modules")
+except ImportError:
+    try:
+        # Try alternative import paths
+        from api.lib.market_data import MarketDataSourceManager
+        from api.lib.market_data_config import load_market_data_config, save_market_data_config
+        logger.info("Successfully imported market data modules from api.lib")
+    except ImportError:
+        logger.warning("Could not import market data modules, using mock implementations")
+        # Define fallback implementations
+        class MarketDataSourceManager:
+            def __init__(self, config=None):
+                self.active_source = 'mock'
+                self.sources = {'mock': None}
+                
+            def get_market_data(self, symbols, data_type='bars', timeframe='1Day', limit=100):
+                return {'bars': {symbol: [] for symbol in symbols}}
+                
+            def set_active_source(self, source):
+                if source in self.sources:
+                    self.active_source = source
+                    return True
+                return False
+        
+        def load_market_data_config():
+            return {'active_source': 'mock'}
+            
+        def save_market_data_config(config):
+            pass
+
+# Initialize market data manager
+try:
+    # Check APP_ENV for data source decisions
+    app_env = os.environ.get('APP_ENV', 'development')
+    logger.info(f"Application environment: {app_env}")
+    
+    # Load market data configuration
+    market_data_config = load_market_data_config()
+    
+    # Initialize market data manager
+    market_data_manager = MarketDataSourceManager(market_data_config)
+    
+    logger.info(f"Market data manager initialized with source: {market_data_manager.active_source}")
+    
+    # Check if we should use real data based on environment
+    use_real_data = app_env == 'production'
+    if use_real_data:
+        logger.info("Using REAL market data (production environment)")
+    else:
+        logger.warning("Using MOCK market data (non-production environment)")
+        
+except Exception as e:
+    logger.error(f"Warning: Could not initialize market data manager: {e}")
+    logger.error("Using mock implementation for market data manager")
+    market_data_manager = None
+    market_data_config = {}
 
 # Import execution model routes
 from execution_model_routes import register_routes as register_execution_model_routes
@@ -248,33 +309,6 @@ def test_api():
         'alpaca_api': True,
         'unusual_whales_api': True
     })
-
-# Initialize market data manager
-try:
-    # Check APP_ENV for data source decisions
-    app_env = os.environ.get('APP_ENV', 'development')
-    logger.info(f"Application environment: {app_env}")
-    
-    # Load market data configuration
-    market_data_config = load_market_data_config()
-    
-    # Initialize market data manager
-    market_data_manager = MarketDataSourceManager(market_data_config)
-    
-    logger.info(f"Market data manager initialized with source: {market_data_manager.active_source}")
-    
-    # Check if we should use real data based on environment
-    use_real_data = app_env == 'production'
-    if use_real_data:
-        logger.info("Using REAL market data (production environment)")
-    else:
-        logger.warning("Using MOCK market data (non-production environment)")
-        
-except Exception as e:
-    logger.error(f"Warning: Could not initialize market data manager: {e}")
-    logger.error("Using mock implementation for market data manager")
-    market_data_manager = None
-    market_data_config = {}
 
 # Register execution model routes
 try:

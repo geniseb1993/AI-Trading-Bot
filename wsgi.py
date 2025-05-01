@@ -5,9 +5,15 @@ This file is used by Gunicorn to run the application in production.
 """
 
 import os
+import sys
 import logging
 from flask import request, send_file
 from pathlib import Path
+
+# Add current directory and api directory to Python path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, current_dir)
+sys.path.insert(0, os.path.join(current_dir, 'api'))
 
 # Import the Flask app
 from api import app
