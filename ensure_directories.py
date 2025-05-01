@@ -6,6 +6,7 @@ Ensure required directories exist before starting the application.
 import os
 import logging
 from pathlib import Path
+import shutil
 
 # Configure logging
 logging.basicConfig(
@@ -29,7 +30,10 @@ def ensure_directories():
         "public/images",
         "public/sounds",
         "frontend/build",
-        "frontend/build/static"
+        "frontend/build/static",
+        "frontend/build/static/js",
+        "frontend/build/static/css",
+        "frontend/build/static/media"
     ]
     
     # Create directories
@@ -37,6 +41,43 @@ def ensure_directories():
     for directory in directories:
         os.makedirs(directory, exist_ok=True)
         logger.info(f"Checked directory: {directory}")
+    
+    # Ensure key image files are in both frontend/public and public directories
+    try:
+        # List of files to sync between directories with [source, destination] format
+        files_to_sync = [
+            # Images
+            ["frontend/public/images/velma.png", "public/images/velma.png"],
+            ["frontend/public/images/vicky.png", "public/images/vicky.png"],
+            ["frontend/public/images/Vicky-Image.png", "public/images/Vicky-Image.png"],
+            
+            # Also copy the images to build directory (in case they're referenced directly)
+            ["frontend/public/images/velma.png", "frontend/build/images/velma.png"],
+            ["frontend/public/images/vicky.png", "frontend/build/images/vicky.png"],
+            ["frontend/public/images/Vicky-Image.png", "frontend/build/images/Vicky-Image.png"],
+            
+            # Create reverse copies if needed
+            ["public/images/velma.png", "frontend/public/images/velma.png"],
+            ["public/images/vicky.png", "frontend/public/images/vicky.png"],
+        ]
+        
+        # Make sure the frontend/build/images directory exists
+        os.makedirs("frontend/build/images", exist_ok=True)
+        
+        # Copy files if source exists and destination doesn't
+        for src, dest in files_to_sync:
+            if os.path.exists(src) and not os.path.exists(dest):
+                logger.info(f"Copying {src} to {dest}")
+                shutil.copy2(src, dest)
+            elif not os.path.exists(src) and os.path.exists(dest):
+                # If source doesn't exist but destination does, copy back
+                parent_dir = os.path.dirname(src)
+                if not os.path.exists(parent_dir):
+                    os.makedirs(parent_dir, exist_ok=True)
+                logger.info(f"Copying {dest} to {src}")
+                shutil.copy2(dest, src)
+    except Exception as e:
+        logger.error(f"Error syncing image files: {str(e)}")
     
     # Make sure frontend build directory has index.html if it doesn't exist
     frontend_build_dir = Path("frontend/build")
@@ -105,6 +146,37 @@ def ensure_directories():
         
         with open(static_dir / "main.css", 'w') as f:
             f.write("/* Placeholder CSS */")
+    
+    # Create a manifest.json if it doesn't exist
+    manifest_path = frontend_build_dir / "manifest.json"
+    if not manifest_path.exists():
+        logger.warning("Creating placeholder manifest.json")
+        with open(manifest_path, 'w') as f:
+            f.write("""{
+  "short_name": "Vicki",
+  "name": "Vicki AI Trading Bot",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "images/vicky.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "images/vicky.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff"
+}""")
     
     logger.info("Directory check complete.")
     return True

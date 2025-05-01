@@ -68,7 +68,16 @@ def create_app(test_config=None):
     except Exception as e:
         logging.error(f"Failed to register dual bot routes: {str(e)}")
     
-    # Add static file routes
+    # Function to find a file in multiple potential directories
+    def find_file_in_dirs(filename, dirs):
+        """Try to find a file in multiple directories and return the first match."""
+        for dir_path in dirs:
+            full_path = os.path.join(os.getcwd(), dir_path, filename)
+            if os.path.exists(full_path):
+                return dir_path
+        return None
+
+    # Add static file routes with better fallbacks
     @app.route('/data/dashboard/<path:filename>')
     def serve_dashboard_data(filename):
         """Serve dashboard data files."""
@@ -77,15 +86,41 @@ def create_app(test_config=None):
 
     @app.route('/images/<path:filename>')
     def serve_images(filename):
-        """Serve image files."""
+        """Serve image files with better fallbacks."""
         app.logger.info(f"Serving image file: {filename}")
-        return send_from_directory(os.path.join(os.getcwd(), 'public', 'images'), filename)
+        # Try multiple image directories with frontend taking precedence
+        image_dirs = [
+            'frontend/public/images',
+            'frontend/build/images',
+            'public/images'
+        ]
+        
+        image_dir = find_file_in_dirs(filename, image_dirs)
+        if image_dir:
+            return send_from_directory(os.path.join(os.getcwd(), image_dir), filename)
+            
+        # Fallback for images not found - serve a default
+        app.logger.warning(f"Image not found: {filename} - using fallback")
+        return send_from_directory(os.path.join(os.getcwd(), 'frontend/public/images'), 'vicky.png')
 
     @app.route('/sounds/<path:filename>')
     def serve_sounds(filename):
-        """Serve sound files."""
+        """Serve sound files with better fallbacks."""
         app.logger.info(f"Serving sound file: {filename}")
-        return send_from_directory(os.path.join(os.getcwd(), 'public', 'sounds'), filename)
+        # Try multiple sound directories with frontend taking precedence
+        sound_dirs = [
+            'frontend/public/sounds',
+            'frontend/build/sounds',
+            'public/sounds'
+        ]
+        
+        sound_dir = find_file_in_dirs(filename, sound_dirs)
+        if sound_dir:
+            return send_from_directory(os.path.join(os.getcwd(), sound_dir), filename)
+            
+        # If sound not found, just return 404 or a default sound
+        app.logger.warning(f"Sound not found: {filename}")
+        return send_file(os.path.join(os.getcwd(), 'public/sounds', 'notification.mp3')) if os.path.exists(os.path.join(os.getcwd(), 'public/sounds', 'notification.mp3')) else ('Sound file not found', 404)
 
     @app.route('/backtest_results.csv')
     def serve_backtest_results():
@@ -103,8 +138,30 @@ def create_app(test_config=None):
         # Serve static files from the React build directory
         @app.route('/static/<path:path>')
         def serve_static(path):
+            app.logger.info(f"Serving static file: {path}")
             return send_from_directory(os.path.join(os.getcwd(), 'frontend', 'build', 'static'), path)
         
+        # Serve manifest.json and other root files
+        @app.route('/manifest.json')
+        def serve_manifest():
+            app.logger.info("Serving manifest.json")
+            return send_from_directory(os.path.join(os.getcwd(), 'frontend', 'build'), 'manifest.json')
+
+        @app.route('/favicon.ico')
+        def serve_favicon():
+            app.logger.info("Serving favicon.ico")
+            return send_from_directory(os.path.join(os.getcwd(), 'frontend', 'build'), 'favicon.ico')
+            
+        @app.route('/logo192.png')
+        def serve_logo192():
+            app.logger.info("Serving logo192.png")
+            return send_from_directory(os.path.join(os.getcwd(), 'frontend', 'build'), 'logo192.png')
+        
+        @app.route('/logo512.png')
+        def serve_logo512():
+            app.logger.info("Serving logo512.png") 
+            return send_from_directory(os.path.join(os.getcwd(), 'frontend', 'build'), 'logo512.png')
+            
         # For all frontend routes (not starting with /api), serve the React index.html
         @app.route('/', defaults={'path': ''})
         @app.route('/<path:path>')
