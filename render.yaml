@@ -5,16 +5,11 @@ services:
     env: python
     buildCommand: >
       pip install -r requirements.txt &&
-      mkdir -p frontend/build/static/css frontend/build/static/js frontend/build/static/images &&
-      mkdir -p static/css static/js static/images &&
-      python setup_static_files.py &&
-      python copy_to_frontend_build.py &&
-      ls -la frontend/build/static/*
+      chmod +x render_setup.sh &&
+      ./render_setup.sh
     startCommand: >
       python ensure_directories.py &&
-      python setup_static_files.py &&
-      python copy_to_frontend_build.py &&
-      ls -la frontend/build/static/* &&
+      python prepare_render_deployment.py &&
       gunicorn wsgi:app --workers=4 --threads=2 --timeout=120 --bind=0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION

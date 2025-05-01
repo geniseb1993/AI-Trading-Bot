@@ -406,7 +406,27 @@ document.addEventListener('DOMContentLoaded', function() {
         @app.route('/manifest.json')
         def serve_manifest():
             app.logger.info("Serving manifest.json")
-            return send_from_directory('static', 'manifest.json')
+            manifest_path = os.path.join(os.path.abspath(os.path.dirname(__file__) + '/..'), 'static', 'manifest.json')
+            if os.path.exists(manifest_path):
+                return send_file(manifest_path, mimetype='application/json')
+            else:
+                # Create a basic manifest file if it doesn't exist
+                response = {
+                    "short_name": "Vicki",
+                    "name": "Vicki AI Trading Bot",
+                    "icons": [
+                        {
+                            "src": "/static/images/logo.png",
+                            "type": "image/png",
+                            "sizes": "192x192"
+                        }
+                    ],
+                    "start_url": "/",
+                    "display": "standalone",
+                    "theme_color": "#000000",
+                    "background_color": "#121212"
+                }
+                return response, 200, {'Content-Type': 'application/json'}
 
         @app.route('/favicon.ico')
         def serve_favicon():

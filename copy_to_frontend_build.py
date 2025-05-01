@@ -18,6 +18,41 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+def fix_react_placeholders(file_path):
+    """Fix React placeholder variables in HTML files."""
+    try:
+        if not os.path.exists(file_path):
+            return False
+        
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            content = f.read()
+        
+        # Replace React placeholder variables
+        replacements = {
+            '%PUBLIC_URL%': '',
+            '%PUBLIC_URL%/': '/',
+            '%PUBLIC_URL%/manifest.json': '/static/manifest.json',
+            '%PUBLIC_URL%/logo192.png': '/static/images/logo.png',
+            '%PUBLIC_URL%/images/': '/static/images/',
+            '"%PUBLIC_URL%/': '"/static/'
+        }
+        
+        fixed_content = content
+        for old, new in replacements.items():
+            fixed_content = fixed_content.replace(old, new)
+        
+        # Write back if changes were made
+        if content != fixed_content:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(fixed_content)
+            logger.info(f"Fixed React placeholders in {file_path}")
+            return True
+        
+        return False
+    except Exception as e:
+        logger.error(f"Error fixing React placeholders in {file_path}: {e}")
+        return False
+
 def copy_to_frontend_build():
     """Copy all necessary files to frontend/build directory."""
     try:
@@ -51,6 +86,8 @@ def copy_to_frontend_build():
         if index_path.exists():
             shutil.copy(index_path, frontend_build_dir / 'index.html')
             logger.info(f"Copied {index_path} to {frontend_build_dir / 'index.html'}")
+            # Fix any React placeholders in the copied file
+            fix_react_placeholders(frontend_build_dir / 'index.html')
         else:
             logger.warning(f"index.html not found at {index_path}")
         
@@ -135,6 +172,21 @@ a:hover {
 console.log('Vicki AI Trading Bot loaded');
 """)
                 logger.info(f"Created basic main.js at {main_js_path}")
+        
+        # Fix React placeholders in any HTML files in frontend/build
+        for html_file in frontend_build_dir.glob('*.html'):
+            fix_react_placeholders(html_file)
+        
+        # Also make sure manifest.json is properly available
+        manifest_path = static_dir / 'manifest.json'
+        if manifest_path.exists():
+            # Copy to both locations to be safe
+            shutil.copy(manifest_path, frontend_build_dir / 'manifest.json')
+            logger.info(f"Copied {manifest_path} to {frontend_build_dir / 'manifest.json'}")
+            
+            # Also copy to frontend/build/static
+            shutil.copy(manifest_path, frontend_build_static_dir / 'manifest.json')
+            logger.info(f"Copied {manifest_path} to {frontend_build_static_dir / 'manifest.json'}")
         
         logger.info("Successfully copied files to frontend/build")
         return True

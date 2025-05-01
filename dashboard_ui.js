@@ -21,7 +21,8 @@ document.addEventListener('DOMContentLoaded', function() {
         <!-- Sidebar -->
         <div style="width: 220px; background-color: #111; padding: 20px; border-right: 2px solid #ff00ff;">
             <div style="text-align: center; margin-bottom: 40px;">
-                <img src="/static/images/logo.png" alt="Vicki Logo" style="width: 80px; height: 80px; border-radius: 50%;">
+                <img src="/static/images/logo.png" alt="Vicki Logo" style="width: 80px; height: 80px; border-radius: 50%;" 
+                     onerror="this.onerror=null; this.src='/static/images/vicky.png'; if (this.src.includes('static/images/vicky.png')) this.onerror=function(){this.style.display='none'; this.parentNode.innerHTML += '<div style=\"width: 80px; height: 80px; border-radius: 50%; background-color: #ff00ff; margin: 0 auto; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;\">V</div>';}">
                 <h2 style="color: #ff00ff; margin-top: 10px;">VICKY</h2>
             </div>
             
