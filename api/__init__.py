@@ -1,6 +1,7 @@
 # api package initialization
 import os
 import logging
+import json
 from flask import Flask, send_from_directory, send_file, render_template_string, redirect, Response
 from flask_cors import CORS
 
@@ -23,6 +24,115 @@ def create_app(test_config=None):
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
+    
+    # Add emergency function to directly write frontend files
+    def create_frontend_files():
+        """Emergency function to create essential frontend files"""
+        try:
+            # Create directories
+            directories = [
+                os.path.join(os.getcwd(), 'frontend', 'build'),
+                os.path.join(os.getcwd(), 'frontend', 'build', 'static'),
+                os.path.join(os.getcwd(), 'frontend', 'build', 'static', 'css'),
+                os.path.join(os.getcwd(), 'frontend', 'build', 'static', 'js'),
+                os.path.join(os.getcwd(), 'frontend', 'build', 'images'),
+            ]
+            
+            for directory in directories:
+                os.makedirs(directory, exist_ok=True)
+                
+            # Create CSS file
+            css_path = os.path.join(os.getcwd(), 'frontend', 'build', 'static', 'css', 'main.8a689c36.css')
+            with open(css_path, 'w') as f:
+                f.write("""
+/* Emergency CSS file created by Flask app */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #121212;
+    color: #ffffff;
+    margin: 0;
+    padding: 0;
+}
+#root {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.app-container {
+    max-width: 1200px;
+    width: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+}
+.placeholder-message {
+    text-align: center;
+    margin-top: 100px;
+    font-size: 1.5rem;
+}
+h1 {
+    color: #61dafb;
+}
+""")
+            
+            # Create JS file
+            js_path = os.path.join(os.getcwd(), 'frontend', 'build', 'static', 'js', 'main.75e22b8e.js')
+            with open(js_path, 'w') as f:
+                f.write("""
+// Emergency JS file created by Flask app
+console.log('Emergency JS file loaded');
+document.addEventListener('DOMContentLoaded', function() {
+    const root = document.getElementById('root');
+    if (root) {
+        root.innerHTML = `
+            <div class="app-container">
+                <div class="placeholder-message">
+                    <h1>Vicki AI Trading Bot</h1>
+                    <p>This is an emergency interface created by the Flask app.</p>
+                    <p>The frontend build files were not properly created or are inaccessible.</p>
+                    <p>Please visit <a href="/api/health" style="color: #61dafb;">API Health Check</a> to ensure the API is working.</p>
+                    <div style="margin-top: 40px; text-align: left;">
+                        <h2>API Endpoints:</h2>
+                        <ul>
+                            <li><a href="/api/health" style="color: #61dafb;">Health Check</a></li>
+                            <li><a href="/api/bot/status" style="color: #61dafb;">Bot Status</a></li>
+                            <li><a href="/api/market-overview" style="color: #61dafb;">Market Overview</a></li>
+                            <li><a href="/api/portfolio-performance" style="color: #61dafb;">Portfolio Performance</a></li>
+                            <li><a href="/api/diagnostic" style="color: #61dafb;">Diagnostic Information</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+});
+""")
+            
+            # Create index.html
+            index_path = os.path.join(os.getcwd(), 'frontend', 'build', 'index.html')
+            if not os.path.exists(index_path):
+                with open(index_path, 'w') as f:
+                    f.write("""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vicki AI Trading Bot</title>
+    <link rel="stylesheet" href="/static/css/main.8a689c36.css">
+</head>
+<body>
+    <div id="root"></div>
+    <script src="/static/js/main.75e22b8e.js"></script>
+</body>
+</html>""")
+                
+            return True
+        except Exception as e:
+            logging.error(f"Error creating frontend files: {str(e)}")
+            return False
+    
+    # Create the frontend files immediately
+    create_frontend_files()
     
     # Load configurations
     if test_config is None:
@@ -76,6 +186,57 @@ def create_app(test_config=None):
             if os.path.exists(full_path):
                 return dir_path
         return None
+    
+    # Create a diagnostic endpoint to check files and directories
+    @app.route('/api/diagnostic', methods=['GET'])
+    def diagnostic():
+        """Diagnostic endpoint to check files and directories"""
+        try:
+            result = {
+                'cwd': os.getcwd(),
+                'directories': {},
+                'frontend_files': {},
+                'static_files': {},
+                'environment': dict(os.environ),
+            }
+            
+            # Check key directories
+            for directory in ['frontend', 'frontend/build', 'frontend/build/static', 
+                             'frontend/build/static/css', 'frontend/build/static/js',
+                             'frontend/public', 'public', 'public/images']:
+                path = os.path.join(os.getcwd(), directory)
+                exists = os.path.exists(path)
+                result['directories'][directory] = {
+                    'exists': exists,
+                    'files': os.listdir(path) if exists else []
+                }
+            
+            # Check specific frontend files
+            for filepath in ['frontend/build/index.html', 'frontend/build/manifest.json']:
+                path = os.path.join(os.getcwd(), filepath)
+                result['frontend_files'][filepath] = {
+                    'exists': os.path.exists(path),
+                    'size': os.path.getsize(path) if os.path.exists(path) else 0
+                }
+                
+            # Check specific static files
+            for filepath in ['frontend/build/static/css/main.8a689c36.css', 
+                            'frontend/build/static/js/main.75e22b8e.js']:
+                path = os.path.join(os.getcwd(), filepath)
+                result['static_files'][filepath] = {
+                    'exists': os.path.exists(path),
+                    'size': os.path.getsize(path) if os.path.exists(path) else 0
+                }
+                
+            # Try to create the files again
+            create_frontend_files()
+            
+            return result
+        except Exception as e:
+            return {
+                'error': str(e),
+                'traceback': str(logging.traceback.format_exc())
+            }
 
     # Add static file routes with better fallbacks
     @app.route('/data/dashboard/<path:filename>')
@@ -134,6 +295,94 @@ def create_app(test_config=None):
     # Serve the React frontend if enabled
     if serve_frontend:
         app.logger.info("Frontend serving enabled - will serve React frontend from /frontend/build")
+        
+        # Serve static files more directly for the specific problematic files
+        @app.route('/static/css/main.8a689c36.css')
+        def serve_main_css():
+            """Directly serve the main CSS file"""
+            app.logger.info("Serving main CSS file directly")
+            css_path = os.path.join(os.getcwd(), 'frontend', 'build', 'static', 'css', 'main.8a689c36.css')
+            
+            # If file doesn't exist, create it
+            if not os.path.exists(css_path):
+                app.logger.warning("CSS file not found, creating it")
+                os.makedirs(os.path.dirname(css_path), exist_ok=True)
+                with open(css_path, 'w') as f:
+                    f.write("""
+/* Emergency CSS file created by direct route handler */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #121212;
+    color: #ffffff;
+    margin: 0;
+    padding: 0;
+}
+#root {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.app-container {
+    max-width: 1200px;
+    width: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+}
+.placeholder-message {
+    text-align: center;
+    margin-top: 100px;
+    font-size: 1.5rem;
+}
+h1 {
+    color: #61dafb;
+}
+""")
+            
+            return send_file(css_path)
+            
+        @app.route('/static/js/main.75e22b8e.js')
+        def serve_main_js():
+            """Directly serve the main JS file"""
+            app.logger.info("Serving main JS file directly")
+            js_path = os.path.join(os.getcwd(), 'frontend', 'build', 'static', 'js', 'main.75e22b8e.js')
+            
+            # If file doesn't exist, create it
+            if not os.path.exists(js_path):
+                app.logger.warning("JS file not found, creating it")
+                os.makedirs(os.path.dirname(js_path), exist_ok=True)
+                with open(js_path, 'w') as f:
+                    f.write("""
+// Emergency JS file created by direct route handler
+console.log('Emergency JS file loaded through direct route');
+document.addEventListener('DOMContentLoaded', function() {
+    const root = document.getElementById('root');
+    if (root) {
+        root.innerHTML = `
+            <div class="app-container">
+                <div class="placeholder-message">
+                    <h1>Vicki AI Trading Bot</h1>
+                    <p>This is an emergency interface created by the direct route handler.</p>
+                    <p>The frontend build files were not properly created or are inaccessible.</p>
+                    <p>Please visit <a href="/api/health" style="color: #61dafb;">API Health Check</a> to ensure the API is working.</p>
+                    <div style="margin-top: 40px; text-align: left;">
+                        <h2>API Endpoints:</h2>
+                        <ul>
+                            <li><a href="/api/health" style="color: #61dafb;">Health Check</a></li>
+                            <li><a href="/api/bot/status" style="color: #61dafb;">Bot Status</a></li>
+                            <li><a href="/api/market-overview" style="color: #61dafb;">Market Overview</a></li>
+                            <li><a href="/api/portfolio-performance" style="color: #61dafb;">Portfolio Performance</a></li>
+                            <li><a href="/api/diagnostic" style="color: #61dafb;">Diagnostic Information</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+});
+""")
+            
+            return send_file(js_path)
         
         # Serve static files from the React build directory with improved flexibility
         @app.route('/static/<path:path>')
@@ -205,7 +454,28 @@ def create_app(test_config=None):
                 
             # Otherwise serve index.html for client-side routing to handle
             app.logger.info(f"Serving React app for path: {path}")
-            return send_file(os.path.join(os.getcwd(), 'frontend', 'build', 'index.html'))
+            index_path = os.path.join(os.getcwd(), 'frontend', 'build', 'index.html')
+            
+            # If index.html doesn't exist, create it
+            if not os.path.exists(index_path):
+                app.logger.warning("index.html not found, creating it")
+                os.makedirs(os.path.dirname(index_path), exist_ok=True)
+                with open(index_path, 'w') as f:
+                    f.write("""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vicki AI Trading Bot</title>
+    <link rel="stylesheet" href="/static/css/main.8a689c36.css">
+</head>
+<body>
+    <div id="root"></div>
+    <script src="/static/js/main.75e22b8e.js"></script>
+</body>
+</html>""")
+            
+            return send_file(index_path)
     else:
         # Root route - serve a simple dashboard with links to APIs (only if not serving the frontend)
         @app.route('/')
