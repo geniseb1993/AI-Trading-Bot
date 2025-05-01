@@ -1679,8 +1679,6 @@ def api_generate_signals():
             'error': str(e)
         }), 500
 
-<<<<<<< Updated upstream
-=======
 # Import market data routes
 try:
     from api.routes.market_data_routes import market_data_bp
@@ -1894,10 +1892,6 @@ def stop_bot_endpoint(bot_type):
             'error': str(e)
         }), 500
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 # After all routes are registered at the end of file
 if __name__ == '__main__':
     # Print all registered routes for debugging
