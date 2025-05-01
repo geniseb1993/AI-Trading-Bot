@@ -24,12 +24,39 @@ except ImportError as e:
     # Fallback to creating a minimal Flask app
     try:
         logger.info("Creating fallback Flask app")
-        from flask import Flask
+        from flask import Flask, render_template_string
         app = Flask(__name__)
         
         @app.route('/')
         def home():
-            return {"status": "running", "message": "Fallback Flask app - main app failed to load"}
+            html = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>AI Trading Bot - Error</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+                    .container { max-width: 800px; margin: 0 auto; background: #f8f9fa; padding: 20px; border-radius: 5px; }
+                    h1 { color: #d9534f; }
+                    .card { border: 1px solid #ddd; padding: 15px; border-radius: 4px; margin-bottom: 20px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1>AI Trading Bot - Error</h1>
+                    <div class="card">
+                        <h2>Application Error</h2>
+                        <p>The main application failed to load. This could be due to missing dependencies or configuration issues.</p>
+                    </div>
+                    <div class="card">
+                        <h3>Troubleshooting</h3>
+                        <p>Check the application logs for more details on what went wrong.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+            return render_template_string(html)
         
         logger.info("Created fallback Flask app")
     except Exception as e:
@@ -41,12 +68,39 @@ except Exception as e:
     # Fallback to creating a minimal Flask app
     try:
         logger.info("Creating fallback Flask app after unexpected error")
-        from flask import Flask
+        from flask import Flask, render_template_string
         app = Flask(__name__)
         
         @app.route('/')
         def home():
-            return {"status": "error", "message": f"Error loading main app: {str(e)}"}
+            html = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>AI Trading Bot - Error</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+                    .container { max-width: 800px; margin: 0 auto; background: #f8f9fa; padding: 20px; border-radius: 5px; }
+                    h1 { color: #d9534f; }
+                    .card { border: 1px solid #ddd; padding: 15px; border-radius: 4px; margin-bottom: 20px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1>AI Trading Bot - Error</h1>
+                    <div class="card">
+                        <h2>Application Error</h2>
+                        <p>The main application failed to load. Error: {str(e)}</p>
+                    </div>
+                    <div class="card">
+                        <h3>Troubleshooting</h3>
+                        <p>Check the application logs for more details on what went wrong.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+            return render_template_string(html)
         
         logger.info("Created fallback Flask app")
     except Exception as e2:

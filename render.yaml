@@ -3,10 +3,8 @@ services:
   - type: web
     name: ai-trading-bot-api
     env: python
-    buildCommand: |
-      pip install -r requirements.txt
-      cd frontend && npm install && npm run build && cd ..
-    startCommand: python fix_indentation.py && python ensure_directories.py && cp -r frontend/build/* static/ && gunicorn webhook_receiver:app --workers=4 --threads=2 --timeout=120 --bind=0.0.0.0:$PORT
+    buildCommand: pip install -r requirements.txt
+    startCommand: python fix_indentation.py && python ensure_directories.py && gunicorn wsgi:app --workers=4 --threads=2 --timeout=120 --bind=0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.9.0
@@ -20,6 +18,8 @@ services:
       - key: USE_MOCK_POLYGON
         value: true
       - key: USE_MOCK_ALPACA
+        value: true
+      - key: SERVE_FRONTEND
         value: true
       # Add your environment variables from the dashboard
       - key: OPENAI_API_KEY

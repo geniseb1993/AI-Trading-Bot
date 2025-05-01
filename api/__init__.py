@@ -1,14 +1,12 @@
 # api package initialization
 import os
 import logging
-from flask import Flask, send_from_directory, send_file
+from flask import Flask, send_from_directory, send_file, render_template_string, redirect
 from flask_cors import CORS
 
 def create_app(test_config=None):
     # Create and configure the app
-    app = Flask(__name__, instance_relative_config=True,
-                static_folder='../static',
-                static_url_path='')
+    app = Flask(__name__, instance_relative_config=True)
     
     # Enable CORS with better configuration
     CORS(app, resources={
@@ -95,15 +93,126 @@ def create_app(test_config=None):
         app.logger.info("Serving backtest results file")
         return send_from_directory(os.getcwd(), 'backtest_results.csv')
     
-    # Serve frontend static files
-    @app.route('/', defaults={'path': ''})
-    @app.route('/<path:path>')
-    def serve_frontend(path):
-        if path and os.path.exists(os.path.join(app.static_folder, path)):
-            return send_from_directory(app.static_folder, path)
-        else:
-            # For any path not found, return index.html (SPA routing)
-            return send_from_directory(app.static_folder, 'index.html')
+    # Root route - serve a simple dashboard with links to APIs
+    @app.route('/')
+    def root():
+        html = """
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>AI Trading Bot Dashboard</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    line-height: 1.6;
+                    margin: 0;
+                    padding: 20px;
+                    color: #333;
+                    background-color: #f4f7f9;
+                }
+                .container {
+                    max-width: 1200px;
+                    margin: 0 auto;
+                    padding: 20px;
+                    background-color: white;
+                    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+                    border-radius: 5px;
+                }
+                h1 {
+                    color: #2c3e50;
+                    border-bottom: 2px solid #3498db;
+                    padding-bottom: 10px;
+                }
+                h2 {
+                    color: #3498db;
+                }
+                .card {
+                    border: 1px solid #ddd;
+                    border-radius: 4px;
+                    padding: 15px;
+                    margin-bottom: 20px;
+                    background-color: #fff;
+                }
+                .card h3 {
+                    margin-top: 0;
+                    color: #2c3e50;
+                }
+                .stats {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 20px;
+                }
+                .stat-card {
+                    flex: 1;
+                    min-width: 200px;
+                    background-color: #ecf0f1;
+                    padding: 15px;
+                    border-radius: 4px;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                }
+                .links {
+                    margin-top: 30px;
+                }
+                .links a {
+                    display: inline-block;
+                    margin-right: 15px;
+                    margin-bottom: 10px;
+                    color: #3498db;
+                    text-decoration: none;
+                    padding: 5px 10px;
+                    border: 1px solid #3498db;
+                    border-radius: 4px;
+                }
+                .links a:hover {
+                    background-color: #3498db;
+                    color: white;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>AI Trading Bot Dashboard</h1>
+                
+                <div class="card">
+                    <h3>System Status</h3>
+                    <p>The AI Trading Bot API is currently running in production mode.</p>
+                </div>
+                
+                <h2>Quick Links</h2>
+                <div class="links">
+                    <a href="/api/health">API Health Status</a>
+                    <a href="/api/bot/status">Bot Status</a>
+                    <a href="/api/dashboard">Dashboard Data</a>
+                    <a href="/api/broker/positions">Current Positions</a>
+                    <a href="/api/market-overview">Market Overview</a>
+                    <a href="/api/portfolio-performance">Portfolio Performance</a>
+                    <a href="/api/alerts">Trading Alerts</a>
+                    <a href="/api/dual-bot/signals">Dual Bot Signals</a>
+                    <a href="/api/ceo-dashboard">CEO Dashboard</a>
+                </div>
+                
+                <h2>API Documentation</h2>
+                <div class="card">
+                    <h3>Available Endpoints</h3>
+                    <ul>
+                        <li><strong>/api/health</strong> - Check system health</li>
+                        <li><strong>/api/bot</strong> - Bot management endpoints</li>
+                        <li><strong>/api/dashboard</strong> - Dashboard data</li>
+                        <li><strong>/api/broker/positions</strong> - Current trading positions</li>
+                        <li><strong>/api/market-overview</strong> - Market overview data</li>
+                        <li><strong>/api/portfolio-performance</strong> - Portfolio performance metrics</li>
+                        <li><strong>/api/alerts</strong> - Trading alerts</li>
+                        <li><strong>/api/dual-bot/signals</strong> - Dual bot trading signals</li>
+                        <li><strong>/api/ceo-dashboard</strong> - CEO dashboard metrics</li>
+                    </ul>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        return render_template_string(html)
     
     # API info endpoints
     @app.route('/api')
