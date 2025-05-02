@@ -37,8 +37,19 @@ if not os.path.exists(static_folder):
     logging.info(f"Created static folder at {static_folder}")
 
 # Initialize Flask app with static folder configuration
-app = Flask(__name__, static_folder=static_folder)
+app = Flask(__name__, 
+    static_folder=static_folder,
+    static_url_path=''
+)
 CORS(app)
+
+# Additional static folder for compatibility
+# This allows serving from /static/ URL path
+@app.route('/static/<path:filename>')
+def serve_static(filename):
+    """Serve static files from the frontend build static directory"""
+    static_path = os.path.join(static_folder, 'static')
+    return send_from_directory(static_path, filename)
 
 # Import and register bot routes directly
 try:
@@ -61,10 +72,13 @@ try:
     import os
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     
-    # Now try to import
+    # Now try to import, but check if it's already registered
     from api.routes.ceo_dashboard_routes import ceo_dashboard_bp
-    app.register_blueprint(ceo_dashboard_bp)
-    logger.info("Successfully registered CEO dashboard routes")
+    if hasattr(app, 'blueprints') and 'ceo_dashboard' not in app.blueprints:
+        app.register_blueprint(ceo_dashboard_bp)
+        logger.info("Successfully registered CEO dashboard routes")
+    else:
+        logger.info("CEO dashboard blueprint already registered, skipping")
 except Exception as e:
     logger.error(f"Error registering CEO dashboard routes: {e}")
 

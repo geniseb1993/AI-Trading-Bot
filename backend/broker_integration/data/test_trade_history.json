@@ -1,0 +1,50 @@
+[
+  {
+    "id": "6cdca390-ecd5-41a8-8978-e3d066b44004",
+    "symbol": "AAPL",
+    "entry_date": "2025-04-27T12:57:25.733066",
+    "exit_date": "2025-04-27T12:57:25.738014",
+    "entry_price": 180.5,
+    "exit_price": 185.75,
+    "quantity": 10,
+    "side": "long",
+    "strategy": "test",
+    "pnl": 52.5,
+    "pnl_percent": 2.908587257617734,
+    "fees": 0.0,
+    "status": "closed",
+    "entry_order_id": null,
+    "exit_order_id": null,
+    "stop_loss": 175.0,
+    "take_profit": 190.0,
+    "notes": "Test close",
+    "tags": [
+      "test",
+      "demo"
+    ]
+  },
+  {
+    "id": "cf9c087a-263d-4c2b-8842-258f8ab66f0b",
+    "symbol": "MSFT",
+    "entry_date": "2025-04-27T12:57:25.735461",
+    "exit_date": null,
+    "entry_price": 350.25,
+    "exit_price": null,
+    "quantity": 5,
+    "side": "long",
+    "strategy": "test",
+    "pnl": null,
+    "pnl_percent": null,
+    "fees": 0.0,
+    "status": "open",
+    "entry_order_id": null,
+    "exit_order_id": null,
+    "stop_loss": 340.0,
+    "take_profit": 370.0,
+    "notes": "Test trade 2",
+    "tags": [
+      "test",
+      "demo"
+    ]
+  }
+]

@@ -1,6 +1,130 @@
 # AI Trading Bot V2.0
 
-An advanced AI-powered trading platform with institutional flow analysis, dark pool insights, and real-time market data.
+## Project Overview
+
+AI Trading Bot V2.0 is a comprehensive automated trading system that combines traditional algorithmic trading strategies with AI-powered analysis to optimize trading decisions. The application features a Flask backend API and a React frontend for monitoring and managing the trading bot.
+
+## Directory Structure
+
+The project follows a standardized directory structure designed for easy deployment on platforms like Render:
+
+```
+AI-Trading-Bot-V2.0/
+│
+├── backend/                            # Flask backend
+│   ├── __init__.py
+│   ├── app.py                          # Flask entry point
+│   ├── routes/
+│   │   ├── __init__.py
+│   │   ├── bot_routes.py
+│   │   ├── health_routes.py
+│   │   └── dashboard_routes.py
+│   ├── broker_integration/
+│   │   ├── __init__.py
+│   │   ├── alpaca_broker.py
+│   │   └── mock_broker.py
+│   ├── execution_model/
+│   │   └── execution_logic.py
+│   ├── dual_bot/
+│   │   └── controller.py
+│   ├── templates/
+│   │   └── index.html
+│   ├── static/
+│   │   ├── css/
+│   │   ├── js/
+│   │   └── images/
+│   └── config/
+│       ├── __init__.py
+│       └── settings.py
+│
+├── frontend/                           # React frontend
+│   ├── public/
+│   ├── src/
+│   ├── package.json
+│
+├── data/                               # Data storage
+│   ├── broker/
+│   ├── market_data/
+│   ├── signals/
+│   └── logs/
+│
+├── tests/                              # Test suite
+│   ├── __init__.py
+│   └── test_routes.py
+│
+├── scripts/                            # Utility scripts
+│   ├── render_fix.py
+│   └── utilities/
+│
+├── config/                             # Configuration
+│   ├── environments/
+│   └── secrets/
+│
+├── .env                                # Environment variables
+├── .gitignore
+├── requirements.txt                    # Python dependencies
+├── wsgi.py                             # WSGI entry point
+└── render.yaml                         # Render deploy config
+```
+
+## Installation
+
+1. Clone the repository:
+   ```
+   git clone https://github.com/yourusername/AI-Trading-Bot-V2.0.git
+   cd AI-Trading-Bot-V2.0
+   ```
+
+2. Create a virtual environment and install dependencies:
+   ```
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+
+3. Set up environment variables:
+   ```
+   cp .env.example .env
+   # Edit .env with your API keys and configuration
+   ```
+
+## Usage
+
+### Starting the Server
+
+Run the Flask backend server:
+```
+python -m backend.app
+```
+
+Or using the WSGI entry point:
+```
+gunicorn wsgi:app
+```
+
+### Running Tests
+
+Run the test suite:
+```
+python -m unittest discover tests
+```
+
+## Deployment
+
+The application is configured for easy deployment on Render using the `render.yaml` file. Simply connect your GitHub repository to Render and it will automatically deploy the application.
+
+## Features
+
+- Real-time trading with multiple brokers (Alpaca supported by default)
+- Mock trading for testing strategies without risking real money
+- AI-enhanced technical analysis and signal generation
+- Dashboard for monitoring performance and positions
+- Customizable trading strategies
+- Dual-bot system for enhanced decision making
+
+## License
+
+MIT
 
 ## API Connectivity
 

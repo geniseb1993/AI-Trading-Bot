@@ -8,15 +8,18 @@ services:
     buildCommand: |
       python -m pip install --upgrade pip
       pip install -r requirements.txt
-      mkdir -p frontend/build/static/css frontend/build/static/js frontend/build/static/images
-      mkdir -p static/css static/js static/images
-      mkdir -p mock_modules
-      python install_mock_modules.py
-      python check_requirements.py
-      python render_fix.py
+      mkdir -p frontend/build/static frontend/build/static/css frontend/build/static/js frontend/build/static/images
+      mkdir -p static static/css static/js static/images
+      python -c "import sys; import os; sys.path.insert(0, os.path.abspath('.')); from scripts.render_fix import run_render_fix; run_render_fix()" || python render_fix.py
+      cp -rf frontend/build/* static/ || true
+      cp -rf frontend/build/index.html . || true
+      cp -rf frontend/build/static/css/* static/css/ || true
+      cp -rf frontend/build/static/js/* static/js/ || true
+      cp -rf frontend/build/static/images/* static/images/ || true
+      echo "Static files copied successfully"
     startCommand: |
-      python render_fix.py
-      gunicorn wsgi:app --log-file=- --workers=1 --threads=8 --timeout=120
+      python -c "import sys; import os; sys.path.insert(0, os.path.abspath('.')); from scripts.render_fix import run_render_fix; run_render_fix()" || python render_fix.py
+      gunicorn --workers=1 --threads=8 --timeout=120 --log-file=- wsgi:app
     envVars:
       - key: PORT
         value: 10000
@@ -29,7 +32,7 @@ services:
       - key: FLASK_ENV
         value: production
       - key: FLASK_APP
-        value: wsgi.py
+        value: backend.app
       - key: RENDER_DEPLOYMENT
         value: true
       - key: USE_MOCK_BROKER
@@ -41,8 +44,10 @@ services:
       - key: FLASK_STATIC_FOLDER
         value: frontend/build
       - key: FLASK_STATIC_URL_PATH
-        value: /
-    healthCheckPath: /health
+        value: ""
+      - key: STATIC_URL_PATH
+        value: ""
+    healthCheckPath: /api/health
     # Automatic deploy from GitHub
     autoDeploy: true
     disk:

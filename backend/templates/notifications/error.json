@@ -1,0 +1,5 @@
+{
+  "name": "Error",
+  "subject": "Error: {title}",
+  "body": "{message}"
+}

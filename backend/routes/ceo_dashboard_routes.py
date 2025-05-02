@@ -7,7 +7,7 @@ import logging
 from datetime import datetime, timedelta
 import traceback
 import random
-from api.utils.cors_utils import add_cors_headers
+from backend.utils.cors_utils import add_cors_headers
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
