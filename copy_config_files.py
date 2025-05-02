@@ -1,192 +1,158 @@
 #!/usr/bin/env python
 """
-Configuration file setup script for the AI Trading Bot project.
-This script ensures that all required configuration files are in place
-and creates any missing directories needed for the application to run.
+Copy Config Files Script
+
+This script copies configuration files to all necessary locations in the project structure
+to ensure consistent configuration across all services.
 """
 
 import os
-import sys
-import json
 import shutil
+import json
 import logging
+import sys
 from pathlib import Path
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
 )
-logger = logging.getLogger('config_setup')
 
-# Dictionary of required config files and their default locations
+logger = logging.getLogger("config_copier")
+
+# Primary configuration files
 CONFIG_FILES = {
-    'config.json': {
-        'source': 'config.json',
-        'destinations': [
-            'config.json',
-            'api/config.json',
-            'backend/config.json',
-        ]
-    },
-    'broker_config.json': {
-        'source': 'broker_config.json',
-        'destinations': [
-            'broker_config.json',
-            'api/broker_config.json',
-            'backend/broker_config.json',
-        ]
-    },
-    'execution_model_config.json': {
-        'source': 'execution_model_config.json',
-        'destinations': [
-            'execution_model_config.json',
-            'api/execution_model_config.json',
-            'backend/execution_model_config.json',
-        ]
-    },
-    'market_data_config.json': {
-        'source': 'config/environments/market_data_config.json',
-        'destinations': [
-            'config/environments/market_data_config.json',
-            'api/config/environments/market_data_config.json',
-            'backend/config/environments/market_data_config.json',
-        ]
-    }
+    "config.json": [
+        "api/config/config.json",
+        "backend/config/config.json",
+        "server/config/config.json"
+    ],
+    "broker_config.json": [
+        "api/config/broker_config.json",
+        "backend/config/broker_config.json",
+        "server/config/broker_config.json"
+    ],
+    "execution_model_config.json": [
+        "api/config/execution_model_config.json",
+        "backend/config/execution_model_config.json",
+        "server/config/execution_model_config.json"
+    ]
 }
 
-# Required directories to ensure they exist
-REQUIRED_DIRS = [
-    'data',
-    'data/logs',
-    'data/broker',
-    'data/market_data',
-    'data/signals',
-    'api/data',
-    'api/data/logs',
-    'api/data/broker',
-    'api/config/environments',
-    'backend/config/environments',
-    'static',
-    'static/css',
-    'static/js',
-    'static/static',
-    'static/static/css',
-    'static/static/js',
-]
+# Environment-specific config files
+ENV_CONFIG_FILES = {
+    "config/environments/market_data_config.json": [
+        "api/config/environments/market_data_config.json",
+        "backend/config/environments/market_data_config.json",
+        "server/config/environments/market_data_config.json"
+    ]
+}
 
-def ensure_directory(directory):
+def ensure_directory_exists(directory_path):
     """
-    Ensure a directory exists, creating it if necessary.
-    
-    Args:
-        directory (str): The directory path to ensure exists
-        
-    Returns:
-        bool: True if the directory exists or was created, False otherwise
+    Make sure the directory exists, creating it if necessary
+    """
+    path = Path(directory_path)
+    path.mkdir(parents=True, exist_ok=True)
+    return path.exists()
+
+def copy_file(source, destination):
+    """
+    Copy a file from source to destination, creating directories if needed
     """
     try:
-        if not os.path.exists(directory):
-            os.makedirs(directory, exist_ok=True)
-            logger.info(f"Created directory: {directory}")
+        # Make sure target directory exists
+        dest_dir = os.path.dirname(destination)
+        ensure_directory_exists(dest_dir)
+        
+        # Copy the file
+        shutil.copy2(source, destination)
+        logger.info(f"Copied {source} to {destination}")
         return True
+    except FileNotFoundError:
+        logger.warning(f"Source file {source} not found. Skipping.")
+        return False
     except Exception as e:
-        logger.error(f"Failed to create directory {directory}: {e}")
+        logger.error(f"Error copying {source} to {destination}: {str(e)}")
         return False
 
-def create_config_file(path, content):
+def create_default_config(template, destination):
     """
-    Create a configuration file at the specified path if it doesn't exist.
-    
-    Args:
-        path (str): The path to the configuration file
-        content (dict): The content to write to the file
-        
-    Returns:
-        bool: True if the file exists or was created, False otherwise
+    Create default config file if the source doesn't exist
     """
     try:
-        if not os.path.exists(path):
-            with open(path, 'w') as f:
-                json.dump(content, f, indent=2)
-            logger.info(f"Created configuration file: {path}")
-        return True
-    except Exception as e:
-        logger.error(f"Failed to create configuration file {path}: {e}")
-        return False
-
-def copy_file(src, dst):
-    """
-    Copy a file from source to destination, creating any necessary directories.
-    
-    Args:
-        src (str): The source file path
-        dst (str): The destination file path
-        
-    Returns:
-        bool: True if the file was copied or already exists, False on error
-    """
-    try:
-        if not os.path.exists(src):
-            logger.warning(f"Source file does not exist: {src}")
+        # Make sure template exists
+        if not os.path.exists(template):
+            logger.warning(f"Template {template} not found. Cannot create default.")
             return False
             
-        # Create destination directory if it doesn't exist
-        dst_dir = os.path.dirname(dst)
-        if dst_dir and not os.path.exists(dst_dir):
-            os.makedirs(dst_dir, exist_ok=True)
-            
-        # Only copy if destination doesn't exist or source is newer
-        if not os.path.exists(dst) or os.path.getmtime(src) > os.path.getmtime(dst):
-            shutil.copy2(src, dst)
-            logger.info(f"Copied {src} to {dst}")
+        # Make sure target directory exists
+        dest_dir = os.path.dirname(destination)
+        ensure_directory_exists(dest_dir)
+        
+        # Copy the file
+        shutil.copy2(template, destination)
+        logger.info(f"Created default config at {destination} from {template}")
         return True
     except Exception as e:
-        logger.error(f"Failed to copy {src} to {dst}: {e}")
+        logger.error(f"Error creating default config at {destination}: {str(e)}")
         return False
 
-def copy_config_files():
-    """
-    Copy all configuration files to their required locations
-    and create any necessary directories.
-    
-    Returns:
-        bool: True if all operations succeeded, False otherwise
-    """
-    success = True
-    
-    # Ensure all required directories exist
-    for directory in REQUIRED_DIRS:
-        if not ensure_directory(directory):
-            success = False
-    
-    # Copy all config files to their destinations
-    for config_file, config_info in CONFIG_FILES.items():
-        source = config_info['source']
-        
-        # Check if source exists
-        if not os.path.exists(source):
-            logger.warning(f"Source configuration file not found: {source}")
-            continue
+def copy_api_lib_configs():
+    """Copy config files to the lib directories for api and other modules"""
+    try:
+        market_data_config = "config/environments/market_data_config.json"
+        if os.path.exists(market_data_config):
+            # Copy to api/lib
+            dest = "api/lib/market_data_config.json"
+            copy_file(market_data_config, dest)
             
-        # Copy to all destinations
-        for destination in config_info['destinations']:
-            if not copy_file(source, destination):
-                success = False
-    
-    return success
+            # Copy to backend/lib
+            dest = "backend/lib/market_data_config.json"
+            copy_file(market_data_config, dest)
+            
+            # Copy to other potential locations
+            dest = "lib/market_data_config.json"
+            copy_file(market_data_config, dest)
+    except Exception as e:
+        logger.error(f"Error copying lib configs: {str(e)}")
 
 def main():
-    """Main entry point for the script"""
-    logger.info("Starting configuration file setup")
-    success = copy_config_files()
+    """
+    Main entry point: copy all configuration files to their respective locations
+    """
+    logger.info("Starting configuration file deployment")
     
-    if success:
-        logger.info("Configuration setup completed successfully")
-        return 0
-    else:
-        logger.warning("Configuration setup completed with some issues")
-        return 1
+    # Create necessary directories
+    ensure_directory_exists("api/config/environments")
+    ensure_directory_exists("backend/config/environments")
+    ensure_directory_exists("server/config/environments")
+    ensure_directory_exists("config/environments")
+    
+    # Copy primary config files
+    for source, destinations in CONFIG_FILES.items():
+        if os.path.exists(source):
+            for dest in destinations:
+                copy_file(source, dest)
+        else:
+            logger.warning(f"Source file {source} not found")
+    
+    # Copy environment-specific config files
+    for source, destinations in ENV_CONFIG_FILES.items():
+        if os.path.exists(source):
+            for dest in destinations:
+                copy_file(source, dest)
+        else:
+            logger.warning(f"Source file {source} not found")
+    
+    # Special handling for API lib configs
+    copy_api_lib_configs()
+    
+    logger.info("Configuration file deployment completed")
 
 if __name__ == "__main__":
-    sys.exit(main()) 
+    main() 

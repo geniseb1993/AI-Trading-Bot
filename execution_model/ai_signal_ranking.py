@@ -62,7 +62,7 @@ class AISignalRanking:
             try:
                 self.client = OpenAI(
                     base_url="https://openrouter.ai/api/v1",
-                    api_key=self.openrouter_api_key,
+                    api_key=self.openrouter_api_key
                 )
                 logger.info("Successfully initialized OpenAI client")
             except Exception as e:

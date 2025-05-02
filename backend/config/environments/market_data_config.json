@@ -1,36 +1,50 @@
 {
-    "active_source": "mock",
-    "use_real_data": false,
-    "sources": {
-        "alpaca": {
-            "enabled": false,
-            "api_key": "",
-            "api_secret": "",
-            "base_url": "https://paper-api.alpaca.markets",
-            "data_url": "https://data.alpaca.markets"
-        },
-        "mock": {
-            "enabled": true,
-            "use_csv_data": true,
-            "csv_directory": "data/market_data"
-        },
-        "tradingview": {
-            "enabled": false,
-            "webhook_port": 5001,
-            "webhook_path": "/tradingview-webhook",
-            "webhook_secret": ""
-        },
-        "unusual_whales": {
-            "enabled": false,
-            "api_key": ""
-        },
-        "polygon": {
-            "enabled": false,
-            "api_key": ""
+    "environment": "development",
+    "market_data": {
+        "default_source": "mock",
+        "use_real_data": false,
+        "sources": {
+            "alpaca": {
+                "enabled": true,
+                "api_key": "",
+                "api_secret": "",
+                "base_url": "https://paper-api.alpaca.markets",
+                "data_url": "https://data.alpaca.markets"
+            },
+            "interactive_brokers": {
+                "enabled": false,
+                "host": "127.0.0.1",
+                "port": 7496,
+                "client_id": 0
+            },
+            "unusual_whales": {
+                "enabled": false,
+                "api_key": ""
+            },
+            "tradingview": {
+                "enabled": true,
+                "webhook_port": 5001,
+                "webhook_path": "/tradingview-webhook"
+            },
+            "mock": {
+                "enabled": true,
+                "use_fixed_data": true,
+                "data_file": "data/market_data/sample_data.json",
+                "simulated_delay_ms": 100
+            },
+            "yahoo_finance": {
+                "enabled": true
+            }
         }
     },
-    "cache": {
-        "enabled": true,
-        "duration": 3600
+    "data_storage": {
+        "type": "file",
+        "directory": "data/market_data",
+        "database_url": ""
+    },
+    "data_providers": {
+        "real_time": ["alpaca", "interactive_brokers", "tradingview"],
+        "historical": ["alpaca", "yahoo_finance", "mock"],
+        "news": ["alpaca", "unusual_whales"]
     }
 } 

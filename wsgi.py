@@ -45,6 +45,9 @@ except ImportError:
 config_dirs = [
     os.path.join(BASE_DIR, 'config'),
     os.path.join(BASE_DIR, 'config', 'environments'),
+    os.path.join(BASE_DIR, 'api', 'config'),
+    os.path.join(BASE_DIR, 'api', 'config', 'environments'),
+    os.path.join(BASE_DIR, 'api', 'lib'),
     os.path.join(BASE_DIR, 'data'),
     os.path.join(BASE_DIR, 'data', 'logs'),
     os.path.join(BASE_DIR, 'data', 'broker'),
@@ -53,7 +56,10 @@ config_dirs = [
     os.path.join(BASE_DIR, 'static'),
     os.path.join(BASE_DIR, 'static', 'css'),
     os.path.join(BASE_DIR, 'static', 'js'),
-    os.path.join(BASE_DIR, 'static', 'images')
+    os.path.join(BASE_DIR, 'static', 'images'),
+    os.path.join(BASE_DIR, 'static', 'static'),
+    os.path.join(BASE_DIR, 'static', 'static', 'css'),
+    os.path.join(BASE_DIR, 'static', 'static', 'js')
 ]
 
 for config_dir in config_dirs:
@@ -76,74 +82,109 @@ for config_file in CONFIG_FILES:
     if not os.path.exists(config_path):
         logger.warning(f"Config file {config_file} does not exist. Using default settings.")
 
-# Create data directory structure
-data_dirs = [
-    os.path.join(BASE_DIR, 'data'),
-    os.path.join(BASE_DIR, 'data', 'logs'),
-    os.path.join(BASE_DIR, 'data', 'broker'),
-    os.path.join(BASE_DIR, 'frontend', 'build'),
-    os.path.join(BASE_DIR, 'static')
-]
-
-for data_dir in data_dirs:
-    if not os.path.exists(data_dir):
-        logger.info(f"Creating directory: {data_dir}")
-        os.makedirs(data_dir, exist_ok=True)
+# Copy config files to API lib directory
+try:
+    market_data_config = os.path.join(BASE_DIR, 'config', 'environments', 'market_data_config.json')
+    api_lib_config = os.path.join(BASE_DIR, 'api', 'lib', 'market_data_config.json')
+    
+    if os.path.exists(market_data_config) and not os.path.exists(api_lib_config):
+        shutil.copy2(market_data_config, api_lib_config)
+        logger.info(f"Copied market_data_config.json to api/lib directory")
+except Exception as e:
+    logger.error(f"Error copying config to api/lib: {e}")
 
 # Fix potential missing alpaca-trade-api by creating a mock module
 try:
     import alpaca_trade_api
 except ImportError:
     logger.warning("alpaca_trade_api not found, creating mock implementation")
-    mock_dir = os.path.join(BASE_DIR, 'mock_modules')
+    mock_dir = os.path.join(BASE_DIR, 'mock_modules', 'alpaca_trade_api')
     os.makedirs(mock_dir, exist_ok=True)
     
     # Create a mock alpaca_trade_api module
-    with open(os.path.join(mock_dir, 'alpaca_trade_api.py'), 'w') as f:
+    with open(os.path.join(mock_dir, '__init__.py'), 'w') as f:
         f.write("""
 # Mock implementation of alpaca_trade_api
+from .rest import REST
+
+__version__ = '3.2.0'
+""")
+    
+    with open(os.path.join(mock_dir, 'rest.py'), 'w') as f:
+        f.write("""
+# Mock implementation of alpaca_trade_api.rest
+import logging
+
+logger = logging.getLogger(__name__)
+
 class REST:
-    def __init__(self, key_id='', secret_key='', base_url='', api_version='v2'):
+    def __init__(self, key_id=None, secret_key=None, base_url=None, api_version=None, **kwargs):
         self.key_id = key_id
         self.secret_key = secret_key
         self.base_url = base_url
         self.api_version = api_version
-        print("Mock Alpaca REST API initialized")
+        self.session = None
+        logger.info("Mock Alpaca REST API initialized")
     
     def get_account(self):
         return {
-            'account_number': 'MOCK',
-            'buying_power': '100000',
-            'cash': '100000',
+            'id': 'mock-account-id',
+            'status': 'ACTIVE',
             'equity': '100000',
-            'status': 'ACTIVE'
+            'cash': '100000',
+            'buying_power': '100000',
+            'portfolio_value': '100000'
         }
     
     def list_positions(self):
         return []
     
-    def list_orders(self, status='open'):
+    def list_orders(self, status=None, limit=None, after=None, until=None, direction=None, nested=None):
         return []
-        
-    def submit_order(self, symbol, qty, side, type, time_in_force, limit_price=None, stop_price=None):
+    
+    def get_bars(self, symbol, timeframe, start=None, end=None, limit=None, adjustment='raw'):
+        return []
+    
+    def submit_order(self, symbol, qty=None, side=None, type='market', time_in_force='day', 
+                     limit_price=None, stop_price=None, client_order_id=None, extended_hours=None,
+                     order_class=None, take_profit=None, stop_loss=None, notional=None):
         return {
             'id': 'mock-order-id',
+            'client_order_id': client_order_id or 'mock-client-order-id',
             'symbol': symbol,
-            'qty': qty,
             'side': side,
             'type': type,
-            'time_in_force': time_in_force,
             'status': 'accepted'
         }
+    
+    def get_order(self, order_id):
+        return {
+            'id': order_id,
+            'status': 'filled'
+        }
+
+    def cancel_order(self, order_id):
+        return {
+            'id': order_id,
+            'status': 'canceled'
+        }
+""")
+    
+    with open(os.path.join(mock_dir, 'stream.py'), 'w') as f:
+        f.write("""
+# Mock implementation of alpaca_trade_api.stream
+import logging
+
+logger = logging.getLogger(__name__)
 
 class StreamConn:
-    def __init__(self, key_id='', secret_key='', base_url='', data_stream=''):
+    def __init__(self, key_id=None, secret_key=None, base_url=None, data_stream=None, **kwargs):
         self.key_id = key_id
         self.secret_key = secret_key
         self.base_url = base_url
         self.data_stream = data_stream
         self.handlers = {}
-        print("Mock Alpaca StreamConn initialized")
+        logger.info("Mock Alpaca StreamConn initialized")
     
     def on(self, event_name):
         def decorator(func):
@@ -152,7 +193,7 @@ class StreamConn:
         return decorator
     
     def run(self):
-        print("Mock StreamConn running")
+        logger.info("Mock StreamConn running")
         pass
 """)
 
@@ -287,6 +328,7 @@ try:
 <html>
 <head>
     <title>AI Trading Bot</title>
+    <link rel="stylesheet" href="/static/css/main.css">
     <style>
         body { font-family: sans-serif; margin: 0; padding: 20px; background: #121212; color: #e1e1e1; }
         h1 { color: #4a90e2; }
@@ -305,7 +347,7 @@ try:
                 except Exception as e:
                     logger.error(f"Failed to create index.html: {e}")
                 
-            # Check for css directory (fix the path issue)
+            # Check for CSS directory
             css_dir = os.path.join(static_folder, 'css')
             if os.path.exists(css_dir):
                 logger.info(f"CSS directory found at {css_dir}")
@@ -329,6 +371,18 @@ body {
 }
 h1 {
     color: #4a90e2;
+}
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+a {
+    color: #4a90e2;
+    text-decoration: none;
+}
+a:hover {
+    text-decoration: underline;
 }""")
                     logger.info(f"Created basic CSS file at {css_file}")
                 except Exception as e:
@@ -341,6 +395,20 @@ h1 {
                     """Serve static files from static folder"""
                     return send_from_directory(static_folder, filename)
                 logger.info("Added explicit /static/ route handler")
+            
+            # Create static/static/css directory and copy files
+            nested_css_dir = os.path.join(static_folder, 'static', 'css')
+            if not os.path.exists(nested_css_dir):
+                os.makedirs(nested_css_dir, exist_ok=True)
+                logger.info(f"Creating directory: {nested_css_dir}")
+                
+                # Copy CSS files
+                for css_file in os.listdir(css_dir):
+                    if css_file.endswith('.css'):
+                        src = os.path.join(css_dir, css_file)
+                        dst = os.path.join(nested_css_dir, css_file)
+                        shutil.copy2(src, dst)
+                        logger.info(f"Copied {src} to {dst}")
         else:
             logger.warning(f"Static folder does not exist: {static_folder}")
             # Create the static folder
@@ -353,54 +421,6 @@ h1 {
 except Exception as e:
     logger.error(f"Error checking static files: {e}")
 
-# Add missing frontend routes
-@application.route('/css/<path:filename>')
-def serve_css(filename):
-    """Serve CSS files from multiple potential locations"""
-    # Try different possible CSS locations
-    for css_dir in [
-        os.path.join(application.static_folder, 'css'),
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'css')
-    ]:
-        if os.path.exists(os.path.join(css_dir, filename)):
-            return send_from_directory(css_dir, filename)
-    
-    # Return 404 if not found
-    return "CSS file not found", 404
-
-@application.route('/js/<path:filename>')
-def serve_js(filename):
-    """Serve JS files from multiple potential locations"""
-    # Try different possible JS locations
-    for js_dir in [
-        os.path.join(application.static_folder, 'js'),
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'js')
-    ]:
-        if os.path.exists(os.path.join(js_dir, filename)):
-            return send_from_directory(js_dir, filename)
-    
-    # Return 404 if not found
-    return "JS file not found", 404
-
-# Copy CSS files to correct locations
-try:
-    src_css_dir = os.path.join(BASE_DIR, 'static', 'css')
-    dst_css_dir = os.path.join(BASE_DIR, 'static', 'static', 'css')
-    
-    if os.path.exists(src_css_dir) and not os.path.exists(dst_css_dir):
-        logger.info(f"Creating directory: {dst_css_dir}")
-        os.makedirs(dst_css_dir, exist_ok=True)
-        
-        # Copy main.css
-        src_css = os.path.join(src_css_dir, 'main.css')
-        dst_css = os.path.join(dst_css_dir, 'main.css')
-        
-        if os.path.exists(src_css):
-            shutil.copy2(src_css, dst_css)
-            logger.info(f"Copied {src_css} to {dst_css}")
-except Exception as e:
-    logger.error(f"Error copying CSS files: {e}")
-
 # The WSGI entry point - make sure this is correctly defined for gunicorn
 app = application
 
@@ -408,9 +428,9 @@ app = application
 try:
     # Only add the health check if it doesn't already exist
     route_rules = [rule.rule for rule in app.url_map.iter_rules()]
-    if '/health' not in route_rules:
+    if '/health' not in route_rules and '/api/health' not in route_rules:
         @app.route('/health')
-        def wsgi_main_health_check():
+        def wsgi_health_check():
             from flask import jsonify
             return jsonify({'status': 'healthy'})
         logger.info("Added health check route")
@@ -433,6 +453,6 @@ def get_port():
 
 # Make sure the app variable is properly defined and exported for gunicorn
 if __name__ == '__main__':
-    logger.info(f"Running app directly via wsgi.py")
     port = get_port()
+    logger.info(f"Running app directly via wsgi.py on port {port}")
     app.run(host='0.0.0.0', port=port, debug=False)
