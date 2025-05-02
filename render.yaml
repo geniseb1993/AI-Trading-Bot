@@ -3,6 +3,7 @@ services:
   - type: web
     name: ai-trading-bot
     env: python
+    runtime: python
     region: oregon
     plan: free
     buildCommand: |
@@ -14,7 +15,7 @@ services:
       mkdir -p static/css static/js static/images
     startCommand: |
       . .venv/bin/activate
-      gunicorn wsgi:app --bind=0.0.0.0:$PORT
+      gunicorn wsgi:app --workers=2 --threads=4 --bind=0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.2

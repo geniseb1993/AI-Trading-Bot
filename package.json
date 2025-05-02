@@ -3,13 +3,13 @@
   "version": "1.0.0",
   "description": "AI Trading Bot with React frontend and Python backend",
   "scripts": {
-    "dev": "cd frontend && npm run dev",
+    "dev": "echo 'Use Python virtual environment for development'",
     "start-frontend": "cd frontend && npm start",
     "start-api": "python start-api.py",
     "install-api-deps": "pip install flask flask-cors pandas",
-    "start": "cd .venv && source bin/activate && cd .. && gunicorn wsgi:app --bind=0.0.0.0:$PORT",
+    "start": "echo 'Please use the Python virtual environment and gunicorn directly'",
     "build": "python -m venv .venv && .venv/bin/pip install -r requirements.txt && python copy_config_files.py",
-    "postinstall": "[ -f .venv/bin/activate ] || npm run build"
+    "postinstall": "echo 'Installation complete, use Python virtual environment'"
   },
   "author": "",
   "license": "MIT",
