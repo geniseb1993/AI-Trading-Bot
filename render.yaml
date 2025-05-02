@@ -17,9 +17,7 @@ services:
       cp -rf frontend/build/static/js/* static/js/ || true
       cp -rf frontend/build/static/images/* static/images/ || true
       echo "Static files copied successfully"
-    startCommand: |
-      python -c "import sys; import os; sys.path.insert(0, os.path.abspath('.')); from scripts.render_fix import run_render_fix; run_render_fix()" || python render_fix.py
-      gunicorn --workers=1 --threads=8 --timeout=120 --log-file=- wsgi:app
+    startCommand: gunicorn wsgi:app --workers=1 --threads=8 --timeout=120 --log-file=-
     envVars:
       - key: PORT
         value: 10000
@@ -32,7 +30,7 @@ services:
       - key: FLASK_ENV
         value: production
       - key: FLASK_APP
-        value: backend.app
+        value: wsgi.py
       - key: RENDER_DEPLOYMENT
         value: true
       - key: USE_MOCK_BROKER

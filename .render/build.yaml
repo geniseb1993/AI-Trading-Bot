@@ -1,0 +1,12 @@
+beforeDeploy:
+  - pip install -r requirements.txt
+  - python -c "import sys; import os; sys.path.insert(0, os.path.abspath('.')); from scripts.render_fix import run_render_fix; run_render_fix()" || python render_fix.py
+  - mkdir -p frontend/build/static frontend/build/static/css frontend/build/static/js frontend/build/static/images
+  - mkdir -p static static/css static/js static/images
+  - cp -rf frontend/build/* static/ || true
+  - cp -rf frontend/build/index.html . || true
+  - cp -rf frontend/build/static/css/* static/css/ || true
+  - cp -rf frontend/build/static/js/* static/js/ || true
+  - cp -rf frontend/build/static/images/* static/images/ || true
+
+startCommand: gunicorn wsgi:app 

@@ -230,7 +230,7 @@ def serve_js(filename):
     # Return 404 if not found
     return "JS file not found", 404
 
-# The WSGI entry point
+# The WSGI entry point - make sure this is correctly defined for gunicorn
 app = application
 
 # Create a health check route to verify the app is running
@@ -248,18 +248,7 @@ try:
 except Exception as e:
     logger.error(f"Failed to add health check route: {e}")
 
-# If running directly
+# Make sure the app variable is properly defined and exported for gunicorn
 if __name__ == '__main__':
-    # Execute the render_fix script to create frontend files
-    try:
-        from scripts.render_fix import run_render_fix
-        run_render_fix()
-    except ImportError:
-        try:
-            from render_fix import run_render_fix
-            run_render_fix()
-        except ImportError:
-            logger.warning("Could not import render_fix")
-    
-    port = int(os.environ.get('PORT', 8000))
-    app.run(host='0.0.0.0', port=port)
+    logger.info(f"Running app directly via wsgi.py")
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=False)
