@@ -13,5 +13,48 @@
     "enabled": true,
     "max_daily_drawdown_percent": 5,
     "pause_trading_minutes": 120
+  },
+  "model": {
+    "type": "default",
+    "version": "1.0.0",
+    "parameters": {
+      "risk_threshold": 0.75,
+      "confidence_threshold": 0.65,
+      "max_trades_per_day": 5,
+      "max_allocation_percent": 20.0
+    }
+  },
+  "signals": {
+    "sources": ["rsi", "macd", "dual_bot"],
+    "weighting": {
+      "rsi": 0.3,
+      "macd": 0.3,
+      "dual_bot": 0.4
+    },
+    "time_decay": 0.05
+  },
+  "risk_management": {
+    "stop_loss_percent": 2.0,
+    "take_profit_percent": 5.0,
+    "trailing_stop": false,
+    "trailing_stop_percent": 1.0,
+    "max_drawdown_percent": 5.0
+  },
+  "position_sizing": {
+    "method": "fixed_percent",
+    "percent": 5.0,
+    "max_position_value": 10000.0,
+    "scale_by_confidence": true
+  },
+  "trading_hours": {
+    "start_time": "09:30",
+    "end_time": "16:00",
+    "time_zone": "America/New_York",
+    "trade_outside_hours": false
+  },
+  "backtest": {
+    "default_period": "1y",
+    "commission": 0.0,
+    "slippage": 0.001
   }
 } 

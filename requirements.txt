@@ -9,6 +9,7 @@ numpy==1.24.3
 pytz==2023.3
 python-dateutil==2.8.2
 werkzeug==2.2.3
+alpaca-trade-api>=3.0.0  # Added for broker integration
 
 # Whitenoise for serving static files in production
 whitenoise==6.5.0

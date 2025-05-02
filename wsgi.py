@@ -52,6 +52,20 @@ for config_file in CONFIG_FILES:
     if not os.path.exists(config_path):
         logger.warning(f"Config file {config_file} does not exist. Using default settings.")
 
+# Create data directory structure
+data_dirs = [
+    os.path.join(BASE_DIR, 'data'),
+    os.path.join(BASE_DIR, 'data', 'logs'),
+    os.path.join(BASE_DIR, 'data', 'broker'),
+    os.path.join(BASE_DIR, 'frontend', 'build'),
+    os.path.join(BASE_DIR, 'static')
+]
+
+for data_dir in data_dirs:
+    if not os.path.exists(data_dir):
+        logger.info(f"Creating directory: {data_dir}")
+        os.makedirs(data_dir, exist_ok=True)
+
 # Try to import the main application from the new backend structure
 try:
     logger.info("Attempting to import Flask application from backend package")
@@ -95,7 +109,7 @@ except Exception as e:
     logger.error(f"Critical error in WSGI initialization: {e}")
     # Create a minimal Flask app as last resort
     from flask import Flask, jsonify
-    application = Flask(__name__)
+    application = Flask(__name__, static_folder=os.path.join(BASE_DIR, 'static'))
     
     @application.route('/')
     def index():
@@ -176,6 +190,30 @@ try:
                 logger.info(f"index.html found at {index_path}")
             else:
                 logger.warning(f"index.html not found in static folder")
+                # Create a simple index.html
+                try:
+                    with open(index_path, 'w') as f:
+                        f.write("""<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Trading Bot</title>
+    <style>
+        body { font-family: sans-serif; margin: 0; padding: 20px; background: #121212; color: #e1e1e1; }
+        h1 { color: #4a90e2; }
+        .container { max-width: 800px; margin: 40px auto; padding: 20px; background: #1e1e1e; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AI Trading Bot</h1>
+        <p>The API server is running successfully.</p>
+        <p><a href="/api/health" style="color: #4a90e2;">Check API Health</a></p>
+    </div>
+</body>
+</html>""")
+                    logger.info(f"Created basic index.html at {index_path}")
+                except Exception as e:
+                    logger.error(f"Failed to create index.html: {e}")
                 
             # Check for static/css directory
             css_dir = os.path.join(static_folder, 'static', 'css')
@@ -183,6 +221,47 @@ try:
                 logger.info(f"CSS directory found at {css_dir}")
             else:
                 logger.warning(f"CSS directory not found at {css_dir}")
+                # Create the css directory
+                os.makedirs(css_dir, exist_ok=True)
+                logger.info(f"Created CSS directory at {css_dir}")
+                
+                # Create a basic CSS file
+                css_file = os.path.join(css_dir, 'main.css')
+                try:
+                    with open(css_file, 'w') as f:
+                        f.write("""/* Basic CSS for AI Trading Bot */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #121212;
+    color: #e1e1e1;
+}
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+.card {
+    background-color: #1e1e1e;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+h1, h2, h3 {
+    color: #4a90e2;
+}
+a {
+    color: #4a90e2;
+    text-decoration: none;
+}
+a:hover {
+    text-decoration: underline;
+}""")
+                    logger.info(f"Created basic CSS file at {css_file}")
+                except Exception as e:
+                    logger.error(f"Failed to create CSS file: {e}")
                 
             # Add route to explicitly serve static files if needed
             if static_url_path != '':
@@ -193,6 +272,10 @@ try:
                 logger.info("Added explicit /static/ route handler")
         else:
             logger.warning(f"Static folder does not exist: {static_folder}")
+            # Create the static folder
+            if static_folder:
+                os.makedirs(static_folder, exist_ok=True)
+                logger.info(f"Created static folder at {static_folder}")
     
     # Verify and fix static file serving
     verify_static_files(application)
@@ -251,4 +334,10 @@ except Exception as e:
 # Make sure the app variable is properly defined and exported for gunicorn
 if __name__ == '__main__':
     logger.info(f"Running app directly via wsgi.py")
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=False)
+    port = os.environ.get('PORT')
+    # Fix for the 'int' object has no attribute 'get' error
+    if port is not None:
+        port = int(port)
+    else:
+        port = 5000
+    app.run(host='0.0.0.0', port=port, debug=False)
