@@ -13,6 +13,7 @@ import importlib.util
 from pathlib import Path
 from flask import send_from_directory
 import shutil
+import subprocess
 
 # Configure logging
 logging.basicConfig(
@@ -319,6 +320,26 @@ try:
             index_path = os.path.join(static_folder, 'index.html')
             if os.path.exists(index_path):
                 logger.info(f"index.html found at {index_path}")
+                
+                # Ensure we serve index.html from root path
+                @app_instance.route('/')
+                def serve_index():
+                    return send_from_directory(static_folder, 'index.html')
+                
+                # Add a catch-all route for single-page app
+                @app_instance.route('/<path:path>')
+                def serve_any_path(path):
+                    # First try to serve as a file
+                    file_path = os.path.join(static_folder, path)
+                    if os.path.isfile(file_path):
+                        return send_from_directory(static_folder, path)
+                    # If not a file, try static/path
+                    static_path = os.path.join(static_folder, 'static', path)
+                    if os.path.isfile(static_path):
+                        return send_from_directory(os.path.join(static_folder, 'static'), path)
+                    # Otherwise fall back to serving index.html
+                    return send_from_directory(static_folder, 'index.html')
+                
             else:
                 logger.warning(f"index.html not found in static folder")
                 # Create a simple index.html
@@ -346,7 +367,7 @@ try:
                     logger.info(f"Created basic index.html at {index_path}")
                 except Exception as e:
                     logger.error(f"Failed to create index.html: {e}")
-                
+            
             # Check for CSS directory
             css_dir = os.path.join(static_folder, 'css')
             if os.path.exists(css_dir):
@@ -387,7 +408,7 @@ a:hover {
                     logger.info(f"Created basic CSS file at {css_file}")
                 except Exception as e:
                     logger.error(f"Failed to create CSS file: {e}")
-                
+            
             # Add route to explicitly serve static files if needed
             if static_url_path != '':
                 @app_instance.route('/static/<path:filename>')
@@ -397,25 +418,70 @@ a:hover {
                 logger.info("Added explicit /static/ route handler")
             
             # Create static/static/css directory and copy files
-            nested_css_dir = os.path.join(static_folder, 'static', 'css')
-            if not os.path.exists(nested_css_dir):
-                os.makedirs(nested_css_dir, exist_ok=True)
-                logger.info(f"Creating directory: {nested_css_dir}")
+            nested_static_dir = os.path.join(static_folder, 'static')
+            if not os.path.exists(nested_static_dir):
+                os.makedirs(nested_static_dir, exist_ok=True)
+                logger.info(f"Creating directory: {nested_static_dir}")
                 
-                # Copy CSS files
-                for css_file in os.listdir(css_dir):
-                    if css_file.endswith('.css'):
-                        src = os.path.join(css_dir, css_file)
-                        dst = os.path.join(nested_css_dir, css_file)
-                        shutil.copy2(src, dst)
-                        logger.info(f"Copied {src} to {dst}")
+                # Create static/static/css and static/static/js directories
+                os.makedirs(os.path.join(nested_static_dir, 'css'), exist_ok=True)
+                os.makedirs(os.path.join(nested_static_dir, 'js'), exist_ok=True)
+                
+                # Copy CSS files if they exist
+                if os.path.exists(css_dir):
+                    for css_file in os.listdir(css_dir):
+                        if css_file.endswith('.css'):
+                            src = os.path.join(css_dir, css_file)
+                            dst = os.path.join(nested_static_dir, 'css', css_file)
+                            try:
+                                shutil.copy2(src, dst)
+                                logger.info(f"Copied {src} to {dst}")
+                            except Exception as e:
+                                logger.error(f"Failed to copy {src} to {dst}: {e}")
+                                
+            # Try to copy frontend build if available
+            try:
+                frontend_build = os.path.join(BASE_DIR, 'frontend', 'build')
+                if os.path.exists(frontend_build) and os.path.isdir(frontend_build):
+                    logger.info(f"Found frontend build directory at {frontend_build}")
+                    
+                    # Copy frontend build to static folder
+                    try:
+                        for item in os.listdir(frontend_build):
+                            src = os.path.join(frontend_build, item)
+                            dst = os.path.join(static_folder, item)
+                            
+                            if os.path.isdir(src):
+                                # If it's a directory, copy recursively
+                                if not os.path.exists(dst):
+                                    shutil.copytree(src, dst)
+                                    logger.info(f"Copied directory {src} to {dst}")
+                            else:
+                                # If it's a file, just copy it
+                                shutil.copy2(src, dst)
+                                logger.info(f"Copied file {src} to {dst}")
+                                
+                        logger.info("Successfully copied frontend build to static folder")
+                    except Exception as e:
+                        logger.error(f"Error copying frontend build: {e}")
+            except Exception as e:
+                logger.error(f"Error checking for frontend build: {e}")
+                
         else:
             logger.warning(f"Static folder does not exist: {static_folder}")
             # Create the static folder
             if static_folder:
                 os.makedirs(static_folder, exist_ok=True)
                 logger.info(f"Created static folder at {static_folder}")
-    
+                
+                # Try to run the copy_to_frontend_build script
+                try:
+                    import copy_to_frontend_build
+                    logger.info("Running copy_to_frontend_build.py to populate static files")
+                    copy_to_frontend_build.main()
+                except Exception as e:
+                    logger.error(f"Failed to run copy_to_frontend_build: {e}")
+
     # Verify and fix static file serving
     verify_static_files(application)
 except Exception as e:

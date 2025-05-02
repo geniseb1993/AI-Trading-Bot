@@ -7,17 +7,37 @@ services:
     region: oregon
     plan: free
     buildCommand: |
+      # Install Node.js dependencies and build frontend
+      cd frontend
+      npm install
+      npm run build
+      cd ..
+
+      # Set up Python environment
       python -m venv .venv
       . .venv/bin/activate
       pip install --upgrade pip
       pip install -r requirements.txt
-      pip install gunicorn
-      python copy_config_files.py
+      pip install gunicorn alpaca-trade-api
+
+      # Create necessary directories
       mkdir -p static/css static/js static/images
+      mkdir -p data/logs
+      mkdir -p data/broker
+      mkdir -p data/market_data
+      mkdir -p config/environments
+
+      # Copy configuration files to correct locations
+      python copy_config_files.py
+      
+      # Copy frontend build to static folder
+      cp -r frontend/build/* static/
     startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.2
+      - key: NODE_VERSION
+        value: 16
       - key: APP_ENV
         value: production
       - key: RENDER_DEPLOYMENT
