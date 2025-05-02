@@ -1,5 +1,5 @@
 services:
-  # API service
+  # Web service
   - type: web
     name: ai-trading-bot
     env: python
@@ -11,11 +11,10 @@ services:
       . .venv/bin/activate
       pip install --upgrade pip
       pip install -r requirements.txt
+      pip install gunicorn
       python copy_config_files.py
       mkdir -p static/css static/js static/images
-    startCommand: |
-      . .venv/bin/activate
-      gunicorn wsgi:app --workers=2 --threads=4 --bind=0.0.0.0:$PORT
+    startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.2

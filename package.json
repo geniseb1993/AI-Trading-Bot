@@ -7,9 +7,9 @@
     "start-frontend": "cd frontend && npm start",
     "start-api": "python start-api.py",
     "install-api-deps": "pip install flask flask-cors pandas",
-    "start": "echo 'Please use the Python virtual environment and gunicorn directly'",
+    "start": "node server.js",
     "build": "python -m venv .venv && .venv/bin/pip install -r requirements.txt && python copy_config_files.py",
-    "postinstall": "echo 'Installation complete, use Python virtual environment'"
+    "postinstall": "npm install express || echo 'Express installation failed'"
   },
   "author": "",
   "license": "MIT",
@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "axios": "^1.8.4",
+    "express": "^4.18.2",
     "node-cron": "^3.0.3",
     "recharts": "^2.15.2"
   },
