@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 """
-Copy Configuration Files
-
-This script copies configuration files to their expected locations
-to fix issues with missing configuration files on Render deployment.
+Configuration file setup script for the AI Trading Bot project.
+This script ensures that all required configuration files are in place
+and creates any missing directories needed for the application to run.
 """
 
 import os
@@ -16,195 +15,178 @@ from pathlib import Path
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
 )
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('config_setup')
 
-# Base directory (project root)
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# Dictionary of required config files and their default locations
+CONFIG_FILES = {
+    'config.json': {
+        'source': 'config.json',
+        'destinations': [
+            'config.json',
+            'api/config.json',
+            'backend/config.json',
+        ]
+    },
+    'broker_config.json': {
+        'source': 'broker_config.json',
+        'destinations': [
+            'broker_config.json',
+            'api/broker_config.json',
+            'backend/broker_config.json',
+        ]
+    },
+    'execution_model_config.json': {
+        'source': 'execution_model_config.json',
+        'destinations': [
+            'execution_model_config.json',
+            'api/execution_model_config.json',
+            'backend/execution_model_config.json',
+        ]
+    },
+    'market_data_config.json': {
+        'source': 'config/environments/market_data_config.json',
+        'destinations': [
+            'config/environments/market_data_config.json',
+            'api/config/environments/market_data_config.json',
+            'backend/config/environments/market_data_config.json',
+        ]
+    }
+}
+
+# Required directories to ensure they exist
+REQUIRED_DIRS = [
+    'data',
+    'data/logs',
+    'data/broker',
+    'data/market_data',
+    'data/signals',
+    'api/data',
+    'api/data/logs',
+    'api/data/broker',
+    'api/config/environments',
+    'backend/config/environments',
+    'static',
+    'static/css',
+    'static/js',
+    'static/static',
+    'static/static/css',
+    'static/static/js',
+]
 
 def ensure_directory(directory):
-    """Ensure a directory exists, creating it if necessary."""
+    """
+    Ensure a directory exists, creating it if necessary.
+    
+    Args:
+        directory (str): The directory path to ensure exists
+        
+    Returns:
+        bool: True if the directory exists or was created, False otherwise
+    """
     try:
         if not os.path.exists(directory):
-            logger.info(f"Creating directory: {directory}")
             os.makedirs(directory, exist_ok=True)
+            logger.info(f"Created directory: {directory}")
         return True
     except Exception as e:
-        logger.error(f"Error creating directory {directory}: {e}")
+        logger.error(f"Failed to create directory {directory}: {e}")
         return False
 
 def create_config_file(path, content):
-    """Create a configuration file with the given content."""
+    """
+    Create a configuration file at the specified path if it doesn't exist.
+    
+    Args:
+        path (str): The path to the configuration file
+        content (dict): The content to write to the file
+        
+    Returns:
+        bool: True if the file exists or was created, False otherwise
+    """
     try:
-        # Ensure the directory exists
-        ensure_directory(os.path.dirname(path))
-        
-        # Write the file
-        with open(path, 'w') as f:
-            json.dump(content, f, indent=2)
-        
-        logger.info(f"Created config file: {path}")
+        if not os.path.exists(path):
+            with open(path, 'w') as f:
+                json.dump(content, f, indent=2)
+            logger.info(f"Created configuration file: {path}")
         return True
     except Exception as e:
-        logger.error(f"Error creating config file {path}: {e}")
+        logger.error(f"Failed to create configuration file {path}: {e}")
         return False
 
 def copy_file(src, dst):
-    """Copy a file if it exists."""
+    """
+    Copy a file from source to destination, creating any necessary directories.
+    
+    Args:
+        src (str): The source file path
+        dst (str): The destination file path
+        
+    Returns:
+        bool: True if the file was copied or already exists, False on error
+    """
     try:
-        if os.path.exists(src):
-            # Ensure the destination directory exists
-            ensure_directory(os.path.dirname(dst))
+        if not os.path.exists(src):
+            logger.warning(f"Source file does not exist: {src}")
+            return False
             
-            # Copy the file
+        # Create destination directory if it doesn't exist
+        dst_dir = os.path.dirname(dst)
+        if dst_dir and not os.path.exists(dst_dir):
+            os.makedirs(dst_dir, exist_ok=True)
+            
+        # Only copy if destination doesn't exist or source is newer
+        if not os.path.exists(dst) or os.path.getmtime(src) > os.path.getmtime(dst):
             shutil.copy2(src, dst)
             logger.info(f"Copied {src} to {dst}")
-            return True
-        else:
-            logger.warning(f"Source file not found: {src}")
-            return False
+        return True
     except Exception as e:
-        logger.error(f"Error copying file from {src} to {dst}: {e}")
+        logger.error(f"Failed to copy {src} to {dst}: {e}")
         return False
 
 def copy_config_files():
-    """Copy configuration files to their expected locations."""
+    """
+    Copy all configuration files to their required locations
+    and create any necessary directories.
     
-    # Create necessary directories
-    dirs = [
-        os.path.join(BASE_DIR, 'config'),
-        os.path.join(BASE_DIR, 'config', 'environments'),
-        os.path.join(BASE_DIR, 'data'),
-        os.path.join(BASE_DIR, 'data', 'logs'),
-        os.path.join(BASE_DIR, 'data', 'broker'),
-        os.path.join(BASE_DIR, 'data', 'market_data'),
-        os.path.join(BASE_DIR, 'data', 'signals'),
-        os.path.join(BASE_DIR, 'mock_modules')
-    ]
+    Returns:
+        bool: True if all operations succeeded, False otherwise
+    """
+    success = True
     
-    for directory in dirs:
-        ensure_directory(directory)
+    # Ensure all required directories exist
+    for directory in REQUIRED_DIRS:
+        if not ensure_directory(directory):
+            success = False
     
-    # List of configuration files to copy
-    config_files = [
-        ('config.json', os.path.join(BASE_DIR, 'config.json')),
-        ('broker_config.json', os.path.join(BASE_DIR, 'broker_config.json')),
-        ('execution_model_config.json', os.path.join(BASE_DIR, 'execution_model_config.json')),
-        ('market_data_config.json', os.path.join(BASE_DIR, 'config', 'environments', 'market_data_config.json'))
-    ]
-    
-    # Copy config files to expected locations
-    for src_name, dst_path in config_files:
-        src_path = os.path.join(BASE_DIR, src_name)
-        copy_file(src_path, dst_path)
-    
-    # Define default configs if files don't exist
-    default_configs = {
-        'config.json': {
-            "version": "1.0.0",
-            "application_name": "AI Trading Bot",
-            "environment": "production",
-            "notifications": {
-                "enabled": True,
-                "channels": ["console"],
-                "trade_notifications": True,
-                "system_notifications": True,
-                "email": {
-                    "enabled": False,
-                    "smtp_server": "",
-                    "smtp_port": 587,
-                    "username": "",
-                    "password": "",
-                    "from_email": "",
-                    "to_email": ""
-                },
-                "discord": {
-                    "enabled": False,
-                    "webhook_url": ""
-                },
-                "voice": {
-                    "enabled": False,
-                    "provider": "mock"
-                }
-            },
-            "market_data": {
-                "default_source": "mock",
-                "cache_enabled": True,
-                "cache_duration": 3600
-            },
-            "logging": {
-                "level": "INFO",
-                "file_enabled": True,
-                "console_enabled": True,
-                "log_dir": "data/logs"
-            }
-        },
-        'broker_config.json': {
-            "default_broker": "mock",
-            "paper_trading": True,
-            "brokers": {
-                "alpaca": {
-                    "api_key": "",
-                    "api_secret": "",
-                    "base_url": "https://paper-api.alpaca.markets",
-                    "data_url": "https://data.alpaca.markets",
-                    "enabled": False
-                },
-                "mock": {
-                    "enabled": True,
-                    "initial_balance": 100000,
-                    "commission": 0.0,
-                    "delay": 0,
-                    "slippage": 0.001
-                }
-            }
-        },
-        'execution_model_config.json': {
-            "mode": "paper",
-            "risk_level": "medium",
-            "max_positions": 10,
-            "position_sizing": "adaptive",
-            "risk_management": {
-                "stop_loss_percent": 2.0,
-                "take_profit_percent": 5.0,
-                "trailing_stop": False,
-                "trailing_stop_percent": 1.0
-            }
-        },
-        'market_data_config.json': {
-            "active_source": "mock",
-            "use_real_data": False,
-            "sources": {
-                "alpaca": {
-                    "enabled": False,
-                    "api_key": "",
-                    "api_secret": "",
-                    "base_url": "https://paper-api.alpaca.markets",
-                    "data_url": "https://data.alpaca.markets"
-                },
-                "mock": {
-                    "enabled": True,
-                    "use_csv_data": True,
-                    "csv_directory": "data/market_data"
-                }
-            }
-        }
-    }
-    
-    # Create default config files if they don't exist
-    for config_name, content in default_configs.items():
-        if config_name == 'market_data_config.json':
-            path = os.path.join(BASE_DIR, 'config', 'environments', config_name)
-        else:
-            path = os.path.join(BASE_DIR, config_name)
+    # Copy all config files to their destinations
+    for config_file, config_info in CONFIG_FILES.items():
+        source = config_info['source']
+        
+        # Check if source exists
+        if not os.path.exists(source):
+            logger.warning(f"Source configuration file not found: {source}")
+            continue
             
-        if not os.path.exists(path):
-            create_config_file(path, content)
+        # Copy to all destinations
+        for destination in config_info['destinations']:
+            if not copy_file(source, destination):
+                success = False
     
-    logger.info("Config files copied successfully!")
-    return True
+    return success
+
+def main():
+    """Main entry point for the script"""
+    logger.info("Starting configuration file setup")
+    success = copy_config_files()
+    
+    if success:
+        logger.info("Configuration setup completed successfully")
+        return 0
+    else:
+        logger.warning("Configuration setup completed with some issues")
+        return 1
 
 if __name__ == "__main__":
-    success = copy_config_files()
-    sys.exit(0 if success else 1) 
+    sys.exit(main()) 

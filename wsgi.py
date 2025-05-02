@@ -12,11 +12,15 @@ import logging
 import importlib.util
 from pathlib import Path
 from flask import send_from_directory
+import shutil
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()
+    ]
 )
 logger = logging.getLogger('wsgi')
 
@@ -392,7 +396,6 @@ try:
         dst_css = os.path.join(dst_css_dir, 'main.css')
         
         if os.path.exists(src_css):
-            import shutil
             shutil.copy2(src_css, dst_css)
             logger.info(f"Copied {src_css} to {dst_css}")
 except Exception as e:

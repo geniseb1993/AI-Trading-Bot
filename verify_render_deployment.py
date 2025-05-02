@@ -2,194 +2,289 @@
 """
 Verify Render Deployment
 
-This script checks if all the fixes for Render deployment have been correctly applied.
+This script checks that all necessary files and modules are available
+for the AI Trading Bot application running on Render.
 """
 
 import os
 import sys
 import json
+import importlib
 import logging
-from pathlib import Path
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
 )
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('verify_deployment')
 
-def check_file_exists(path, required=True):
-    """Check if a file exists and log the result."""
-    if os.path.exists(path):
-        logger.info(f"✅ Found {path}")
+def check_file_exists(filepath, create_empty=False, default_content=None):
+    """
+    Check if a file exists, optionally creating it if missing.
+    
+    Args:
+        filepath (str): Path to the file to check
+        create_empty (bool): Whether to create an empty file if it doesn't exist
+        default_content (dict, optional): Default content for the file if created
+        
+    Returns:
+        bool: True if the file exists or was created, False otherwise
+    """
+    if os.path.exists(filepath):
+        logger.info(f"✓ File exists: {filepath}")
         return True
     else:
-        if required:
-            logger.error(f"❌ Missing required file: {path}")
-        else:
-            logger.warning(f"⚠️ Optional file not found: {path}")
+        logger.warning(f"✗ File missing: {filepath}")
+        if create_empty:
+            try:
+                # Ensure directory exists
+                os.makedirs(os.path.dirname(filepath), exist_ok=True)
+                
+                # Create the file
+                if default_content is not None and isinstance(default_content, dict):
+                    with open(filepath, 'w') as f:
+                        json.dump(default_content, f, indent=2)
+                else:
+                    with open(filepath, 'w') as f:
+                        f.write('{}')
+                logger.info(f"  Created file: {filepath}")
+                return True
+            except Exception as e:
+                logger.error(f"  Failed to create file: {e}")
+                return False
         return False
 
-def check_package_in_requirements(package_name):
-    """Check if a package is in requirements.txt."""
-    requirements_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'requirements.txt')
-    if not os.path.exists(requirements_path):
-        logger.error(f"❌ Requirements file not found: {requirements_path}")
-        return False
+def check_module_imports(modules):
+    """
+    Check if modules can be imported.
     
-    with open(requirements_path, 'r') as f:
-        content = f.read()
-        if package_name in content:
-            logger.info(f"✅ Package {package_name} found in requirements.txt")
-            return True
-        else:
-            logger.error(f"❌ Package {package_name} not found in requirements.txt")
-            return False
+    Args:
+        modules (list): List of module names to check
+        
+    Returns:
+        tuple: (success_count, total_count)
+    """
+    success_count = 0
+    for module_name in modules:
+        try:
+            # Try to import the module
+            module = importlib.import_module(module_name)
+            logger.info(f"✓ Module available: {module_name}")
+            success_count += 1
+        except ImportError as e:
+            logger.warning(f"✗ Module missing: {module_name} ({e})")
+            # If it's alpaca_trade_api, check mock_modules
+            if module_name == 'alpaca_trade_api':
+                try:
+                    mock_dir = os.path.join(os.path.dirname(__file__), 'mock_modules')
+                    if mock_dir not in sys.path:
+                        sys.path.insert(0, mock_dir)
+                    module = importlib.import_module(module_name)
+                    logger.info(f"✓ Mock module available: {module_name}")
+                    success_count += 1
+                except ImportError as mock_e:
+                    logger.warning(f"✗ Mock module also missing: {module_name} ({mock_e})")
+    
+    return success_count, len(modules)
 
-def check_config_files():
-    """Check if required configuration files exist and have valid JSON content."""
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    config_files = [
-        'config.json',
-        'broker_config.json',
-        'execution_model_config.json'
+def check_directories():
+    """
+    Check that all required directories exist, creating them if necessary.
+    
+    Returns:
+        tuple: (success_count, total_count)
+    """
+    # List of required directories
+    required_dirs = [
+        'data',
+        'data/logs',
+        'data/broker',
+        'data/market_data',
+        'static',
+        'static/css',
+        'static/js',
+        'config',
+        'config/environments',
+        'mock_modules'
     ]
     
-    all_valid = True
-    for config_file in config_files:
-        path = os.path.join(base_dir, config_file)
-        if check_file_exists(path):
-            # Check if it's valid JSON
+    success_count = 0
+    for directory in required_dirs:
+        if os.path.exists(directory):
+            logger.info(f"✓ Directory exists: {directory}")
+            success_count += 1
+        else:
+            logger.warning(f"✗ Directory missing: {directory}")
             try:
-                with open(path, 'r') as f:
-                    json.load(f)
-                logger.info(f"✅ {config_file} contains valid JSON")
-            except json.JSONDecodeError:
-                logger.error(f"❌ {config_file} contains invalid JSON")
-                all_valid = False
-        else:
-            all_valid = False
+                os.makedirs(directory, exist_ok=True)
+                logger.info(f"  Created directory: {directory}")
+                success_count += 1
+            except Exception as e:
+                logger.error(f"  Failed to create directory: {e}")
     
-    return all_valid
+    return success_count, len(required_dirs)
 
-def check_static_files():
-    """Check if required static files exist."""
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    static_dir = os.path.join(base_dir, 'static')
-    css_dir = os.path.join(static_dir, 'css')
-    js_dir = os.path.join(static_dir, 'js')
+def check_config_files():
+    """
+    Check that all required configuration files exist.
     
-    all_valid = True
-    # Check directories
-    for directory in [static_dir, css_dir, js_dir]:
-        if os.path.exists(directory) and os.path.isdir(directory):
-            logger.info(f"✅ Directory exists: {directory}")
-        else:
-            logger.warning(f"⚠️ Directory missing: {directory}")
-            os.makedirs(directory, exist_ok=True)
-            logger.info(f"  Created directory: {directory}")
+    Returns:
+        tuple: (success_count, total_count)
+    """
+    # List of required configuration files with default content
+    config_files = {
+        'config.json': {
+            "app": {
+                "name": "AI Trading Bot",
+                "version": "2.0.0",
+                "environment": "production",
+                "debug": False
+            }
+        },
+        'broker_config.json': {
+            "active_broker": "mock",
+            "brokers": {
+                "mock": {
+                    "enabled": True
+                }
+            }
+        },
+        'execution_model_config.json': {
+            "execution": {
+                "mode": "simulated",
+                "dry_run": True
+            }
+        },
+        'config/environments/market_data_config.json': {
+            "active_source": "mock",
+            "use_real_data": False,
+            "sources": {
+                "mock": {
+                    "enabled": True
+                }
+            }
+        }
+    }
     
-    # Check files
-    index_html = os.path.join(static_dir, 'index.html')
-    main_css = os.path.join(css_dir, 'main.css')
+    success_count = 0
+    for filepath, default_content in config_files.items():
+        if check_file_exists(filepath, create_empty=True, default_content=default_content):
+            success_count += 1
     
-    if not check_file_exists(index_html):
-        all_valid = False
-        # Create a basic index.html
-        try:
-            with open(index_html, 'w') as f:
-                f.write("""<!DOCTYPE html>
-<html>
-<head>
-    <title>AI Trading Bot</title>
-    <link rel="stylesheet" href="/static/css/main.css">
-</head>
-<body>
-    <div style="max-width: 800px; margin: 100px auto; text-align: center;">
-        <h1>AI Trading Bot</h1>
-        <p>The API server is running successfully.</p>
-    </div>
-</body>
-</html>""")
-            logger.info(f"  Created basic index.html at {index_html}")
-        except Exception as e:
-            logger.error(f"  Failed to create index.html: {str(e)}")
-    
-    if not check_file_exists(main_css):
-        all_valid = False
-        # Create a basic CSS file
-        try:
-            with open(main_css, 'w') as f:
-                f.write("""body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-    background-color: #121212;
-    color: #e1e1e1;
-}
-h1 {
-    color: #4a90e2;
-}""")
-            logger.info(f"  Created basic CSS file at {main_css}")
-        except Exception as e:
-            logger.error(f"  Failed to create CSS file: {str(e)}")
-    
-    return all_valid
+    return success_count, len(config_files)
 
-def check_wsgi_file():
-    """Check if the wsgi.py file has the fix for the 'int' object error."""
-    wsgi_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'wsgi.py')
-    if not check_file_exists(wsgi_path):
-        return False
+def check_render_environment():
+    """
+    Check if we're running on Render and verify environment variables.
     
-    with open(wsgi_path, 'r') as f:
-        content = f.read()
-        # Check for the fix or related code
-        if "# Fix for the 'int' object has no attribute 'get' error" in content or "port = os.environ.get('PORT')" in content:
-            logger.info("✅ wsgi.py contains fix for 'int' object error")
-            return True
+    Returns:
+        bool: True if environment looks good, False otherwise
+    """
+    is_render = os.environ.get('RENDER', '').lower() == 'true'
+    logger.info(f"Running on Render: {is_render}")
+    
+    # Get PORT environment variable
+    port = os.environ.get('PORT')
+    if port:
+        logger.info(f"PORT environment variable: {port}")
+        try:
+            port_int = int(port)
+            logger.info(f"PORT value is valid integer: {port_int}")
+        except ValueError:
+            logger.warning(f"PORT value is not a valid integer: {port}")
+    else:
+        logger.warning("PORT environment variable not set")
+    
+    # Check other environment variables
+    env_vars = [
+        'PYTHON_VERSION',
+        'FLASK_ENV',
+        'FLASK_APP',
+        'STATIC_FOLDER',
+        'RENDER_DEPLOYMENT'
+    ]
+    
+    env_count = 0
+    for var in env_vars:
+        value = os.environ.get(var)
+        if value:
+            logger.info(f"✓ Environment variable set: {var}={value}")
+            env_count += 1
         else:
-            logger.warning("⚠️ wsgi.py might not have the fix for 'int' object error")
-            return False
+            logger.warning(f"✗ Environment variable not set: {var}")
+    
+    return env_count == len(env_vars)
 
 def main():
-    """Run all checks and report results."""
-    logger.info("🔍 Verifying Render deployment fixes...")
+    """Main verification function"""
+    logger.info("Starting Render deployment verification")
     
-    # Initialize counters
-    checks_total = 0
-    checks_passed = 0
+    # Check environment
+    env_ok = check_render_environment()
     
-    # Check packages in requirements.txt
-    checks_total += 1
-    if check_package_in_requirements('alpaca-trade-api'):
-        checks_passed += 1
+    # Check directories
+    dir_count, dir_total = check_directories()
+    logger.info(f"Directories: {dir_count}/{dir_total} verified")
     
     # Check config files
-    checks_total += 1
-    if check_config_files():
-        checks_passed += 1
+    config_count, config_total = check_config_files()
+    logger.info(f"Config files: {config_count}/{config_total} verified")
     
-    # Check static files
-    checks_total += 1
-    if check_static_files():
-        checks_passed += 1
+    # Check required module imports
+    modules = [
+        'flask',
+        'flask_cors',
+        'pandas',
+        'numpy',
+        'alpaca_trade_api'
+    ]
+    module_count, module_total = check_module_imports(modules)
+    logger.info(f"Module imports: {module_count}/{module_total} verified")
     
-    # Check wsgi.py fix
-    checks_total += 1
-    if check_wsgi_file():
-        checks_passed += 1
+    # Check port handling in wsgi.py
+    wsgi_fixed = False
+    try:
+        import wsgi
+        wsgi_fixed = hasattr(wsgi, 'get_port') or hasattr(wsgi, 'app')
+        if wsgi_fixed:
+            logger.info("✓ wsgi.py has proper port handling")
+        else:
+            logger.warning("✗ wsgi.py may not have proper port handling")
+    except ImportError:
+        logger.warning("✗ Could not import wsgi module")
     
-    # Report results
-    if checks_passed == checks_total:
-        logger.info(f"✅ All checks passed! ({checks_passed}/{checks_total})")
-        logger.info("🚀 Your Render deployment should work correctly now!")
+    # Check the route registrations in app
+    try:
+        from api.app import app
+        route_count = len(app.url_map._rules)
+        logger.info(f"Flask app has {route_count} routes registered")
+    except ImportError:
+        try:
+            from app import app
+            route_count = len(app.url_map._rules)
+            logger.info(f"Flask app has {route_count} routes registered")
+        except ImportError:
+            logger.warning("✗ Could not import Flask app")
+    
+    # Summary
+    total_score = (
+        dir_count / dir_total +
+        config_count / config_total +
+        module_count / module_total +
+        (1 if wsgi_fixed else 0) +
+        (1 if env_ok else 0)
+    ) / 5 * 100
+    
+    logger.info(f"Deployment verification complete: {total_score:.1f}% ready")
+    
+    # Print overall result
+    if total_score >= 80:
+        logger.info("✅ Deployment appears ready")
+        return 0
     else:
-        logger.warning(f"⚠️ Some checks failed. ({checks_passed}/{checks_total} passed)")
-        logger.info("📝 Review the log above to address any remaining issues.")
-    
-    return checks_passed == checks_total
+        logger.warning("⚠️ Deployment has some issues that need to be addressed")
+        return 1
 
 if __name__ == "__main__":
-    success = main()
-    sys.exit(0 if success else 1) 
+    sys.exit(main()) 

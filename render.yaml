@@ -10,7 +10,13 @@ services:
       pip install -r requirements.txt
       mkdir -p frontend/build/static frontend/build/static/css frontend/build/static/js frontend/build/static/images
       mkdir -p static static/css static/js static/images
-      python -c "import sys; import os; sys.path.insert(0, os.path.abspath('.')); from scripts.render_fix import run_render_fix; run_render_fix()" || python render_fix.py
+      mkdir -p config/environments
+      
+      # Create mock modules directory and ensure necessary config files
+      mkdir -p mock_modules
+      python copy_config_files.py || echo "Config setup script failed, continuing..."
+      
+      # Copy static files
       cp -rf frontend/build/* static/ || true
       cp -rf frontend/build/index.html . || true
       cp -rf frontend/build/static/css/* static/css/ || true
@@ -38,9 +44,9 @@ services:
       - key: USE_MOCK_DATA
         value: true
       - key: STATIC_FOLDER
-        value: frontend/build
+        value: static
       - key: FLASK_STATIC_FOLDER
-        value: frontend/build
+        value: static
       - key: FLASK_STATIC_URL_PATH
         value: ""
       - key: STATIC_URL_PATH
