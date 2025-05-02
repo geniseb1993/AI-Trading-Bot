@@ -446,10 +446,10 @@ def get_port():
     try:
         if port_str is not None:
             return int(port_str)
-        return 5000
+        return 10000  # Default port for Render
     except (ValueError, TypeError):
-        logger.warning(f"Invalid PORT value: '{port_str}', using default 5000")
-        return 5000
+        logger.warning(f"Invalid PORT value: '{port_str}', using default 10000")
+        return 10000
 
 # Make sure the app variable is properly defined and exported for gunicorn
 if __name__ == '__main__':

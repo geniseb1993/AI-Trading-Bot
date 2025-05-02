@@ -7,10 +7,16 @@
     "start-frontend": "cd frontend && npm start",
     "start-api": "python start-api.py",
     "install-api-deps": "pip install flask flask-cors pandas",
-    "start": "node start-servers.js"
+    "start": "cd .venv && source bin/activate && cd .. && gunicorn wsgi:app --bind=0.0.0.0:$PORT",
+    "build": "python -m venv .venv && .venv/bin/pip install -r requirements.txt && python copy_config_files.py",
+    "postinstall": "[ -f .venv/bin/activate ] || npm run build"
   },
   "author": "",
   "license": "MIT",
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
   "dependencies": {
     "axios": "^1.8.4",
     "node-cron": "^3.0.3",

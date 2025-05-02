@@ -1,42 +1,25 @@
 services:
   # API service
   - type: web
-    name: ai-trading-bot-api
+    name: ai-trading-bot
     env: python
     region: oregon
     plan: free
     buildCommand: |
-      python -m pip install --upgrade pip
+      python -m venv .venv
+      . .venv/bin/activate
+      pip install --upgrade pip
       pip install -r requirements.txt
-      mkdir -p frontend/build/static frontend/build/static/css frontend/build/static/js frontend/build/static/images
-      mkdir -p static static/css static/js static/images
-      mkdir -p config/environments
-      
-      # Create mock modules directory and ensure necessary config files
-      mkdir -p mock_modules
-      python copy_config_files.py || echo "Config setup script failed, continuing..."
-      
-      # Copy static files
-      cp -rf frontend/build/* static/ || true
-      cp -rf frontend/build/index.html . || true
-      cp -rf frontend/build/static/css/* static/css/ || true
-      cp -rf frontend/build/static/js/* static/js/ || true
-      cp -rf frontend/build/static/images/* static/images/ || true
-      echo "Static files copied successfully"
-    startCommand: gunicorn wsgi:app --workers=1 --threads=8 --timeout=120 --log-file=-
+      python copy_config_files.py
+      mkdir -p static/css static/js static/images
+    startCommand: |
+      . .venv/bin/activate
+      gunicorn wsgi:app --bind=0.0.0.0:$PORT
     envVars:
-      - key: PORT
-        value: 10000
       - key: PYTHON_VERSION
-        value: 3.10.0
-      - key: SERVE_FRONTEND
-        value: true
-      - key: MOCK_DEPENDENCIES
-        value: true
-      - key: FLASK_ENV
+        value: 3.11.2
+      - key: APP_ENV
         value: production
-      - key: FLASK_APP
-        value: wsgi.py
       - key: RENDER_DEPLOYMENT
         value: true
       - key: USE_MOCK_BROKER
@@ -45,14 +28,9 @@ services:
         value: true
       - key: STATIC_FOLDER
         value: static
-      - key: FLASK_STATIC_FOLDER
-        value: static
       - key: FLASK_STATIC_URL_PATH
         value: ""
-      - key: STATIC_URL_PATH
-        value: ""
-    healthCheckPath: /api/health
-    # Automatic deploy from GitHub
+    healthCheckPath: /health
     autoDeploy: true
     disk:
       name: ai-trading-bot-data
