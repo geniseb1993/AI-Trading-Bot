@@ -1,0 +1,36 @@
+{
+    "active_source": "mock",
+    "use_real_data": false,
+    "sources": {
+        "alpaca": {
+            "enabled": false,
+            "api_key": "",
+            "api_secret": "",
+            "base_url": "https://paper-api.alpaca.markets",
+            "data_url": "https://data.alpaca.markets"
+        },
+        "mock": {
+            "enabled": true,
+            "use_csv_data": true,
+            "csv_directory": "data/market_data"
+        },
+        "tradingview": {
+            "enabled": false,
+            "webhook_port": 5001,
+            "webhook_path": "/tradingview-webhook",
+            "webhook_secret": ""
+        },
+        "unusual_whales": {
+            "enabled": false,
+            "api_key": ""
+        },
+        "polygon": {
+            "enabled": false,
+            "api_key": ""
+        }
+    },
+    "cache": {
+        "enabled": true,
+        "duration": 3600
+    }
+} 

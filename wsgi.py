@@ -37,6 +37,26 @@ try:
 except ImportError:
     logger.warning("Could not import install_mock_modules, some dependencies may be missing")
 
+# Create necessary directories for configuration
+config_dirs = [
+    os.path.join(BASE_DIR, 'config'),
+    os.path.join(BASE_DIR, 'config', 'environments'),
+    os.path.join(BASE_DIR, 'data'),
+    os.path.join(BASE_DIR, 'data', 'logs'),
+    os.path.join(BASE_DIR, 'data', 'broker'),
+    os.path.join(BASE_DIR, 'data', 'market_data'),
+    os.path.join(BASE_DIR, 'data', 'signals'),
+    os.path.join(BASE_DIR, 'static'),
+    os.path.join(BASE_DIR, 'static', 'css'),
+    os.path.join(BASE_DIR, 'static', 'js'),
+    os.path.join(BASE_DIR, 'static', 'images')
+]
+
+for config_dir in config_dirs:
+    if not os.path.exists(config_dir):
+        logger.info(f"Creating directory: {config_dir}")
+        os.makedirs(config_dir, exist_ok=True)
+
 # Ensure config files exist
 CONFIG_FILES = [
     'config.json',
@@ -65,6 +85,72 @@ for data_dir in data_dirs:
     if not os.path.exists(data_dir):
         logger.info(f"Creating directory: {data_dir}")
         os.makedirs(data_dir, exist_ok=True)
+
+# Fix potential missing alpaca-trade-api by creating a mock module
+try:
+    import alpaca_trade_api
+except ImportError:
+    logger.warning("alpaca_trade_api not found, creating mock implementation")
+    mock_dir = os.path.join(BASE_DIR, 'mock_modules')
+    os.makedirs(mock_dir, exist_ok=True)
+    
+    # Create a mock alpaca_trade_api module
+    with open(os.path.join(mock_dir, 'alpaca_trade_api.py'), 'w') as f:
+        f.write("""
+# Mock implementation of alpaca_trade_api
+class REST:
+    def __init__(self, key_id='', secret_key='', base_url='', api_version='v2'):
+        self.key_id = key_id
+        self.secret_key = secret_key
+        self.base_url = base_url
+        self.api_version = api_version
+        print("Mock Alpaca REST API initialized")
+    
+    def get_account(self):
+        return {
+            'account_number': 'MOCK',
+            'buying_power': '100000',
+            'cash': '100000',
+            'equity': '100000',
+            'status': 'ACTIVE'
+        }
+    
+    def list_positions(self):
+        return []
+    
+    def list_orders(self, status='open'):
+        return []
+        
+    def submit_order(self, symbol, qty, side, type, time_in_force, limit_price=None, stop_price=None):
+        return {
+            'id': 'mock-order-id',
+            'symbol': symbol,
+            'qty': qty,
+            'side': side,
+            'type': type,
+            'time_in_force': time_in_force,
+            'status': 'accepted'
+        }
+
+class StreamConn:
+    def __init__(self, key_id='', secret_key='', base_url='', data_stream=''):
+        self.key_id = key_id
+        self.secret_key = secret_key
+        self.base_url = base_url
+        self.data_stream = data_stream
+        self.handlers = {}
+        print("Mock Alpaca StreamConn initialized")
+    
+    def on(self, event_name):
+        def decorator(func):
+            self.handlers[event_name] = func
+            return func
+        return decorator
+    
+    def run(self):
+        print("Mock StreamConn running")
+        pass
+""")
 
 # Try to import the main application from the new backend structure
 try:
@@ -215,8 +301,8 @@ try:
                 except Exception as e:
                     logger.error(f"Failed to create index.html: {e}")
                 
-            # Check for static/css directory
-            css_dir = os.path.join(static_folder, 'static', 'css')
+            # Check for css directory (fix the path issue)
+            css_dir = os.path.join(static_folder, 'css')
             if os.path.exists(css_dir):
                 logger.info(f"CSS directory found at {css_dir}")
             else:
@@ -237,27 +323,8 @@ body {
     background-color: #121212;
     color: #e1e1e1;
 }
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
-}
-.card {
-    background-color: #1e1e1e;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-}
-h1, h2, h3 {
+h1 {
     color: #4a90e2;
-}
-a {
-    color: #4a90e2;
-    text-decoration: none;
-}
-a:hover {
-    text-decoration: underline;
 }""")
                     logger.info(f"Created basic CSS file at {css_file}")
                 except Exception as e:
@@ -268,7 +335,7 @@ a:hover {
                 @app_instance.route('/static/<path:filename>')
                 def serve_static(filename):
                     """Serve static files from static folder"""
-                    return app_instance.send_static_file(os.path.join('static', filename))
+                    return send_from_directory(static_folder, filename)
                 logger.info("Added explicit /static/ route handler")
         else:
             logger.warning(f"Static folder does not exist: {static_folder}")
@@ -288,7 +355,6 @@ def serve_css(filename):
     """Serve CSS files from multiple potential locations"""
     # Try different possible CSS locations
     for css_dir in [
-        os.path.join(application.static_folder, 'static', 'css'),
         os.path.join(application.static_folder, 'css'),
         os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'css')
     ]:
@@ -303,7 +369,6 @@ def serve_js(filename):
     """Serve JS files from multiple potential locations"""
     # Try different possible JS locations
     for js_dir in [
-        os.path.join(application.static_folder, 'static', 'js'),
         os.path.join(application.static_folder, 'js'),
         os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'js')
     ]:
@@ -312,6 +377,26 @@ def serve_js(filename):
     
     # Return 404 if not found
     return "JS file not found", 404
+
+# Copy CSS files to correct locations
+try:
+    src_css_dir = os.path.join(BASE_DIR, 'static', 'css')
+    dst_css_dir = os.path.join(BASE_DIR, 'static', 'static', 'css')
+    
+    if os.path.exists(src_css_dir) and not os.path.exists(dst_css_dir):
+        logger.info(f"Creating directory: {dst_css_dir}")
+        os.makedirs(dst_css_dir, exist_ok=True)
+        
+        # Copy main.css
+        src_css = os.path.join(src_css_dir, 'main.css')
+        dst_css = os.path.join(dst_css_dir, 'main.css')
+        
+        if os.path.exists(src_css):
+            import shutil
+            shutil.copy2(src_css, dst_css)
+            logger.info(f"Copied {src_css} to {dst_css}")
+except Exception as e:
+    logger.error(f"Error copying CSS files: {e}")
 
 # The WSGI entry point - make sure this is correctly defined for gunicorn
 app = application
@@ -331,13 +416,20 @@ try:
 except Exception as e:
     logger.error(f"Failed to add health check route: {e}")
 
+# Set up safe port handling to prevent 'int' object has no attribute 'get' error
+def get_port():
+    """Safely get the port from environment variable."""
+    port_str = os.environ.get('PORT')
+    try:
+        if port_str is not None:
+            return int(port_str)
+        return 5000
+    except (ValueError, TypeError):
+        logger.warning(f"Invalid PORT value: '{port_str}', using default 5000")
+        return 5000
+
 # Make sure the app variable is properly defined and exported for gunicorn
 if __name__ == '__main__':
     logger.info(f"Running app directly via wsgi.py")
-    port = os.environ.get('PORT')
-    # Fix for the 'int' object has no attribute 'get' error
-    if port is not None:
-        port = int(port)
-    else:
-        port = 5000
+    port = get_port()
     app.run(host='0.0.0.0', port=port, debug=False)

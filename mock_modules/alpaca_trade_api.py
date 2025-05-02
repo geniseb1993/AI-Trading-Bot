@@ -7,73 +7,62 @@ import random
 from datetime import datetime, timedelta
 
 class REST:
-    def __init__(self, key_id=None, secret_key=None, base_url=None, api_version=None):
+    def __init__(self, key_id='', secret_key='', base_url='', api_version='v2'):
         self.key_id = key_id
         self.secret_key = secret_key
         self.base_url = base_url
         self.api_version = api_version
+        print("Mock Alpaca REST API initialized")
         self.account = Account()
         self.positions = Positions()
         self.orders = Orders()
         
     def get_account(self):
         """Get the account information"""
-        return self.account
+        return {
+            'account_number': 'MOCK',
+            'buying_power': '100000',
+            'cash': '100000',
+            'equity': '100000',
+            'status': 'ACTIVE'
+        }
         
     def list_positions(self):
         """List all positions"""
-        return self.positions.list()
+        return []
         
     def get_position(self, symbol):
         """Get a specific position"""
         return self.positions.get(symbol)
         
-    def list_orders(self, status=None, limit=None, after=None, until=None, direction=None):
+    def list_orders(self, status='open'):
         """List orders based on parameters"""
-        return self.orders.list(status, limit)
+        return []
         
-    def submit_order(self, symbol, qty=None, side=None, type=None, time_in_force=None, 
-                    limit_price=None, stop_price=None, client_order_id=None, notional=None):
+    def submit_order(self, symbol, qty, side, type, time_in_force, limit_price=None, stop_price=None):
         """Submit a new order"""
-        return self.orders.submit(symbol, qty, side, type, time_in_force, limit_price,
-                                  stop_price, client_order_id, notional)
+        return {
+            'id': 'mock-order-id',
+            'symbol': symbol,
+            'qty': qty,
+            'side': side,
+            'type': type,
+            'time_in_force': time_in_force,
+            'status': 'accepted'
+        }
         
-    def get_bars(self, symbol, timeframe, start=None, end=None, limit=None):
+    def get_barset(self, symbols, timeframe, limit=None, start=None, end=None, after=None, until=None):
+        if isinstance(symbols, str):
+            symbols = [symbols]
+            
+        return MockBarset({symbol: [] for symbol in symbols})
+    
+    def get_bars(self, symbols, timeframe, start=None, end=None, limit=None):
         """Get bars for a symbol"""
-        bars = []
-        now = datetime.now()
-        
-        # Number of bars to generate
-        num_bars = limit if limit else 100
-        
-        # Base price depends on symbol to maintain consistency
-        base_price = 100.0 + sum(ord(c) for c in symbol) % 300
-        
-        # Generate random bars
-        for i in range(num_bars):
-            bar_time = now - timedelta(minutes=i * self._timeframe_to_minutes(timeframe))
-            price_change = (random.random() - 0.45) * 2.0  # Slight upward bias
-            close_price = base_price * (1 + price_change/100)
-            open_price = base_price * (1 + (random.random() - 0.5) / 100)
-            high_price = max(open_price, close_price) * (1 + random.random() / 100)
-            low_price = min(open_price, close_price) * (1 - random.random() / 100)
-            volume = int(random.random() * 1000000) + 100000
+        if isinstance(symbols, str):
+            symbols = [symbols]
             
-            bar = {
-                't': bar_time,
-                'o': round(open_price, 2),
-                'h': round(high_price, 2),
-                'l': round(low_price, 2),
-                'c': round(close_price, 2),
-                'v': volume,
-                'n': random.randint(100, 1000),  # Number of trades
-                'vw': round((high_price + low_price + close_price) / 3, 2)  # Volume weighted average price
-            }
-            
-            bars.append(Bar(bar))
-            base_price = close_price
-            
-        return bars
+        return [MockBar(symbol) for symbol in symbols]
     
     def _timeframe_to_minutes(self, timeframe):
         """Convert timeframe string to minutes"""
@@ -238,4 +227,62 @@ class Bar:
             setattr(self, key, value)
             
     def __str__(self):
-        return f"Bar(time={self.t}, open={self.o}, high={self.h}, low={self.l}, close={self.c})" 
+        return f"Bar(time={self.t}, open={self.o}, high={self.h}, low={self.l}, close={self.c})"
+
+
+class StreamConn:
+    def __init__(self, key_id='', secret_key='', base_url='', data_stream=''):
+        self.key_id = key_id
+        self.secret_key = secret_key
+        self.base_url = base_url
+        self.data_stream = data_stream
+        self.handlers = {}
+        print("Mock Alpaca StreamConn initialized")
+    
+    def on(self, event_name):
+        def decorator(func):
+            self.handlers[event_name] = func
+            return func
+        return decorator
+    
+    def run(self):
+        print("Mock StreamConn running")
+        pass
+
+
+class MockBarset(dict):
+    def __iter__(self):
+        return iter(self.keys())
+    
+    def df(self):
+        import pandas as pd
+        return pd.DataFrame()
+
+
+class MockBar:
+    def __init__(self, symbol):
+        import time
+        import random
+        self.symbol = symbol
+        self.t = time.time()
+        self.o = random.uniform(100, 200)
+        self.h = self.o * (1 + random.uniform(0, 0.05))
+        self.l = self.o * (1 - random.uniform(0, 0.05))
+        self.c = random.uniform(self.l, self.h)
+        self.v = random.randint(1000, 10000)
+
+
+class Trade:
+    @staticmethod
+    def submit_order(symbol, qty, side, type, time_in_force, limit_price=None, stop_price=None):
+        return {
+            'id': 'mock-order-id',
+            'symbol': symbol,
+            'qty': qty,
+            'side': side,
+            'type': type,
+            'time_in_force': time_in_force,
+            'status': 'accepted'
+        }
+
+tradeapi = Trade 
