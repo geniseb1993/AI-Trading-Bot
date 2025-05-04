@@ -14,9 +14,12 @@ logger = logging.getLogger(__name__)
 # Initialize Flask app
 app = Flask(__name__)
 CORS(app, resources={r"/*": {
-    "origins": ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001"],
+    "origins": ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001", "*"],
     "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    "allow_headers": ["Content-Type", "Authorization", "X-Requested-With", "Accept", "X-API-Key"]
+    "allow_headers": ["Content-Type", "Authorization", "X-Requested-With", "Accept", "X-API-Key", "Origin"],
+    "expose_headers": ["Content-Type", "Authorization"],
+    "supports_credentials": True,
+    "max_age": 600
 }}, supports_credentials=True)
 
 # Sample data for demonstration
@@ -66,20 +69,27 @@ def add_cors_headers(response):
     if not response.headers.get('Access-Control-Allow-Origin'):
         origin = request.headers.get('Origin')
         allowed_origins = ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:3001', 'http://127.0.0.1:3001', 'http://localhost:5000', 'http://127.0.0.1:5000']
-    
+        
         # If there's an Origin header, use it instead of the wildcard
         if origin and origin in allowed_origins:
             response.headers.add('Access-Control-Allow-Origin', origin)
         else:
-            # Default to localhost:3001 since that's our primary frontend port now
-            response.headers.add('Access-Control-Allow-Origin', "http://localhost:3001")
+            # For Safari, use explicit origin or wildcard
+            if origin:
+                response.headers.add('Access-Control-Allow-Origin', origin)
+            else:
+                response.headers.add('Access-Control-Allow-Origin', '*')
         
     if not response.headers.get('Access-Control-Allow-Headers'):
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept,X-Requested-With,X-API-Key')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept,X-Requested-With,X-API-Key,Origin')
     if not response.headers.get('Access-Control-Allow-Methods'):
         response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS,PUT,DELETE')
     if not response.headers.get('Access-Control-Allow-Credentials'):
         response.headers.add('Access-Control-Allow-Credentials', 'true')
+    if not response.headers.get('Access-Control-Expose-Headers'):
+        response.headers.add('Access-Control-Expose-Headers', 'Content-Type,Authorization')
+    if not response.headers.get('Access-Control-Max-Age'):
+        response.headers.add('Access-Control-Max-Age', '600')
     
     return response
 
