@@ -1,0 +1,11 @@
+{
+  "signals": [
+    {
+      "id": "sig_001",
+      "symbol": "AAPL",
+      "signal_type": "buy",
+      "confidence": 0.85,
+      "timestamp": "2025-05-04T17:54:53.126976Z"
+    }
+  ]
+}

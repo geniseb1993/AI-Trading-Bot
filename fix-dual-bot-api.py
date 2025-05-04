@@ -31,6 +31,51 @@ ESSENTIAL_ENDPOINTS = [
     '/api/config'
 ]
 
+def check_dependencies():
+    """Check and install missing dependencies."""
+    try:
+        logger.info("Checking for dependencies...")
+        
+        # Try importing werkzeug
+        try:
+            import werkzeug
+            logger.info("Werkzeug is installed")
+        except ImportError:
+            logger.warning("Werkzeug is not installed, installing now...")
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "werkzeug==2.3.7"])
+            logger.info("Werkzeug installed")
+        
+        # Check specific Flask dependencies
+        try:
+            import flask_cors
+            logger.info("Flask-CORS is installed")
+        except ImportError:
+            logger.warning("Flask-CORS is not installed, installing now...")
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "flask-cors==4.0.0"])
+            logger.info("Flask-CORS installed")
+        
+        # Try importing other required packages
+        packages_to_check = ["pandas", "numpy", "openai", "yfinance"]
+        missing_packages = []
+        
+        for package in packages_to_check:
+            try:
+                __import__(package)
+                logger.info(f"{package} is installed")
+            except ImportError:
+                logger.warning(f"{package} is not installed")
+                missing_packages.append(package)
+        
+        if missing_packages:
+            logger.warning(f"Installing missing packages: {', '.join(missing_packages)}")
+            subprocess.check_call([sys.executable, "-m", "pip", "install"] + missing_packages)
+            logger.info("Installed missing packages")
+            
+        return True
+    except Exception as e:
+        logger.error(f"Error checking dependencies: {e}")
+        return False
+
 def check_port_in_use(port):
     """Check if a port is in use."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -249,25 +294,45 @@ def main(use_new_window=False):
     logger.info("Starting dual bot API server fix script")
     logger.info("=" * 60)
     
-    # Check if server is already running and healthy
+    # Check dependencies first
+    if not check_dependencies():
+        logger.error("Failed to check and install dependencies. Please install them manually.")
+        logger.error("Required packages: werkzeug==2.3.7, flask-cors, pandas, numpy, openai, yfinance")
+        return False
+    
+    # Check if server is already running
     if check_port_in_use(5001):
         logger.info("Port 5001 is already in use. Checking server health...")
-        if check_server_health(5001):
-            logger.info("Dual bot server is already running and healthy. No fix needed.")
+        
+        # Check if the server is healthy
+        if check_server_health():
+            logger.info("Dual bot server is already running and healthy")
             return True
+        else:
+            logger.info("Dual bot server is not running or not healthy. Starting it...")
+            
+            # Kill any existing process on port 5001 that might be stuck
+            kill_process_on_port(5001)
+            time.sleep(2)  # Wait for the process to be killed
+    else:
+        logger.info("Dual bot server is not running or not healthy. Starting it...")
     
-    logger.info("Dual bot server is not running or not healthy. Starting it...")
+    # Start the dual bot server
+    server_started = start_dual_bot_server_direct()
     
-    # Start the server directly
-    success = start_dual_bot_server_direct()
+    if not server_started:
+        logger.error("Failed to start dual bot API server.")
+        return False
     
-    if success:
+    # Verify the server is up and running
+    time.sleep(5)  # Give the server some time to start up fully
+    
+    if check_server_health():
         logger.info("Dual bot API server has been started successfully!")
         return True
     else:
-        logger.error("Failed to start dual bot API server.")
+        logger.error("Server started but health check failed.")
         return False
 
 if __name__ == "__main__":
-    # Default to starting in a new window if run directly
-    main(use_new_window=True) 
+    main() 
