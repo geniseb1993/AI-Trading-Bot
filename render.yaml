@@ -1,53 +1,23 @@
 services:
-  # Web service
   - type: web
     name: ai-trading-bot
     env: python
+    runtime: python
     region: oregon
     plan: free
     buildCommand: |
-      # Install Node.js dependencies and build frontend
-      cd frontend
-      npm install
-      npm run build
-      cd ..
-
-      # Set up Python environment
       pip install --upgrade pip
       pip install -r requirements.txt
-
-      # Create necessary directories
-      mkdir -p static/css static/js static/images
-      mkdir -p data/logs
-      mkdir -p data/broker
-      mkdir -p data/market_data
-
-      # Copy configuration files to correct locations
       python copy_config_files.py
-      
-      # Copy frontend build to static folder
+      mkdir -p static/css static/js static/images data/logs data/broker data/market_data
+      cd frontend && npm install && npm run build && cd ..
       cp -r frontend/build/* static/
-    startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11.2
+        value: 3.11.11
       - key: NODE_VERSION
-        value: 18.16.0
+        value: 18  # Updated from EOL v16
       - key: APP_ENV
         value: production
-      - key: RENDER_DEPLOYMENT
-        value: true
-      - key: USE_MOCK_BROKER
-        value: true
-      - key: USE_MOCK_DATA
-        value: true
-      - key: STATIC_FOLDER
-        value: static
-      - key: FLASK_STATIC_URL_PATH
-        value: ""
     healthCheckPath: /health
-    autoDeploy: true
-    disk:
-      name: ai-trading-bot-data
-      mountPath: /data
-      sizeGB: 1
