@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TradingView Chart Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            margin-bottom: 20px;
+        }
+        #tradingview_chart {
+            width: 100%;
+            height: 500px;
+            max-width: 1000px;
+            border: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        select, button {
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            width: 100%;
+            max-width: 1000px;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+    </style>
+</head>
+<body>
+    <h1>TradingView Chart Test</h1>
+    
+    <div class="controls">
+        <select id="symbol">
+            <option value="NASDAQ:AAPL">Apple (AAPL)</option>
+            <option value="NASDAQ:MSFT">Microsoft (MSFT)</option>
+            <option value="NASDAQ:GOOGL">Google (GOOGL)</option>
+            <option value="NASDAQ:AMZN">Amazon (AMZN)</option>
+            <option value="NASDAQ:TSLA">Tesla (TSLA)</option>
+            <option value="NASDAQ:META">Meta (META)</option>
+            <option value="NASDAQ:NVDA">NVIDIA (NVDA)</option>
+            <option value="AMEX:SPY">S&P 500 ETF (SPY)</option>
+            <option value="NASDAQ:QQQ">Nasdaq ETF (QQQ)</option>
+        </select>
+        
+        <select id="interval">
+            <option value="1">1 Minute</option>
+            <option value="5">5 Minutes</option>
+            <option value="15">15 Minutes</option>
+            <option value="30">30 Minutes</option>
+            <option value="60">1 Hour</option>
+            <option value="D" selected>1 Day</option>
+            <option value="W">1 Week</option>
+            <option value="M">1 Month</option>
+        </select>
+        
+        <button id="loadChart">Load Chart</button>
+        <button id="reloadScript">Reload TradingView Script</button>
+    </div>
+    
+    <div id="tradingview_chart"></div>
+    
+    <div id="status" class="status"></div>
+
+    <script>
+        // Track if script is loaded
+        let tvScriptLoaded = false;
+        
+        // Function to load TradingView script
+        function loadTradingViewScript() {
+            // Remove any existing script
+            const existingScript = document.getElementById('tradingview-script');
+            if (existingScript) {
+                existingScript.remove();
+                console.log('Removed existing TradingView script');
+            }
+            
+            // Reset tracking variable
+            tvScriptLoaded = false;
+            
+            // Show loading status
+            const statusEl = document.getElementById('status');
+            statusEl.className = 'status';
+            statusEl.innerHTML = 'Loading TradingView script...';
+            
+            // Try different CDN sources
+            const scriptUrls = [
+                'https://cdn.jsdelivr.net/npm/tradingview-widget@1.3.2/dist/tv.js',
+                'https://s3.tradingview.com/tv.js',
+                'https://d33t3vvu2t2yu5.cloudfront.net/tv.js',
+                'https://unpkg.com/tradingview-widget@1.3.2/dist/tv.js'
+            ];
+            
+            // Try loading from each URL until success
+            function tryNextUrl(index) {
+                if (index >= scriptUrls.length) {
+                    statusEl.className = 'status error';
+                    statusEl.innerHTML = 'Failed to load TradingView script from all sources. Please check your network connection or try disabling any ad blockers.';
+                    return;
+                }
+                
+                const scriptUrl = scriptUrls[index];
+                console.log(`Trying to load TradingView script from: ${scriptUrl}`);
+                
+                const script = document.createElement('script');
+                script.id = 'tradingview-script';
+                script.src = scriptUrl;
+                script.type = 'text/javascript';
+                script.async = true;
+                
+                script.onload = function() {
+                    tvScriptLoaded = true;
+                    statusEl.className = 'status success';
+                    statusEl.innerHTML = `Successfully loaded TradingView script from ${scriptUrl}`;
+                    createWidget();
+                };
+                
+                script.onerror = function() {
+                    console.error(`Failed to load TradingView script from ${scriptUrl}`);
+                    statusEl.innerHTML = `Failed to load from ${scriptUrl}. Trying next source...`;
+                    // Try next URL
+                    tryNextUrl(index + 1);
+                };
+                
+                document.head.appendChild(script);
+            }
+            
+            // Start with the first URL
+            tryNextUrl(0);
+        }
+        
+        // Function to create TradingView widget
+        function createWidget() {
+            if (!tvScriptLoaded) {
+                console.error('TradingView script not loaded yet');
+                return;
+            }
+            
+            if (!window.TradingView) {
+                console.error('TradingView object not available');
+                document.getElementById('status').className = 'status error';
+                document.getElementById('status').innerHTML = 'TradingView library not available. The script may be blocked by an ad blocker.';
+                return;
+            }
+            
+            // Get selected values
+            const symbol = document.getElementById('symbol').value;
+            const interval = document.getElementById('interval').value;
+            
+            // Clear container
+            const container = document.getElementById('tradingview_chart');
+            container.innerHTML = '';
+            
+            try {
+                // Create widget
+                new window.TradingView.widget({
+                    autosize: true,
+                    symbol: symbol,
+                    interval: interval,
+                    timezone: "Etc/UTC",
+                    theme: "light",
+                    style: "1",
+                    locale: "en",
+                    toolbar_bg: "#f1f3f6",
+                    enable_publishing: false,
+                    allow_symbol_change: true,
+                    container_id: "tradingview_chart",
+                    studies: [
+                        "RSI@tv-basicstudies",
+                        "MACD@tv-basicstudies"
+                    ],
+                    loading_screen: { backgroundColor: "#ffffff" }
+                });
+                
+                const statusEl = document.getElementById('status');
+                statusEl.className = 'status success';
+                statusEl.innerHTML = `Chart loaded successfully for ${symbol} with ${interval} interval`;
+                
+            } catch (err) {
+                console.error('Error creating TradingView widget:', err);
+                document.getElementById('status').className = 'status error';
+                document.getElementById('status').innerHTML = `Error creating chart: ${err.message}`;
+            }
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load TradingView script
+            loadTradingViewScript();
+            
+            // Event listener for load chart button
+            document.getElementById('loadChart').addEventListener('click', function() {
+                if (tvScriptLoaded) {
+                    createWidget();
+                } else {
+                    document.getElementById('status').className = 'status error';
+                    document.getElementById('status').innerHTML = 'TradingView script not loaded yet. Please click "Reload TradingView Script" button first.';
+                }
+            });
+            
+            // Event listener for reload script button
+            document.getElementById('reloadScript').addEventListener('click', function() {
+                loadTradingViewScript();
+            });
+        });
+    </script>
+</body>
+</html> 

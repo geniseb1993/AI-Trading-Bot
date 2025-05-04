@@ -61,11 +61,39 @@ IMPORT_PATHS = [
 for module_path in IMPORT_PATHS:
     try:
         module = __import__(module_path, fromlist=['app'])
-        application = getattr(module, 'app')
+        imported_app = getattr(module, 'app')
+        
+        # Copy routes and configuration from imported app
+        application.config.update(imported_app.config)
+        application.url_map = imported_app.url_map
+        application.view_functions = imported_app.view_functions
+        application.blueprints = imported_app.blueprints
+        
         logger.info(f"Successfully imported app from {module_path}")
         break
     except (ImportError, AttributeError) as e:
         logger.warning(f"Import attempt failed for {module_path}: {str(e)}")
+
+# Add debug endpoints
+@application.route('/debug/static')
+def debug_static():
+    """List all static files for debugging"""
+    files = []
+    for root, _, filenames in os.walk(STATIC_FOLDER):
+        for f in filenames:
+            files.append(os.path.relpath(os.path.join(root, f), STATIC_FOLDER))
+    return jsonify({"static_files": files})
+
+@application.route('/debug/routes')
+def debug_routes():
+    """List all routes for debugging"""
+    routes = []
+    for rule in application.url_map.iter_rules():
+        routes.append({
+            "route": str(rule),
+            "methods": list(rule.methods)
+        })
+    return jsonify(routes)
 
 # Fallback routes if no app was imported
 if not hasattr(application, 'route'):
@@ -83,7 +111,7 @@ if not hasattr(application, 'route'):
             'mode': 'fallback'
         })
 
-# Static file serving
+# Static file serving with caching
 @application.route('/static/<path:filename>')
 def serve_static(filename):
     """Enhanced static file serving with cache control"""
@@ -91,19 +119,44 @@ def serve_static(filename):
     response.headers['Cache-Control'] = 'public, max-age=3600'
     return response
 
-# Frontend SPA handling
-FRONTEND_BUILD = os.path.join(BASE_DIR, 'frontend', 'build')
-if os.path.exists(FRONTEND_BUILD):
-    @application.route('/', defaults={'path': ''})
-    @application.route('/<path:path>')
-    def serve_spa(path):
-        """Serve frontend SPA with proper fallback"""
-        file_path = os.path.join(application.static_folder, path)
-        
-        if path and os.path.exists(file_path):
-            return send_from_directory(application.static_folder, path)
-        
-        return send_from_directory(application.static_folder, 'index.html')
+# Single-page application (SPA) route handling
+@application.route('/', defaults={'path': ''})
+@application.route('/<path:path>')
+def serve_spa(path):
+    """
+    Serve frontend SPA with proper fallback
+    
+    This ensures React/Vue router paths work correctly by falling back
+    to index.html for routes not matching specific files
+    """
+    # First, try to serve the path as a static file
+    static_file_path = os.path.join(STATIC_FOLDER, path)
+    
+    if path and os.path.isfile(static_file_path):
+        return send_from_directory(STATIC_FOLDER, path)
+    
+    # Special case for favicon
+    if path == 'favicon.ico':
+        favicon_path = os.path.join(STATIC_FOLDER, 'favicon.ico')
+        if os.path.exists(favicon_path):
+            return send_from_directory(STATIC_FOLDER, 'favicon.ico')
+    
+    # Fallback to serving index.html for SPA
+    index_path = os.path.join(STATIC_FOLDER, 'index.html')
+    if os.path.exists(index_path):
+        return send_from_directory(STATIC_FOLDER, 'index.html')
+    
+    # Extreme fallback in case something is wrong with the static files
+    return """
+    <!DOCTYPE html>
+    <html>
+        <head><title>AI Trading Bot</title></head>
+        <body>
+            <h1>AI Trading Bot</h1>
+            <p>Static files not found. Please check your deployment configuration.</p>
+        </body>
+    </html>
+    """
 
 # WSGI entry point
 app = application

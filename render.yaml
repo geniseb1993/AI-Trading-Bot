@@ -9,9 +9,13 @@ services:
       pip install --upgrade pip
       pip install -r requirements.txt
       python copy_config_files.py
-      mkdir -p static/css static/js static/images data/logs data/broker data/market_data
+      
+      # Build frontend
       cd frontend && npm install && npm run build && cd ..
-      cp -r frontend/build/* static/
+      
+      # Fix static file organization
+      chmod +x fix_static_for_render.sh
+      ./fix_static_for_render.sh
     startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
     envVars:
       - key: PYTHON_VERSION
@@ -19,5 +23,7 @@ services:
       - key: NODE_VERSION
         value: 18  # Updated from EOL v16
       - key: APP_ENV
+        value: production
+      - key: FLASK_ENV
         value: production
     healthCheckPath: /health
