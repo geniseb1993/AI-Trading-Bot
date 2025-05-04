@@ -1,5 +1,33 @@
 # AI Trading Bot V2.0
 
+## Unified Startup - New & Simplified!
+
+We've consolidated all startup scripts into a single unified script that handles both backend and frontend:
+
+```bash
+# On Windows:
+start-app.bat
+
+# On Linux/macOS:
+./start-app.sh
+```
+
+Or directly with Python:
+
+```bash
+python start_unified.py
+```
+
+This single script handles:
+- Starting the API server
+- Starting the Bot Management Server (if available)
+- Starting the TradingView Integration Server (if available)
+- Starting the Frontend Application
+
+See [UNIFIED_STARTUP_README.md](UNIFIED_STARTUP_README.md) for more details.
+
+---
+
 ## Project Overview
 
 AI Trading Bot V2.0 is a comprehensive automated trading system that combines traditional algorithmic trading strategies with AI-powered analysis to optimize trading decisions. The application features a Flask backend API and a React frontend for monitoring and managing the trading bot.

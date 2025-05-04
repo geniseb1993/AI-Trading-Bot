@@ -1,101 +1,61 @@
-# AI Trading Bot Unified Startup Guide
+# Unified Server Startup for AI Trading Bot
 
-This document explains the new unified startup process for the AI Trading Bot system. We've streamlined the startup process to make it more efficient and reliable.
+This document provides instructions on how to start all components of the AI Trading Bot system using the unified startup script.
 
-## Unified Startup Approach
+## Overview
 
-The new system uses a single startup script that handles both the backend API server and the frontend application with fixed port assignments:
+The `start_unified.py` script is the **single, unified way** to start all components of the trading bot system:
 
-- Backend API Server: Port 5001
-- Frontend Application: Port 3001
-
-## Data Loading Fix
-
-Recent updates have addressed data loading issues by:
-
-1. Ensuring consistent port usage (5001 for API, 3001 for frontend)
-2. Updating CORS configurations to allow communication between these ports
-3. Fixing API connectivity issues in the frontend services
-4. Testing and verifying all API endpoints are working properly
-
-These changes ensure dashboards and data visualizations load correctly without the infinite loading issue.
+1. API Server (simple_api_server.py or alternatives)
+2. Bot Management Server (if available)
+3. TradingView Integration Server (if available)
+4. Frontend Application (React)
 
 ## Quick Start
 
-### Windows
+To start all components with a single command:
 
-Simply run:
 ```
-start-app-unified.bat
-```
-
-### Linux/macOS
-
-Simply run:
-```
-chmod +x start-app-unified.sh
-./start-app-unified.sh
+python start_unified.py
 ```
 
-## What the Unified Startup Does
+This will:
+1. Start the API server on port 5001
+2. Start the Bot Management Server on port 5002 (if available)
+3. Start the TradingView Server on port 5003 (if available)
+4. Start the Frontend on port 3001
 
-1. Checks for required dependencies (Python and Node.js)
-2. Ensures the Dual Bot API server is running on port 5001
-3. Starts the frontend application on port 3001
-4. Provides feedback on the startup process
+## Accessing the Services
 
-## Accessing the System
+After starting the services, you can access them at:
 
-After starting the system:
-
-- Frontend Dashboard: http://localhost:3001
-- API Health Check: http://localhost:5001/api/health
+- API Server: http://localhost:5001/api/health
+- Bot Management Server: http://localhost:5002/api/health
+- TradingView Server: http://localhost:5003/api/test
+- Frontend: http://localhost:3001
 
 ## Troubleshooting
 
-If you encounter issues with the unified startup:
+### Port Already in Use
 
-1. Check the log files:
-   - `fix-dual-bot-api.log` - For API server issues
-   - Check the terminal output for frontend issues
+If a port is already in use, the script will ask if you want to kill the process using that port. Answer 'y' to kill the process and continue, or 'n' to skip starting that component.
 
-2. Try running the components separately:
-   - API Server: `fix-dual-bot-api.bat` (Windows) or `python fix-dual-bot-api.py` (Linux/macOS)
-   - Frontend: `cd frontend && npm start`
+### Server Not Starting
 
-3. Ensure ports 5001 and 3001 are available:
-   - Use `netstat -ano | findstr :5001` (Windows) or `lsof -i :5001` (Linux/macOS) to check
+Check the logs in `server_startup.log` for details on any errors. Common issues include:
 
-## Stopping the System
+- Missing dependencies: Make sure all required packages are installed
+- Port conflicts: Ensure no other applications are using the required ports
+- Configuration issues: Verify that the environment variables are set correctly
 
-### Windows
-Close the terminal windows that were opened by the startup script.
+## Stopping the Services
 
-### Linux/macOS
-Use these commands:
-```
-pkill -f "node.*start"
-pkill -f "python.*dual_bot_api_server.py"
-```
+To stop all services, press `Ctrl+C` in the terminal where you started the script. The script will gracefully shut down all running services.
 
-## Understanding the Cleanup Process
+## For Render Deployment
 
-The unified approach has consolidated multiple startup scripts into a single, streamlined solution. The following scripts have been replaced by the unified startup:
+When deploying to Render, the service will use the appropriate startup command from `render.yaml` or the build configuration. The unified script is designed to work in both local and deployed environments.
 
-- `start-app.bat` / `start-app.sh`
-- `start-dual-bot.bat` / `start-dual-bot.sh`
-- `start-dual-bot-with-frontend.bat`
-- Other various startup scripts
+## Note
 
-The new unified approach:
-- Ensures consistent port usage
-- Provides better error handling
-- Works cross-platform
-- Simplifies the startup process
-
-## For Developers
-
-If you need to modify the startup process:
-
-- `fix-dual-bot-api.py` - Core script that ensures the API server is running
-- `start-app-unified.bat` / `start-app-unified.sh` - Main startup scripts 
+This unified script replaces all previous startup scripts. For simplicity and maintenance, please use this script instead of any other startup scripts in the codebase. 

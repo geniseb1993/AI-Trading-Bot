@@ -39,9 +39,11 @@ def check_port_in_use(port):
 def check_server_health(port=5001):
     """Check if the dual bot server is responsive."""
     try:
-        response = requests.get(f"http://localhost:{port}/api/health", timeout=5)
+        response = requests.get(f"http://localhost:{port}/api/health", timeout=10)
+        logger.info(f"Health check response: {response.status_code}")
         if response.status_code == 200:
             data = response.json()
+            logger.info(f"Health data: {data}")
             if data.get('status') == 'healthy':
                 logger.info(f"Server on port {port} is healthy")
                 return True
@@ -109,76 +111,61 @@ def verify_dual_bot_server_file():
         logger.error("dual_bot_api_server.py file not found in the current directory")
         return False
 
-def start_dual_bot_server(use_new_window=True):
-    """Start the dual bot server.
+def start_dual_bot_server_direct():
+    """Start the dual bot server directly as a module import rather than subprocess."""
+    logger.info("Starting dual bot server directly...")
     
-    Args:
-        use_new_window (bool): Whether to use a new window/console for the server.
-                              Set to False when using in a unified script.
-    """
-    logger.info("Attempting to start the dual bot server...")
-    
-    # Check if server is already running
+    # Kill any existing process on port 5001
     if check_port_in_use(5001):
-        logger.info("Port 5001 is already in use. Checking server health...")
-        if check_server_health(5001):
-            logger.info("Dual bot server is already running and healthy.")
-            return True
-        else:
-            logger.warning("Port 5001 is in use but server is not responding correctly.")
-            # Kill the process on port 5001
-            kill_process_on_port(5001)
+        logger.info("Port 5001 is in use. Killing existing process...")
+        kill_process_on_port(5001)
+        time.sleep(2)
     
     # Verify the file exists
     if not verify_dual_bot_server_file():
         return False
     
     try:
+        # Create the data/dashboard directory
+        os.makedirs('data/dashboard', exist_ok=True)
+        logger.info("Created data/dashboard directory")
+        
+        # Start the server as a direct process
         # Get Python executable path (use the current interpreter)
         python_exe = sys.executable
         logger.info(f"Using Python interpreter: {python_exe}")
         
-        # Start the server
-        if use_new_window and sys.platform.startswith('win'):
-            # Start in a new console window on Windows
-            process = subprocess.Popen(
-                [python_exe, "dual_bot_api_server.py"],
-                creationflags=subprocess.CREATE_NEW_CONSOLE,
-                cwd=os.getcwd()  # Ensure working directory is correct
-            )
-        elif use_new_window and sys.platform.startswith('darwin'):
-            # Start in a new terminal window on macOS
-            process = subprocess.Popen(
-                f"osascript -e 'tell app \"Terminal\" to do script \"cd {os.getcwd()} && {python_exe} dual_bot_api_server.py\"'",
-                shell=True
-            )
-        else:
-            # Start in background for Linux or when new window is not desired
-            process = subprocess.Popen(
-                [python_exe, "dual_bot_api_server.py"],
-                stderr=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                cwd=os.getcwd()  # Ensure working directory is correct
-            )
+        # Run the server directly
+        cmd = [python_exe, "dual_bot_api_server.py"]
+        env = os.environ.copy()
+        
+        # Set Flask environment variables
+        env["FLASK_APP"] = "dual_bot_api_server.py"
+        env["FLASK_ENV"] = "development"
+        env["FLASK_DEBUG"] = "1"
+        
+        logger.info(f"Starting dual_bot_api_server.py with command: {' '.join(cmd)}")
+        process = subprocess.Popen(
+            cmd,
+            env=env,
+            shell=False
+        )
         
         logger.info(f"Started dual bot server process with PID {process.pid}")
         
-        # Wait for server to start
-        max_attempts = 10
-        for attempt in range(1, max_attempts + 1):
-            time.sleep(2)
-            if check_port_in_use(5001):
-                logger.info(f"Port 5001 is in use after {attempt * 2} seconds")
-                
-                # Check if the server is actually working
-                if check_server_health(5001):
-                    logger.info("Dual bot server started successfully!")
-                    return True
-            
-            logger.info(f"Waiting for server to start (attempt {attempt}/{max_attempts})...")
+        # Wait for the server to start accepting connections
+        wait_time = 15  # Wait for up to 15 seconds
+        logger.info(f"Waiting {wait_time} seconds for server to start...")
+        time.sleep(wait_time)
         
-        logger.error(f"Failed to confirm dual bot server is running after {max_attempts * 2} seconds")
-        return False
+        # Check if the server is running
+        if process.poll() is not None:
+            logger.error(f"Server process exited with code {process.returncode}")
+            return False
+        
+        logger.info("Dual bot server should now be running")
+        return True
+        
     except Exception as e:
         logger.error(f"Error starting dual bot server: {e}")
         return False
@@ -256,54 +243,31 @@ def verify_frontend_api_config():
     
     return all_correct, issues_found
 
-def main(use_new_window=True):
-    """Main function to fix the dual bot API server.
-    
-    Args:
-        use_new_window (bool): Whether to use a new window for the server process.
-                              Set to False when called from a unified script.
-    
-    Returns:
-        bool: True if successful, False otherwise.
-    """
+def main(use_new_window=False):
+    """Main function to fix the dual bot API server."""
     logger.info("=" * 60)
     logger.info("Starting dual bot API server fix script")
     logger.info("=" * 60)
     
-    # Step 1: Check if the dual bot server is running and healthy
-    if check_port_in_use(5001) and check_server_health(5001):
-        logger.info("Dual bot server is already running and healthy")
+    # Check if server is already running and healthy
+    if check_port_in_use(5001):
+        logger.info("Port 5001 is already in use. Checking server health...")
+        if check_server_health(5001):
+            logger.info("Dual bot server is already running and healthy. No fix needed.")
+            return True
+    
+    logger.info("Dual bot server is not running or not healthy. Starting it...")
+    
+    # Start the server directly
+    success = start_dual_bot_server_direct()
+    
+    if success:
+        logger.info("Dual bot API server has been started successfully!")
+        return True
     else:
-        # Step 2: Start or restart the server if it's not running or not healthy
-        logger.info("Dual bot server is not running or not healthy. Starting it...")
-        if start_dual_bot_server(use_new_window):
-            logger.info("Successfully started the dual bot server")
-        else:
-            logger.error("Failed to start the dual bot server. Please check the logs for details.")
-            return False
-    
-    # Step 3: Test key endpoints to make sure they're working
-    logger.info("Testing key endpoints...")
-    if test_key_endpoints():
-        logger.info("All endpoints are working correctly!")
-    else:
-        logger.warning("Some endpoints failed the test. The API server is running but might have issues.")
-    
-    # Step 4: Verify frontend configuration
-    logger.info("Verifying frontend API configuration...")
-    config_correct, issues = verify_frontend_api_config()
-    
-    if not config_correct:
-        logger.warning("Frontend configuration has issues that need to be addressed.")
-    
-    logger.info("Dual bot API server fix script completed")
-    return True
+        logger.error("Failed to start dual bot API server.")
+        return False
 
 if __name__ == "__main__":
-    # Check if running as part of unified script
-    use_new_window = True
-    if len(sys.argv) > 1 and sys.argv[1] == "--no-window":
-        use_new_window = False
-    
-    success = main(use_new_window)
-    sys.exit(0 if success else 1) 
+    # Default to starting in a new window if run directly
+    main(use_new_window=True) 

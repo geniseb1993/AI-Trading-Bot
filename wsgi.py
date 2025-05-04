@@ -29,6 +29,29 @@ logger = logging.getLogger('wsgi')
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE_DIR)
 
+# Set the RENDER_DEPLOYMENT environment variable if not already set
+if 'RENDER_DEPLOYMENT' not in os.environ:
+    os.environ['RENDER_DEPLOYMENT'] = 'true'
+
+# Run the unified startup script if it exists to initialize the environment
+unified_script = os.path.join(BASE_DIR, 'start_unified.py')
+if os.path.exists(unified_script):
+    logger.info("Initializing environment using start_unified.py")
+    try:
+        # Import as a module to initialize the environment
+        spec = importlib.util.spec_from_file_location("start_unified", unified_script)
+        startup_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(startup_module)
+        
+        # Call the start_render_deployment function if it exists
+        if hasattr(startup_module, 'start_render_deployment'):
+            logger.info("Running start_render_deployment function")
+            startup_module.start_render_deployment()
+        else:
+            logger.warning("start_render_deployment function not found in start_unified.py")
+    except Exception as e:
+        logger.error(f"Error initializing environment with start_unified.py: {e}")
+
 # Add mock_modules to the path
 MOCK_MODULES_DIR = os.path.join(BASE_DIR, 'mock_modules')
 if os.path.exists(MOCK_MODULES_DIR) and MOCK_MODULES_DIR not in sys.path:

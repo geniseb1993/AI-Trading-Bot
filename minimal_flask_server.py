@@ -863,6 +863,6 @@ def tradingview_market_analysis():
     })
 
 if __name__ == '__main__':
-    print("Starting minimal Flask API server on http://localhost:5001")
+    print("Starting minimal Flask API server on port 8000")
     print("Press Ctrl+C to stop the server")
-    app.run(host='0.0.0.0', port=5001, debug=True) 
+    app.run(host='0.0.0.0', port=8000, debug=True) 

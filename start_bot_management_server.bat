@@ -1,3 +1,0 @@
-@echo off
-echo Starting Bot Management Server...
-python simple_bot_management_server.py 

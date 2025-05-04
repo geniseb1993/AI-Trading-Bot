@@ -225,14 +225,20 @@ def health_check(url, max_retries=5, delay=2):
     """Check if a service is healthy by making a request to its health endpoint"""
     for attempt in range(max_retries):
         try:
-            response = requests.get(url, timeout=5)
+            logger.info(f"Health check attempt {attempt+1}/{max_retries} for {url}")
+            response = requests.get(url, timeout=10)  # Increased timeout
             if response.status_code in [200, 201]:
+                logger.info(f"Health check successful: {url} returned {response.status_code}")
                 return True
-        except requests.exceptions.RequestException:
-            pass
+            else:
+                logger.warning(f"Health check returned status code {response.status_code} for {url}")
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"Health check failed: {str(e)}")
         
+        logger.info(f"Waiting {delay} seconds before next attempt...")
         time.sleep(delay)
     
+    logger.error(f"Health check failed after {max_retries} attempts for {url}")
     return False
 
 def start_dual_bot_api_server():
@@ -248,34 +254,77 @@ def start_dual_bot_api_server():
     dual_bot_server = os.path.join(BASE_DIR, "dual_bot_api_server.py")
     
     if os.path.exists(fix_script):
-        server_script = fix_script
         logger.info("Using fix-dual-bot-api.py to start the Dual Bot API Server")
-    elif os.path.exists(dual_bot_server):
-        server_script = dual_bot_server
-        logger.info("Using dual_bot_api_server.py directly")
-    else:
-        logger.error("Dual Bot API Server script not found")
-        return False
+        try:
+            # Run the fix script and wait for it to complete
+            result = subprocess.run(
+                [sys.executable, fix_script],
+                capture_output=True,
+                text=True,
+                check=False  # Don't raise exception on non-zero exit code
+            )
+            
+            # Log output from fix script
+            if result.stdout:
+                for line in result.stdout.splitlines():
+                    logger.info(f"Fix script: {line}")
+            
+            if result.stderr:
+                for line in result.stderr.splitlines():
+                    logger.error(f"Fix script error: {line}")
+            
+            # Check if the process was successful
+            if result.returncode != 0:
+                logger.error(f"Fix script exited with code {result.returncode}")
+            
+            # Give the server some extra time to start fully
+            time.sleep(10)
+            
+            # Now let's verify the server is running with a more robust check
+            if health_check(DUAL_BOT_API_HEALTH, max_retries=3, delay=5):
+                logger.info("Dual Bot API Server started successfully (via fix script)")
+                running_processes["dual_bot_api"] = None  # We don't have a process handle when using fix script
+                return True
+            else:
+                # Start it directly as a fallback
+                logger.warning("Fix script didn't start the server properly. Attempting direct start...")
+        except Exception as e:
+            logger.error(f"Error running fix script: {str(e)}")
+            logger.warning("Falling back to direct server start...")
     
+    # Direct start as fallback or if fix script doesn't exist
     try:
-        # Set environment variable for the port
+        logger.info("Starting Dual Bot API Server directly")
+        
+        # Create directory for data/dashboard if it doesn't exist
+        os.makedirs(os.path.join(BASE_DIR, 'data', 'dashboard'), exist_ok=True)
+        
+        # Set environment variables
         env = os.environ.copy()
         env["FLASK_APP"] = "dual_bot_api_server.py"
         env["FLASK_ENV"] = "development"
+        env["FLASK_DEBUG"] = "1"
         
         # Start the server
-        cmd = [sys.executable, server_script]
+        cmd = [sys.executable, dual_bot_server]
         
-        if IS_WINDOWS:
-            process = subprocess.Popen(cmd, env=env)
-        else:
-            process = subprocess.Popen(cmd, env=env)
+        # Start the server process
+        process = subprocess.Popen(
+            cmd,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
         
         running_processes["dual_bot_api"] = process
         
+        # Give the server some time to start
+        logger.info("Waiting for Dual Bot API Server to start...")
+        time.sleep(10)
+        
         # Check if the server started successfully
-        if health_check(DUAL_BOT_API_HEALTH):
-            logger.info("Dual Bot API Server started successfully")
+        if health_check(DUAL_BOT_API_HEALTH, max_retries=3, delay=5):
+            logger.info("Dual Bot API Server started successfully (direct start)")
             return True
         else:
             logger.error("Failed to start Dual Bot API Server")
